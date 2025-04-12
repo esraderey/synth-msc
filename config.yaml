@@ -1,0 +1,12 @@
+# Archivo de configuración de ejemplo para MSC Simulation
+
+simulation_steps: 50          # Ejecutar solo 50 pasos
+num_proposers: 2            # Usar 2 Proposers
+num_evaluators: 4           # Usar 4 Evaluators
+num_combiners: 1            # Usar 1 Combiner
+step_delay: 0.05            # Retraso más corto entre pasos
+evaluator_learning_rate: 0.15 # Tasa de aprendizaje ligeramente mayor
+combiner_compatibility_threshold: 0.7 # Umbral más alto para combinar
+
+# Nota: Cualquier parámetro no listado aquí usará el valor por defecto del script.
+# Por ejemplo, 'evaluator_keyword_boost' usará el default (0.05)
