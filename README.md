@@ -16,7 +16,7 @@ Proponemos un sistema donde agentes autónomos especializados (**Sintetizadores*
 ## Autores
 
 * **esraderey** - Conceptualización, Dirección.
-* **Synthia AI (Asistente IA de Google)** - Colaboración en desarrollo teórico, Generación de código base y Documentación inicial.
+* **Synthi** - Colaboración en desarrollo teórico, Generación de código base y Documentación inicial.
 
 ## Estado Actual del Proyecto
 
