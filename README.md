@@ -1,9 +1,7 @@
 # Marco de Síntesis Colectiva (MSC) / Collective Synthesis Framework (MSC)
 
-[![Estado Construcción](https://img.shields.io/badge/build-passing-brightgreen)](...) [![Licencia](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Documentación](https://img.shields.io/badge/docs-whitepaper_ শীঘ্রই-orange)](...) [![Contribuciones Bienvenidas](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
-
-**Un marco para la emergencia de soluciones complejas y conocimiento estructurado a través de inteligencia colectiva sintética.**
+[![Estado Construcción](https://img.shields.io/badge/build-passing-brightgreen)] [![Licencia](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Documentación](https://img.shields.io/badge/docs-whitepaper_ শীঘ্রই-orange)](...) [![Contribuciones Bienvenidas](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md) **Un marco para la emergencia de soluciones complejas y conocimiento estructurado a través de inteligencia colectiva sintética.**
 
 ## Resumen
 
@@ -46,17 +44,18 @@ Este sistema busca recompensar la creación de componentes validados, relaciones
 
 ## Primeros Pasos (Simulación Base)
 
-Este repositorio contiene una simulación base en Python (`msc_simulation.py` o similar - *ajustar nombre de archivo*) para ilustrar la dinámica.
+Este repositorio contiene una simulación base en Python (`msc_simulation.py` - *ajustar nombre si es diferente*) para ilustrar la dinámica.
 
 **Requisitos:**
 * Python 3.7+
+* PyYAML (`pip install -r requirements.txt`)
 
 **Instalación y Ejecución:**
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [https://github.com/tu-usuario/msc-framework.git](https://github.com/tu-usuario/msc-framework.git) # Reemplazar con URL real
-    cd msc-framework
+    git clone [https://github.com/esraderey/synth-msc.git](https://github.com/esraderey/synth-msc.git) # URL del repositorio
+    cd synth-msc
     ```
 
 2.  **Crear un entorno virtual (recomendado):**
@@ -65,23 +64,36 @@ Este repositorio contiene una simulación base en Python (`msc_simulation.py` o 
     source venv/bin/activate  # En Windows: venv\Scripts\activate
     ```
 
-3.  **Ejecutar la simulación:**
-    (Actualmente no requiere dependencias externas más allá de la biblioteca estándar de Python)
+3.  **Instalar dependencias:**
     ```bash
-    python msc_simulation.py # Ajustar nombre de archivo si es diferente
+    pip install -r requirements.txt
+    ```
+
+4.  **Ejecutar la simulación (ejemplos):**
+    ```bash
+    # Usando configuración por defecto del script
+    python msc_simulation.py
+
+    # Usando un archivo de configuración
+    python msc_simulation.py --config config.yaml
+
+    # Sobrescribiendo parámetros específicos
+    python msc_simulation.py --simulation_steps 50 --num_proposers 1
     ```
 
 **Uso y Observación:**
-La simulación imprimirá en la consola los pasos que realizan los agentes (Proponer, Evaluar, Combinar), mostrando los cambios en los estados (`S=...`) de los nodos y la creación de nuevas conexiones. Observa cómo evolucionan los estados y la estructura del grafo a lo largo del tiempo. Puedes ajustar los parámetros (número de agentes, pasos, tasas de aprendizaje) dentro del script.
+La simulación imprimirá en la consola los pasos que realizan los agentes y el estado del grafo. Observa cómo evolucionan los estados (`S=...`) y la estructura. Puedes experimentar con los parámetros en `config.yaml` o mediante argumentos de línea de comandos.
 
 ## Contribuciones
 
 ¡Las contribuciones son bienvenidas! Estamos en una fase temprana y buscamos colaboradores interesados en la teoría, simulación, diseño de agentes, economía de sistemas multiagente y aplicaciones potenciales.
 
-Consulta nuestra guía de contribución (`CONTRIBUTING.md` - *Crear este archivo*) y el código de conducta (`CODE_OF_CONDUCT.md` - *Crear este archivo*). Para reportar errores o sugerir ideas, por favor usa la sección de [Issues](https://github.com/tu-usuario/msc-framework/issues) de GitHub. ## Roadmap del Proyecto
+Consulta nuestra guía de contribución (`CONTRIBUTING.md` - *Crear este archivo*) y el código de conducta (`CODE_OF_CONDUCT.md` - *Crear este archivo*). Para reportar errores o sugerir ideas, por favor usa la sección de [Issues](https://github.com/esraderey/synth-msc/issues) de GitHub.
+
+## Roadmap del Proyecto
 
 1.  ✅ **Fase 1:** Fundamentación Teórica y Simulación Avanzada.
-2.   MÍNIMO VIABLE **Fase 2:** Desarrollo del Núcleo de Infraestructura y MVP (Dominio Específico).
+2.   ✅ **Fase 2 (Parcial):** Desarrollo del Núcleo de Infraestructura (Simulador Base) y MVP Conceptual. (Configuración externa implementada).
 3.   EN PROGRESO **Fase 3:** Implementación de Economía (Ψ, Ω) y Especialización de Agentes.
 4.   FUTURO **Fase 4:** Expansión de Dominio y Escalabilidad.
 5.   FUTURO (OPCIONAL) **Fase 5:** Descentralización y Ecosistema Abierto.
@@ -96,5 +108,4 @@ Consulta nuestra guía de contribución (`CONTRIBUTING.md` - *Crear este archivo
 Este proyecto se distribuye bajo la **Licencia MIT**. Consulta el archivo `LICENSE` para más detalles.
 
 ## Cita
-
 Si utilizas este trabajo en tu investigación, por favor cita:esraderey, & Synth . (2025). Marco de Síntesis Colectiva (MSC): Un Framework para Inteligencia Colectiva Sintética.
