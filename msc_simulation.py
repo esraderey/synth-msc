@@ -4,8 +4,10 @@ import time
 import argparse # Para argumentos de línea de comandos
 import yaml     # Para leer archivos YAML
 from collections import Counter
+import networkx as nx           # <-- Añadido para grafos
+import matplotlib.pyplot as plt # <-- Añadido para dibujar
 
-# --- 1. Definiciones del Grafo de Síntesis (Sin cambios respecto a versión anterior con config) ---
+# --- 1. Definiciones del Grafo de Síntesis ---
 
 class KnowledgeComponent:
     """Representa un nodo (V') en el Grafo de Síntesis."""
@@ -98,21 +100,103 @@ class CollectiveSynthesisGraph:
         print(f"  Avg State: {avg_state:.3f}, Avg Keywords: {avg_keywords:.2f}, Total Edges: {num_edges}")
         print("-" * 40)
 
-# --- 2. Definiciones de Sintetizadores (Evaluator modificado, todos aceptan config) ---
+    # --- MÉTODO visualize_graph CORREGIDO ---
+    def visualize_graph(self, config):
+        """Genera una visualización del grafo usando NetworkX y Matplotlib."""
+        if not self.nodes:
+             print("Cannot visualize empty graph.")
+             return
+        print("Generating graph visualization...")
+        G = nx.DiGraph()
+        node_labels = {}
+        node_sizes = []
+        node_colors = []
+
+        # Añadir nodos y preparar atributos para visualización
+        for node_id, node in self.nodes.items():
+            G.add_node(node_id)
+            node_labels[node_id] = f"{node_id}\nS={node.state:.2f}" # Etiqueta con ID y Estado
+            node_sizes.append(100 + node.state * 1500) # Tamaño basado en estado (ajustar escala)
+            node_colors.append(node.state) # Color basado en estado
+
+        # Añadir aristas y preparar atributos
+        edge_list = []
+        edge_weights = []
+        edge_colors = []
+        for node_id, node in self.nodes.items():
+            for target_id, utility in node.connections_out.items():
+                # Asegurarse que el nodo destino existe en el grafo G antes de añadir arista
+                if target_id in G:
+                    edge_list.append((node_id, target_id))
+                    # Grosor basado en utilidad absoluta (ajustar escala)
+                    edge_weights.append(1 + abs(utility) * 4)
+                    # Color basado en utilidad (positivo/negativo)
+                    edge_colors.append(utility)
+
+        # --- Inicio de Cambios para Corregir Colorbar ---
+        if not G.nodes: # Si no hay nodos después de filtrar, no continuar
+             print("No nodes to visualize.")
+             return
+
+        # Crear figura y ejes explícitamente
+        fig, ax = plt.subplots(figsize=(16, 9))
+        ax.set_title("MSC Graph Visualization") # Poner título en los ejes
+        ax.axis('off') # Ocultar ejes aquí
+
+        # Calcular layout
+        try:
+            # Spring layout funciona bien para grafos generales
+            pos = nx.spring_layout(G, k=0.5, iterations=50) # Ajustar k e iteraciones según sea necesario
+        except Exception as e:
+             print(f"Error calculating layout: {e}. Using random layout.")
+             pos = nx.random_layout(G) # Fallback a layout aleatorio
+
+        # Dibujar Nodos (pasando ax)
+        nodes = nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, cmap=plt.cm.viridis, node_size=node_sizes, alpha=0.8)
+
+        # Dibujar Aristas (pasando ax)
+        edges = nx.draw_networkx_edges(G, pos, ax=ax, edgelist=edge_list, edge_color=edge_colors,
+                                       edge_cmap=plt.cm.coolwarm, width=edge_weights, alpha=0.6,
+                                       arrows=True, arrowstyle='->', arrowsize=15)
+
+        # Dibujar Etiquetas (pasando ax)
+        nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=8)
+
+        # Crear ScalarMappable para las barras de color (si hay datos)
+        # Colorbar para Nodos
+        if node_colors:
+             sm_nodes = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=plt.Normalize(vmin=min(node_colors), vmax=max(node_colors)))
+             sm_nodes.set_array([])
+             # Añadir colorbar usando fig.colorbar y especificando los ejes (ax)
+             cbar_nodes = fig.colorbar(sm_nodes, ax=ax, shrink=0.5)
+             cbar_nodes.set_label('Node State (sj)')
+
+        # Colorbar para Aristas
+        if edge_colors: # Asegurarse que hay colores de arista antes de crear la barra
+             sm_edges = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=plt.Normalize(vmin=min(edge_colors), vmax=max(edge_colors)))
+             sm_edges.set_array([])
+             # Añadir colorbar usando fig.colorbar y especificando los ejes (ax)
+             cbar_edges = fig.colorbar(sm_edges, ax=ax, shrink=0.5)
+             cbar_edges.set_label('Edge Utility (uij)')
+        # --- Fin de Cambios para Corregir Colorbar ---
+
+        plt.show() # Mostrar la ventana del gráfico
+
+
+# --- 2. Definiciones de Sintetizadores ---
 
 class Synthesizer:
     """Clase base para los agentes."""
     def __init__(self, agent_id, graph, config): # Acepta config
         self.id = agent_id
         self.graph = graph
-        self.config = config # Guarda config
+        self.config = config
 
     def act(self):
         raise NotImplementedError
 
 class ProposerAgent(Synthesizer):
     """Propone nuevos nodos."""
-    # __init__ hereda y usa self.config si fuera necesario
     def act(self):
         source_node = self.graph.get_random_node_biased()
         if source_node is None:
@@ -120,41 +204,34 @@ class ProposerAgent(Synthesizer):
             new_node = self.graph.add_node(content="Initial Seed", initial_state=0.2, keywords=keywords)
             print(f"Proposer {self.id}: Proposed initial {new_node!r}")
             return
-
         new_kw = f"kw_{self.graph.next_node_id}"
         source_kw = random.choice(list(source_node.keywords)) if source_node.keywords else "related"
         new_keywords = {source_kw, new_kw}
         new_content = f"Related concept to {source_node.id} about {new_kw}"
         initial_state = max(0.05, source_node.state * random.uniform(0.3, 0.8))
         new_node = self.graph.add_node(content=new_content, initial_state=initial_state, keywords=new_keywords)
-
         utility = (source_node.state * 0.5 + random.uniform(-0.3, 0.7))
         utility = max(-1.0, min(1.0, utility))
         self.graph.add_edge(source_node.id, new_node.id, utility)
         print(f"Proposer {self.id}: Proposed {new_node!r} linked from {source_node!r} with U={utility:.2f}")
 
 class EvaluatorAgent(Synthesizer):
-    """Evalúa nodos con lógica mejorada (decay, keywords, inconsistencia básica)."""
-    def __init__(self, agent_id, graph, config): # Acepta config
+    """Evalúa nodos con lógica mejorada."""
+    def __init__(self, agent_id, graph, config):
         super().__init__(agent_id, graph, config)
-        # Usa parámetros de la configuración, con valores por defecto
         self.learning_rate = config.get('evaluator_learning_rate', 0.1)
         self.keyword_boost = config.get('evaluator_keyword_boost', 0.05)
-        self.decay_rate = config.get('evaluator_decay_rate', 0.01) # <-- Nuevo parámetro
+        self.decay_rate = config.get('evaluator_decay_rate', 0.01)
 
     def act(self):
         target_node = self.graph.get_random_node_biased()
         if target_node is None: return
-
         influence_sum = 0.0
         weight_sum = 0.0
         shared_keywords_score_factor = 0.0
-
         if not target_node.connections_in:
-            # Decaimiento para nodos aislados
             influence_target = target_node.state * (1 - self.decay_rate)
         else:
-            # Calcular influencia de los vecinos entrantes y boost por keywords
             for source_id, utility_uji in target_node.connections_in.items():
                 source_node = self.graph.get_node(source_id)
                 if source_node:
@@ -162,82 +239,65 @@ class EvaluatorAgent(Synthesizer):
                     influence_sum += influence
                     weight = abs(utility_uji)
                     weight_sum += weight
-                    # Keyword boost si el vecino es relevante (estado alto, utilidad positiva)
                     if source_node.state > 0.5 and utility_uji > 0.1:
                         common_keywords = target_node.keywords.intersection(source_node.keywords)
                         if common_keywords:
                              boost = len(common_keywords) * source_node.state * weight * self.keyword_boost
                              shared_keywords_score_factor += boost
-
-            # Calcular objetivo base y añadir boost normalizado
             if weight_sum > 0.01:
                  base_influence_target = influence_sum / weight_sum
                  keyword_influence_boost = shared_keywords_score_factor / weight_sum
                  influence_target = base_influence_target + keyword_influence_boost
             else:
-                 influence_target = target_node.state # Mantener estado si no hay influencia
-
-            # Penalización por inconsistencias lógicas (simplificada)
-            # Penaliza si recibe enlace negativo de un nodo fuente de alta confianza
+                 influence_target = target_node.state
             for source_id, utility_uji in target_node.connections_in.items():
                source_node = self.graph.get_node(source_id)
                if source_node and utility_uji < 0 and source_node.state > 0.7:
-                   influence_target *= 0.9 # Factor de penalización (ej. 10%)
-
-        # Limitar objetivo y actualizar estado
-        influence_target = max(-0.5, min(1.5, influence_target)) # Limita el objetivo
+                   influence_target *= 0.9
+        influence_target = max(-0.5, min(1.5, influence_target))
         current_state = target_node.state
         new_state = current_state + self.learning_rate * (influence_target - current_state)
-        # Aplicar decaimiento general (opcional, además del de aislamiento)
-        # new_state *= (1 - self.decay_rate * 0.1) # Decaimiento general más lento
-
-        target_node.update_state(new_state) # Asegura que el estado quede en [0, 1]
+        target_node.update_state(new_state)
         print(f"Evaluator {self.id}: Evaluated {target_node!r}. State: {current_state:.3f} -> {target_node.state:.3f} (Target: {influence_target:.3f})")
-
 
 class CombinerAgent(Synthesizer):
     """Combina nodos existentes."""
-    def __init__(self, agent_id, graph, config): # Acepta config
+    def __init__(self, agent_id, graph, config):
         super().__init__(agent_id, graph, config)
-        # Usa parámetro de la configuración
         self.compatibility_threshold = config.get('combiner_compatibility_threshold', 0.6)
 
     def act(self):
         if len(self.graph.nodes) < 2: return
-
         node_a = self.graph.get_random_node_biased()
         node_b = self.graph.get_random_node_biased()
-
         if node_a is None or node_b is None or node_a.id == node_b.id \
            or node_b.id in node_a.connections_out \
            or node_a.id in node_b.connections_out:
             return
-
         state_product = node_a.state * node_b.state
         common_keywords = node_a.keywords.intersection(node_b.keywords)
         max_possible_keywords = len(node_a.keywords.union(node_b.keywords))
         keyword_similarity = len(common_keywords) / max_possible_keywords if max_possible_keywords > 0 else 0
         compatibility_score = (state_product * 0.6) + (keyword_similarity * 0.4)
-
         if compatibility_score >= self.compatibility_threshold:
             utility = compatibility_score * ((node_a.state + node_b.state) / 2.0)
             utility = max(-1.0, min(1.0, utility))
             if self.graph.add_edge(node_a.id, node_b.id, utility):
                  print(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} (Score: {compatibility_score:.2f}, U={utility:.2f})")
 
-# --- 3. Simulación (Usa config) ---
+# --- 3. Simulación ---
 
-def run_simulation(config): # Acepta diccionario de configuración
+def run_simulation(config):
     """Ejecuta la simulación del MSC."""
     num_steps = config.get('simulation_steps', 100)
     num_proposers = config.get('num_proposers', 3)
     num_evaluators = config.get('num_evaluators', 6)
     num_combiners = config.get('num_combiners', 2)
     step_delay = config.get('step_delay', 0.1)
+    visualize_at_end = config.get('visualize_graph', False) # Obtiene config de visualización
 
     graph = CollectiveSynthesisGraph()
     agents = []
-    # Pasa config a los constructores de agentes
     for i in range(num_proposers):
         agents.append(ProposerAgent(f"P{i}", graph, config))
     for i in range(num_evaluators):
@@ -246,7 +306,7 @@ def run_simulation(config): # Acepta diccionario de configuración
         agents.append(CombinerAgent(f"C{i}", graph, config))
 
     print(f"--- Starting MSC Simulation ({num_steps} steps) ---")
-    print(f"Configuration: {config}") # Imprime config usada
+    print(f"Configuration: {config}")
     print(f"Agents: {len(agents)} ({num_proposers}P, {num_evaluators}E, {num_combiners}C)")
 
     for step in range(num_steps):
@@ -254,18 +314,26 @@ def run_simulation(config): # Acepta diccionario de configuración
         if not agents: break
         agent = random.choice(agents)
         agent.act()
-        if (step + 1) % 20 == 0 or step == num_steps - 1:
+        # Modificado para imprimir resumen solo al final si se visualiza
+        if not visualize_at_end and ((step + 1) % 20 == 0 or step == num_steps - 1):
              graph.print_summary()
+        elif visualize_at_end and step == num_steps - 1:
+             graph.print_summary() # Imprime resumen justo antes de visualizar
+
         time.sleep(step_delay)
 
     print("\n--- Simulation Finished ---")
-    graph.print_summary()
+    # Llama a visualización si está activada en config
+    if visualize_at_end:
+        graph.visualize_graph(config) # Pasa config por si se usa en el futuro
+    elif num_nodes > 0: # Imprime resumen final solo si no se visualizó y el grafo no está vacío
+         graph.print_summary()
 
-# --- 4. Carga de Configuración y Punto de Entrada (Actualizado) ---
+
+# --- 4. Carga de Configuración y Punto de Entrada ---
 
 def load_config(args):
-    """Carga la configuración desde defaults, archivo YAML y argumentos CLI."""
-    # Valores por defecto (incluyendo el nuevo parámetro)
+    """Carga la configuración."""
     config = {
         'simulation_steps': 100,
         'num_proposers': 3,
@@ -274,11 +342,10 @@ def load_config(args):
         'step_delay': 0.1,
         'evaluator_learning_rate': 0.1,
         'evaluator_keyword_boost': 0.05,
-        'evaluator_decay_rate': 0.01, # <-- Default para decay rate
-        'combiner_compatibility_threshold': 0.6
+        'evaluator_decay_rate': 0.01,
+        'combiner_compatibility_threshold': 0.6,
+        'visualize_graph': False # Default para visualización
     }
-
-    # 1. Cargar desde YAML si se especifica
     if args.config:
         try:
             with open(args.config, 'r') as f:
@@ -291,25 +358,39 @@ def load_config(args):
         except Exception as e:
             print(f"Error loading config file {args.config}: {e}. Using defaults/args.")
 
-    # 2. Sobrescribir con argumentos CLI si se especifican
-    cli_args = {key: value for key, value in vars(args).items() if value is not None and key != 'config'}
-    config.update(cli_args)
+    # Sobrescribir con argumentos CLI, manejando 'store_true'
+    cli_args = vars(args).copy() # Copia args a un dict
+    config_file_path = cli_args.pop('config', None) # Quita config para no sobreescribir
+
+    # Manejar visualize_graph (action='store_true')
+    if 'visualize_graph' in cli_args:
+         if cli_args['visualize_graph'] == True: # Si el flag está presente
+              config['visualize_graph'] = True
+         # No necesitamos borrarlo como antes, lo sobreescribimos si está presente
+         # Borrarlo causaría que no se pueda desactivar desde CLI si está en YAML
+         del cli_args['visualize_graph'] # Lo quitamos después de procesarlo
+
+    # Sobrescribir con los demás argumentos CLI que no sean None
+    for key, value in cli_args.items():
+         if value is not None:
+              config[key] = value
 
     return config
 
 if __name__ == "__main__":
-    # Configurar parser de argumentos (añadir el nuevo)
     parser = argparse.ArgumentParser(description="Run the Collective Synthesis Framework (MSC) Simulation.")
     parser.add_argument('--config', type=str, help='Path to the YAML configuration file.')
     parser.add_argument('--simulation_steps', type=int, help='Number of simulation steps.')
     parser.add_argument('--num_proposers', type=int, help='Number of proposer agents.')
     parser.add_argument('--num_evaluators', type=int, help='Number of evaluator agents.')
     parser.add_argument('--num_combiners', type=int, help='Number of combiner agents.')
-    parser.add_argument('--step_delay', type=float, help='Delay between simulation steps (in seconds).')
-    parser.add_argument('--evaluator_learning_rate', type=float, help='Learning rate for evaluator agents.')
-    parser.add_argument('--evaluator_keyword_boost', type=float, help='Keyword boost factor for evaluator agents.')
-    parser.add_argument('--evaluator_decay_rate', type=float, help='State decay rate for evaluator agents.') # <-- Argumento añadido
-    parser.add_argument('--combiner_compatibility_threshold', type=float, help='Threshold for combiner agents.')
+    parser.add_argument('--step_delay', type=float, help='Delay between simulation steps.')
+    parser.add_argument('--evaluator_learning_rate', type=float, help='Learning rate for evaluators.')
+    parser.add_argument('--evaluator_keyword_boost', type=float, help='Keyword boost factor.')
+    parser.add_argument('--evaluator_decay_rate', type=float, help='State decay rate.')
+    parser.add_argument('--combiner_compatibility_threshold', type=float, help='Threshold for combiners.')
+    # Argumento para activar visualización
+    parser.add_argument('--visualize_graph', action='store_true', help='Visualize graph at the end.')
 
     args = parser.parse_args()
     final_config = load_config(args)
