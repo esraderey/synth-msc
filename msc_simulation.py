@@ -62,27 +62,23 @@ class CollectiveSynthesisGraph:
         self.node_id_to_idx = {}
         self.idx_to_node_id = {}
         print(f"GNN Initialized: Input={num_node_features}, Hidden={hidden_channels}, Embedding={embedding_dim}")
-
+        
     # --- MÉTODO _prepare_pyg_data MODIFICADO ---
     def _prepare_pyg_data(self):
         """Prepara los datos del grafo actual para PyTorch Geometric."""
         if not self.nodes:
             return None, None, None
-
         self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
         self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
         num_nodes = len(self.nodes)
         # --- Modificación: Determinar dimensión de features ---
         num_node_features = self.config.get('gnn_input_dim', 4)  # <-- Usar config, default 4
-
         # Crear tensor de características con la dimensión correcta
         node_features = torch.zeros((num_nodes, num_node_features), dtype=torch.float)
-
         # Llenar el tensor de características
         for node_id, node in self.nodes.items():
             if node_id in self.node_id_to_idx:
                 idx = self.node_id_to_idx[node_id]
-                # Asignar características en orden: state, in-degree, out-degree, num_keywords
                 if num_node_features >= 1:
                     node_features[idx, 0] = node.state
                 if num_node_features >= 2:
@@ -91,9 +87,7 @@ class CollectiveSynthesisGraph:
                     node_features[idx, 2] = float(len(node.connections_out))
                 if num_node_features >= 4:
                     node_features[idx, 3] = float(len(node.keywords))
-                # Si num_node_features > 4, las características extra quedarán en 0
-
-        # Índice de Aristas (edge_index) - Sin cambios
+        # Índice de Aristas (edge_index)
         source_indices = []
         target_indices = []
         for source_node_id, node in self.nodes.items():
@@ -106,10 +100,8 @@ class CollectiveSynthesisGraph:
                     source_indices.append(source_idx)
                     target_indices.append(target_idx)
         edge_index = torch.tensor([source_indices, target_indices], dtype=torch.long)
-
         return node_features, edge_index
-    # --- Fin de _prepare_pyg_data modificado ---
-
+        
     def update_embeddings(self):
         if not self.nodes:
             self.node_embeddings = {}
@@ -128,7 +120,7 @@ class CollectiveSynthesisGraph:
                 self.node_embeddings = {self.idx_to_node_id[i]: embedding for i, embedding in enumerate(all_embeddings_tensor) if i in self.idx_to_node_id}
             except Exception as e:
                 print(f"GNN Error during forward pass: {e}")
-
+    
     def add_node(self, content="Abstract Concept", initial_state=0.1, keywords=None):
         node_id = self.next_node_id
         kw = set(keywords) if keywords else set()
@@ -136,7 +128,7 @@ class CollectiveSynthesisGraph:
         self.nodes[node_id] = new_node
         self.next_node_id += 1
         return new_node
-
+    
     def add_edge(self, source_id, target_id, utility):
         if source_id in self.nodes and target_id in self.nodes and source_id != target_id:
             source_node = self.nodes[source_id]
@@ -148,15 +140,15 @@ class CollectiveSynthesisGraph:
 
     def get_node(self, node_id):
         return self.nodes.get(node_id)
-
+    
     def get_embedding(self, node_id):
         return self.node_embeddings.get(node_id, None)
-
+    
     def get_nodes_sorted_by_state(self, descending=True):
         if not self.nodes:
             return []
         return sorted(self.nodes.values(), key=lambda node: node.state, reverse=descending)
-
+    
     def get_random_node_biased(self):
         if not self.nodes:
             return None
@@ -165,7 +157,7 @@ class CollectiveSynthesisGraph:
         if sum(weights) <= 0.0:
             return random.choice(nodes) if nodes else None
         return random.choices(nodes, weights=weights, k=1)[0]
-
+    
     def print_summary(self):
         num_nodes = len(self.nodes)
         print(f"--- Graph Summary (Nodes: {num_nodes}, Embeddings: {len(self.node_embeddings)}) ---")
@@ -186,7 +178,7 @@ class CollectiveSynthesisGraph:
             num_edges = sum(len(n.connections_out) for n in self.nodes.values())
             print(f"  Avg State: {avg_state:.3f}, Avg Keywords: {avg_keywords:.2f}, Total Edges: {num_edges}")
         print("-" * 40)
-
+    
     def visualize_graph(self, config):
         if not self.nodes:
             print("Cannot visualize empty graph.")
@@ -237,15 +229,14 @@ class CollectiveSynthesisGraph:
             cbar_edges = fig.colorbar(sm_edges, ax=ax, shrink=0.5)
             cbar_edges.set_label('Edge Utility (uij)')
         plt.show()
-
-    # --- MÉTODO save_state (REEMPLAZA save_graph) ---
+    
     def save_state(self, base_file_path):
         """Guarda el estado completo: grafo (GraphML), modelo GNN (.pth), y embeddings (.pth)."""
         graphml_path = base_file_path + ".graphml"
         gnn_model_path = base_file_path + ".gnn.pth"
         embeddings_path = base_file_path + ".embeddings.pth"
         print(f"Attempting to save state to base path: {base_file_path}")
-
+        
         # 1. Guardar Grafo (GraphML)
         G = nx.DiGraph()
         for node_id, node in self.nodes.items():
@@ -260,14 +251,14 @@ class CollectiveSynthesisGraph:
             print(f"Graph structure saved to {graphml_path}")
         except Exception as e:
             print(f"Error saving GraphML to {graphml_path}: {e}")
-
+        
         # 2. Guardar Estado del Modelo GNN
         try:
             torch.save(self.gnn_model.state_dict(), gnn_model_path)
             print(f"GNN model state saved to {gnn_model_path}")
         except Exception as e:
             print(f"Error saving GNN model state to {gnn_model_path}: {e}")
-
+        
         # 3. Guardar Embeddings Calculados
         try:
             detached_embeddings = {node_id: emb.detach().cpu() for node_id, emb in self.node_embeddings.items()}
@@ -275,7 +266,7 @@ class CollectiveSynthesisGraph:
             print(f"Node embeddings saved to {embeddings_path}")
         except Exception as e:
             print(f"Error saving node embeddings to {embeddings_path}: {e}")
-
+    
     # --- MÉTODO load_state (REVISADO PARA CORREGIR SYNTAXERROR) ---
     def load_state(self, base_file_path):
         """Carga el estado completo: grafo (GraphML), modelo GNN (.pth), y embeddings (.pth)."""
@@ -283,18 +274,18 @@ class CollectiveSynthesisGraph:
         gnn_model_path = base_file_path + ".gnn.pth"
         embeddings_path = base_file_path + ".embeddings.pth"
         print(f"Attempting to load state from base path: {base_file_path}")
-
+        
         # 1. Cargar Grafo (GraphML)
         try:  # Bloque try principal para carga de GraphML
             if not os.path.exists(graphml_path):
                 print(f"Error: GraphML file not found at {graphml_path}. Cannot load state.")
                 return False  # Indicar fallo
-
+            
             G = nx.read_graphml(graphml_path)
             self.nodes = {}  # Limpiar grafo actual
             self.next_node_id = 0  # Reiniciar contador
             max_id = -1
-
+            
             # Cargar Nodos
             for node_id_str, data in G.nodes(data=True):
                 try:  # Try interno para conversión de ID de nodo
@@ -302,11 +293,11 @@ class CollectiveSynthesisGraph:
                 except ValueError:
                     print(f"Warning: Skipping node with non-integer ID '{node_id_str}' from GraphML.")
                     continue  # Saltar al siguiente nodo
-
+                
                 # Convertir string de keywords de nuevo a set
                 keywords_str = data.get('keywords', '')
                 keywords = set(k for k in keywords_str.split(',') if k)  # Maneja string vacío y quita vacíos
-
+                
                 # Crear el componente de conocimiento
                 new_node = KnowledgeComponent(
                     node_id,
@@ -317,9 +308,9 @@ class CollectiveSynthesisGraph:
                 self.nodes[node_id] = new_node
                 max_id = max(max_id, node_id)
             # Fin del bucle de nodos
-
+            
             self.next_node_id = max_id + 1  # Ajustar next_node_id al máximo cargado + 1
-
+            
             # Cargar Aristas
             for source_id_str, target_id_str, data in G.edges(data=True):
                 try:  # Try interno para conversión de IDs de arista
@@ -332,14 +323,14 @@ class CollectiveSynthesisGraph:
                     print(f"Warning: Skipping edge with non-integer source/target ID ('{source_id_str}' -> '{target_id_str}') from GraphML.")
                     continue  # Saltar a la siguiente arista
             # Fin del bucle de aristas
-
+            
             print(f"Graph structure loaded from {graphml_path}")
-
+        
         # Except correspondiente al try principal de GraphML
         except Exception as e:
             print(f"Error loading GraphML from {graphml_path}: {e}")
             return False  # Indicar fallo
-
+        
         # 2. Cargar Estado del Modelo GNN
         try:  # Try para cargar modelo GNN
             if not os.path.exists(gnn_model_path):
@@ -351,7 +342,7 @@ class CollectiveSynthesisGraph:
                 print(f"GNN model state loaded from {gnn_model_path}")
         except Exception as e:  # Except para carga de GNN
             print(f"Error loading GNN model state from {gnn_model_path}: {e}. Using initialized GNN model.")
-
+        
         # 3. Cargar Embeddings Calculados
         try:  # Try para cargar embeddings
             if not os.path.exists(embeddings_path):
@@ -363,11 +354,11 @@ class CollectiveSynthesisGraph:
         except Exception as e:  # Except para carga de embeddings
             print(f"Error loading node embeddings from {embeddings_path}: {e}. Embeddings dictionary initialized empty.")
             self.node_embeddings = {}
-
+        
         # 4. Recalcular mapeos ID <-> Índice después de cargar
         self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
         self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
-
+        
         return True  # Indicar éxito en la carga general
 
 # --- 2. Definiciones de Sintetizadores ---
@@ -405,11 +396,13 @@ class EvaluatorAgent(Synthesizer):
         self.learning_rate = config.get('evaluator_learning_rate', 0.1)
         self.similarity_boost_factor = config.get('evaluator_similarity_boost', 0.05)
         self.decay_rate = config.get('evaluator_decay_rate', 0.01)
+        
     def calculate_cosine_similarity(self, emb1, emb2):
         if emb1 is None or emb2 is None:
             return 0.0
         sim = F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
         return (sim + 1) / 2
+        
     def act(self):
         target_node = self.graph.get_random_node_biased()
         if target_node is None:
@@ -449,53 +442,67 @@ class EvaluatorAgent(Synthesizer):
         target_node.update_state(new_state)
         print(f"Evaluator {self.id}: Evaluated {target_node!r}. State: {current_state:.3f} -> {target_node.state:.3f} (Target: {influence_target:.3f})")
 
+# --- CLASE CombinerAgent (REVISADA INDENTACIÓN) ---
 class CombinerAgent(Synthesizer):
+    """Combina nodos existentes basándose en la similitud de sus embeddings o fallback."""
     def __init__(self, agent_id, graph, config):
         super().__init__(agent_id, graph, config)
         self.similarity_threshold = config.get('combiner_similarity_threshold', 0.7)
         self.compatibility_threshold = config.get('combiner_compatibility_threshold', 0.6)
-    # --- MÉTODO calculate_cosine_similarity CORREGIDO ---
+
     def calculate_cosine_similarity(self, emb1, emb2):
-        """Calcula la similitud coseno entre dos embeddings de PyTorch."""
+        """Calcula la similitud coseno [-1, 1]. Devuelve 0.0 si falta un embedding."""
         if emb1 is None or emb2 is None:
-            # Si falta algún embedding, no podemos calcular la similitud.
-            # Devolver 0.0 como valor neutral/fallback es más seguro que -1.
             return 0.0
-        else:
-            # Si ambos embeddings existen, calcular y devolver similitud en rango [-1, 1]
-            # Nota: F.cosine_similarity espera al menos 2D, unsqueeze añade dimensión batch
-            return F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
+        return F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
+
     def act(self):
         if len(self.graph.nodes) < 2:
             return
+
         node_a = self.graph.get_random_node_biased()
         node_b = self.graph.get_random_node_biased()
-        if node_a is None or node_b is None or node_a.id == node_b.id or node_b.id in node_a.connections_out or node_a.id in node_b.connections_out:
+
+        if node_a is None or node_b is None or node_a.id == node_b.id \
+           or node_b.id in node_a.connections_out \
+           or node_a.id in node_b.connections_out:
             return
+
         emb_a = self.graph.get_embedding(node_a.id)
         emb_b = self.graph.get_embedding(node_b.id)
-        use_embedding_logic = False
+        edge_added = False  # Flag para saber si ya se añadió una arista
+
+        # --- Lógica Principal con Embeddings ---
         if emb_a is not None and emb_b is not None:
             cosine_sim = self.calculate_cosine_similarity(emb_a, emb_b)
-            normalized_sim = (cosine_sim + 1) / 2
+            normalized_sim = (cosine_sim + 1) / 2  # Similitud en [0, 1] para el umbral
+
             print(f"Combiner {self.id}: Checking nodes {node_a.id} & {node_b.id}. Embedding Similarity: {cosine_sim:.3f} (Norm: {normalized_sim:.3f})")
+
             if normalized_sim >= self.similarity_threshold:
-                use_embedding_logic = True
-                utility = cosine_sim
-                utility = max(-1.0, min(1.0, utility))
+                # Usar similitud coseno original [-1, 1] como utilidad
+                utility = max(-1.0, min(1.0, cosine_sim))
+                # --- Intentar añadir arista ---
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
                     print(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} based on embedding similarity (Score: {normalized_sim:.2f}, U={utility:.2f})")
-        if not use_embedding_logic:
+                    edge_added = True  # Marcar que se añadió
+
+        # --- Lógica de Fallback (si no se añadió con embeddings) ---
+        if not edge_added:
             state_product = node_a.state * node_b.state
             common_keywords = node_a.keywords.intersection(node_b.keywords)
             max_possible_keywords = len(node_a.keywords.union(node_b.keywords))
             keyword_similarity = len(common_keywords) / max_possible_keywords if max_possible_keywords > 0 else 0
             compatibility_score = (state_product * 0.6) + (keyword_similarity * 0.4)
+
+            # Solo si la compatibilidad de fallback es suficiente
             if compatibility_score >= self.compatibility_threshold:
+                # --- 'utility' se define AQUÍ DENTRO ---
                 utility = compatibility_score * ((node_a.state + node_b.state) / 2.0)
                 utility = max(-1.0, min(1.0, utility))
-            if self.graph.add_edge(node_a.id, node_b.id, utility):
-                print(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
+                # --- La llamada a add_edge debe estar AQUÍ DENTRO también ---
+                if self.graph.add_edge(node_a.id, node_b.id, utility):
+                    print(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
 
 # --- 3. Simulación ---
 def run_simulation(config):
@@ -626,7 +633,9 @@ if __name__ == "__main__":
     parser.add_argument('--visualize_graph', action='store_true', help='Visualize graph at the end.')
     parser.add_argument('--save_state', type=str, help='Base path to save simulation state.')
     parser.add_argument('--load_state', type=str, help='Base path to load simulation state from.')
-
+    
     args = parser.parse_args()
     final_config = load_config(args)
     run_simulation(final_config)
+
+
