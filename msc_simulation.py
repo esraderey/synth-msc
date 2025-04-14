@@ -18,6 +18,7 @@ class GNNModel(torch.nn.Module):
         torch.manual_seed(42)
         self.conv1 = GCNConv(num_node_features, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, embedding_dim)
+        
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
         x = F.relu(x)
@@ -33,43 +34,66 @@ class KnowledgeComponent:
         self.keywords = keywords if keywords else set()
         self.connections_out = {}
         self.connections_in = {}
+        
     def update_state(self, new_state):
         self.state = max(0.0, min(1.0, new_state))
+        
     def add_connection(self, target_node, utility):
         if target_node.id != self.id:
             self.connections_out[target_node.id] = utility
             target_node.connections_in[self.id] = utility
+            
     def __repr__(self):
         kw_str = f", KW={list(self.keywords)}" if self.keywords else ""
         return f"Node({self.id}, S={self.state:.3f}{kw_str})"
 
 class CollectiveSynthesisGraph:
-    """Gestiona el Grafo de Síntesis (G') e integra la GNN, con persistencia completa."""
+    """Gestiona el Grafo de Síntesis (G') e integra la GNN."""
     def __init__(self, config):
         self.nodes = {}
         self.next_node_id = 0
         self.config = config
-        num_node_features = config.get('gnn_input_dim', 1)
+        # --- Modificación: Leer gnn_input_dim con default 4 ---
+        num_node_features = config.get('gnn_input_dim', 4)  # <-- Default ahora es 4
         hidden_channels = config.get('gnn_hidden_dim', 16)
         embedding_dim = config.get('gnn_embedding_dim', 8)
-        # IMPORTANTE: Inicializar GNN ANTES de llamar a load_graph si aplica
         self.gnn_model = GNNModel(num_node_features, hidden_channels, embedding_dim)
         self.node_embeddings = {}
         self.node_id_to_idx = {}
         self.idx_to_node_id = {}
         print(f"GNN Initialized: Input={num_node_features}, Hidden={hidden_channels}, Embedding={embedding_dim}")
 
+    # --- MÉTODO _prepare_pyg_data MODIFICADO ---
     def _prepare_pyg_data(self):
+        """Prepara los datos del grafo actual para PyTorch Geometric."""
         if not self.nodes:
             return None, None, None
+
         self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
         self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
         num_nodes = len(self.nodes)
-        node_features = torch.zeros((num_nodes, self.config.get('gnn_input_dim', 1)), dtype=torch.float)
+        # --- Modificación: Determinar dimensión de features ---
+        num_node_features = self.config.get('gnn_input_dim', 4)  # <-- Usar config, default 4
+
+        # Crear tensor de características con la dimensión correcta
+        node_features = torch.zeros((num_nodes, num_node_features), dtype=torch.float)
+
+        # Llenar el tensor de características
         for node_id, node in self.nodes.items():
             if node_id in self.node_id_to_idx:
                 idx = self.node_id_to_idx[node_id]
-                node_features[idx, 0] = node.state
+                # Asignar características en orden: state, in-degree, out-degree, num_keywords
+                if num_node_features >= 1:
+                    node_features[idx, 0] = node.state
+                if num_node_features >= 2:
+                    node_features[idx, 1] = float(len(node.connections_in))
+                if num_node_features >= 3:
+                    node_features[idx, 2] = float(len(node.connections_out))
+                if num_node_features >= 4:
+                    node_features[idx, 3] = float(len(node.keywords))
+                # Si num_node_features > 4, las características extra quedarán en 0
+
+        # Índice de Aristas (edge_index) - Sin cambios
         source_indices = []
         target_indices = []
         for source_node_id, node in self.nodes.items():
@@ -82,7 +106,9 @@ class CollectiveSynthesisGraph:
                     source_indices.append(source_idx)
                     target_indices.append(target_idx)
         edge_index = torch.tensor([source_indices, target_indices], dtype=torch.long)
+
         return node_features, edge_index
+    # --- Fin de _prepare_pyg_data modificado ---
 
     def update_embeddings(self):
         if not self.nodes:
@@ -93,7 +119,7 @@ class CollectiveSynthesisGraph:
             return
         if edge_index.shape[1] == 0:
             print("GNN Warning: No edges found. Skipping embedding update.")
-            self.node_embeddings = {}
+            self.node_embeddings = {nid: torch.zeros(self.config.get('gnn_embedding_dim', 8)) for nid in self.nodes}
             return
         self.gnn_model.eval()
         with torch.no_grad():
@@ -250,7 +276,7 @@ class CollectiveSynthesisGraph:
         except Exception as e:
             print(f"Error saving node embeddings to {embeddings_path}: {e}")
 
-    # --- MÉTODO load_state (REEMPLAZA load_graph) ---
+    # --- MÉTODO load_state (REVISADO PARA CORREGIR SYNTAXERROR) ---
     def load_state(self, base_file_path):
         """Carga el estado completo: grafo (GraphML), modelo GNN (.pth), y embeddings (.pth)."""
         graphml_path = base_file_path + ".graphml"
@@ -259,22 +285,29 @@ class CollectiveSynthesisGraph:
         print(f"Attempting to load state from base path: {base_file_path}")
 
         # 1. Cargar Grafo (GraphML)
-        try:
+        try:  # Bloque try principal para carga de GraphML
             if not os.path.exists(graphml_path):
                 print(f"Error: GraphML file not found at {graphml_path}. Cannot load state.")
-                return False
+                return False  # Indicar fallo
+
             G = nx.read_graphml(graphml_path)
-            self.nodes = {}
-            self.next_node_id = 0
+            self.nodes = {}  # Limpiar grafo actual
+            self.next_node_id = 0  # Reiniciar contador
             max_id = -1
+
+            # Cargar Nodos
             for node_id_str, data in G.nodes(data=True):
-                try:
+                try:  # Try interno para conversión de ID de nodo
                     node_id = int(node_id_str)
                 except ValueError:
                     print(f"Warning: Skipping node with non-integer ID '{node_id_str}' from GraphML.")
-                    continue
+                    continue  # Saltar al siguiente nodo
+
+                # Convertir string de keywords de nuevo a set
                 keywords_str = data.get('keywords', '')
-                keywords = set(k for k in keywords_str.split(',') if k)
+                keywords = set(k for k in keywords_str.split(',') if k)  # Maneja string vacío y quita vacíos
+
+                # Crear el componente de conocimiento
                 new_node = KnowledgeComponent(
                     node_id,
                     content=data.get('content', ""),
@@ -283,50 +316,59 @@ class CollectiveSynthesisGraph:
                 )
                 self.nodes[node_id] = new_node
                 max_id = max(max_id, node_id)
-            self.next_node_id = max_id + 1
+            # Fin del bucle de nodos
+
+            self.next_node_id = max_id + 1  # Ajustar next_node_id al máximo cargado + 1
+
+            # Cargar Aristas
             for source_id_str, target_id_str, data in G.edges(data=True):
-                try:
+                try:  # Try interno para conversión de IDs de arista
                     source_id = int(source_id_str)
                     target_id = int(target_id_str)
+                    # Asegurarse que ambos nodos existen antes de añadir la arista
                     if source_id in self.nodes and target_id in self.nodes:
                         self.add_edge(source_id, target_id, float(data.get('utility', 0.0)))
-                except ValueError:
+                except ValueError:  # Captura error si IDs no son enteros
                     print(f"Warning: Skipping edge with non-integer source/target ID ('{source_id_str}' -> '{target_id_str}') from GraphML.")
-                    continue
+                    continue  # Saltar a la siguiente arista
+            # Fin del bucle de aristas
+
             print(f"Graph structure loaded from {graphml_path}")
+
+        # Except correspondiente al try principal de GraphML
         except Exception as e:
             print(f"Error loading GraphML from {graphml_path}: {e}")
-            return False
+            return False  # Indicar fallo
 
         # 2. Cargar Estado del Modelo GNN
-        try:
+        try:  # Try para cargar modelo GNN
             if not os.path.exists(gnn_model_path):
                 print(f"Warning: GNN model state file not found at {gnn_model_path}. Using initialized GNN model.")
             else:
                 state_dict = torch.load(gnn_model_path)
                 self.gnn_model.load_state_dict(state_dict)
-                self.gnn_model.eval()
+                self.gnn_model.eval()  # Poner en modo evaluación
                 print(f"GNN model state loaded from {gnn_model_path}")
-        except Exception as e:
+        except Exception as e:  # Except para carga de GNN
             print(f"Error loading GNN model state from {gnn_model_path}: {e}. Using initialized GNN model.")
 
         # 3. Cargar Embeddings Calculados
-        try:
+        try:  # Try para cargar embeddings
             if not os.path.exists(embeddings_path):
                 print(f"Warning: Node embeddings file not found at {embeddings_path}. Embeddings dictionary initialized empty.")
                 self.node_embeddings = {}
             else:
                 self.node_embeddings = torch.load(embeddings_path)
                 print(f"Node embeddings loaded from {embeddings_path} for {len(self.node_embeddings)} nodes.")
-        except Exception as e:
+        except Exception as e:  # Except para carga de embeddings
             print(f"Error loading node embeddings from {embeddings_path}: {e}. Embeddings dictionary initialized empty.")
             self.node_embeddings = {}
 
-        # 4. Recalcular mapeos ID <-> Índice
+        # 4. Recalcular mapeos ID <-> Índice después de cargar
         self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
         self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
 
-        return True
+        return True  # Indicar éxito en la carga general
 
 # --- 2. Definiciones de Sintetizadores ---
 class Synthesizer:
@@ -334,6 +376,7 @@ class Synthesizer:
         self.id = agent_id
         self.graph = graph
         self.config = config
+        
     def act(self):
         raise NotImplementedError
 
@@ -454,12 +497,9 @@ class CombinerAgent(Synthesizer):
             if self.graph.add_edge(node_a.id, node_b.id, utility):
                 print(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
 
-# --- 3. Simulación (Modificada para llamar save/load state) ---
+# --- 3. Simulación ---
 def run_simulation(config):
-    """Ejecuta la simulación del MSC."""
-    graph = CollectiveSynthesisGraph(config)  # Crear instancia del grafo
-
-    # --- Cargar estado si se especifica ---
+    graph = CollectiveSynthesisGraph(config)
     load_path = config.get('load_state', None)
     if load_path:
         print(f"\n--- Loading state from: {load_path} ---")
@@ -470,13 +510,10 @@ def run_simulation(config):
             graph.update_embeddings()
             if graph.node_embeddings:
                 print(f"GNN: Embeddings calculated for {len(graph.node_embeddings)} nodes.")
-    # ------------------------------------
-
     num_steps = config.get('simulation_steps', 100)
     step_delay = config.get('step_delay', 0.1)
     visualize_at_end = config.get('visualize_graph', False)
     gnn_update_frequency = config.get('gnn_update_frequency', 10)
-
     agents = []
     num_proposers = config.get('num_proposers', 3)
     num_evaluators = config.get('num_evaluators', 6)
@@ -487,11 +524,9 @@ def run_simulation(config):
         agents.append(EvaluatorAgent(f"E{i}", graph, config))
     for i in range(num_combiners):
         agents.append(CombinerAgent(f"C{i}", graph, config))
-
     print(f"--- Starting MSC Simulation ({num_steps} steps) ---")
     print(f"Configuration: {config}")
     print(f"Agents: {len(agents)} ({num_proposers}P, {num_evaluators}E, {num_combiners}C)")
-
     for step in range(num_steps):
         print(f"\n--- Step {step + 1}/{num_steps} ---")
         if not agents:
@@ -500,7 +535,7 @@ def run_simulation(config):
             print(f"GNN: Updating embeddings at step {step+1}...")
             graph.update_embeddings()
             if graph.node_embeddings:
-                print(f"GNN: Embeddings calculated for {len(graph.node_embeddings)} nodes.")
+                print(f"GNN: Embeddings available for {len(graph.node_embeddings)} nodes.")
         agent = random.choice(agents)
         agent.act()
         num_nodes_current = len(graph.nodes)
@@ -509,20 +544,15 @@ def run_simulation(config):
         elif visualize_at_end and step == num_steps - 1:
             graph.print_summary()
         time.sleep(step_delay)
-
     print("\n--- Simulation Finished ---")
     print("GNN: Final embedding update...")
     graph.update_embeddings()
     if graph.node_embeddings:
         print(f"GNN: Final embeddings calculated for {len(graph.node_embeddings)} nodes.")
-
-    # --- Guardar estado si se especifica ---
     save_path = config.get('save_state', None)
     if save_path:
         print(f"\n--- Saving state to: {save_path} ---")
         graph.save_state(save_path)
-    # ------------------------------------
-
     if visualize_at_end:
         if graph.nodes:
             graph.visualize_graph(config)
@@ -532,7 +562,7 @@ def run_simulation(config):
     elif graph.nodes:
         graph.print_summary()
 
-# --- 4. Carga de Configuración y Punto de Entrada (Actualizado para save/load state) ---
+# --- 4. Carga de Configuración y Punto de Entrada ---
 def load_config(args):
     """Carga la configuración."""
     config = {
@@ -542,17 +572,17 @@ def load_config(args):
         'num_combiners': 2,
         'step_delay': 0.1,
         'evaluator_learning_rate': 0.1,
-        'evaluator_similarity_boost': 0.05,  # <-- Nombre corregido
+        'evaluator_similarity_boost': 0.05,
         'evaluator_decay_rate': 0.01,
         'combiner_compatibility_threshold': 0.6,
         'combiner_similarity_threshold': 0.7,
         'visualize_graph': False,
-        'gnn_input_dim': 1,
+        'gnn_input_dim': 4,
         'gnn_hidden_dim': 16,
         'gnn_embedding_dim': 8,
         'gnn_update_frequency': 10,
-        'save_state': None,  # <-- Default para guardar estado
-        'load_state': None   # <-- Default para cargar estado
+        'save_state': None,
+        'load_state': None
     }
     if args.config:
         try:
@@ -585,20 +615,18 @@ if __name__ == "__main__":
     parser.add_argument('--num_combiners', type=int, help='Number of combiner agents.')
     parser.add_argument('--step_delay', type=float, help='Delay between simulation steps.')
     parser.add_argument('--evaluator_learning_rate', type=float, help='Learning rate for evaluators.')
-    parser.add_argument('--evaluator_similarity_boost', type=float, help='Embedding similarity boost factor.')  # <-- Nombre corregido
+    parser.add_argument('--evaluator_similarity_boost', type=float, help='Embedding similarity boost factor.')
     parser.add_argument('--evaluator_decay_rate', type=float, help='State decay rate.')
     parser.add_argument('--combiner_compatibility_threshold', type=float, help='Fallback threshold for combiners.')
     parser.add_argument('--combiner_similarity_threshold', type=float, help='Embedding similarity threshold [0,1].')
-    parser.add_argument('--gnn_input_dim', type=int, help='Input feature dimension for GNN nodes.')
+    parser.add_argument('--gnn_input_dim', type=int, help='Input feature dimension for GNN nodes (default should match feature prep).')
     parser.add_argument('--gnn_hidden_dim', type=int, help='Hidden dimension for GNN layers.')
     parser.add_argument('--gnn_embedding_dim', type=int, help='Output embedding dimension for GNN.')
     parser.add_argument('--gnn_update_frequency', type=int, help='Frequency (in steps) to update GNN embeddings.')
     parser.add_argument('--visualize_graph', action='store_true', help='Visualize graph at the end.')
-    parser.add_argument('--save_state', type=str, help='Base path to save graph, GNN model, and embeddings state (e.g., "my_sim_state").')
-    parser.add_argument('--load_state', type=str, help='Base path to load graph, GNN model, and embeddings state from.')
-    
+    parser.add_argument('--save_state', type=str, help='Base path to save simulation state.')
+    parser.add_argument('--load_state', type=str, help='Base path to load simulation state from.')
+
     args = parser.parse_args()
     final_config = load_config(args)
     run_simulation(final_config)
-
-
