@@ -4,3 +4,4 @@ matplotlib
 torch
 torch_geometric
 sentence-transformers
+Flask
