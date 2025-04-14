@@ -9,19 +9,25 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
-import os
-from sentence_transformers import SentenceTransformer  # <-- NUEVA IMPORTACIÓN
+import os  # Necesario para save/load state
+from sentence_transformers import SentenceTransformer
 
 # --- Cargar Modelo de Embeddings de Texto (Globalmente) ---
-print("Loading Sentence Transformer model...")
-embedding_model_name = 'all-MiniLM-L6-v2'
-text_embedding_model = SentenceTransformer(embedding_model_name)
-TEXT_EMBEDDING_DIM = text_embedding_model.get_sentence_embedding_dimension()
-print(f"Sentence Transformer model '{embedding_model_name}' loaded (Dim: {TEXT_EMBEDDING_DIM}).")
-# --- Fin Carga Modelo ---
+print("Loading Sentence Transformer model ('all-MiniLM-L6-v2')... This may take a while on first run...")
+try:
+    embedding_model_name = 'all-MiniLM-L6-v2'
+    text_embedding_model = SentenceTransformer(embedding_model_name)
+    TEXT_EMBEDDING_DIM = text_embedding_model.get_sentence_embedding_dimension()
+    print(f"Sentence Transformer model '{embedding_model_name}' loaded (Dim: {TEXT_EMBEDDING_DIM}).")
+except Exception as e:
+    print(f"!!! ERROR loading Sentence Transformer model: {e}")
+    print("!!! Text embeddings will not be used. Ensure 'sentence-transformers' is installed.")
+    text_embedding_model = None
+    TEXT_EMBEDDING_DIM = 0
 
 # --- Definición del Modelo GNN Básico ---
 class GNNModel(torch.nn.Module):
+    """Una Red Neuronal de Grafos simple (ej. GCN) para generar embeddings de nodos."""
     def __init__(self, num_node_features, hidden_channels, embedding_dim):
         super().__init__()
         torch.manual_seed(42)
@@ -35,6 +41,7 @@ class GNNModel(torch.nn.Module):
 
 # --- 1. Definiciones del Grafo de Síntesis ---
 class KnowledgeComponent:
+    """Representa un nodo (V') en el Grafo de Síntesis."""
     def __init__(self, node_id, content="Abstract Concept", initial_state=0.1, keywords=None):
         self.id = node_id
         self.content = content
@@ -53,30 +60,33 @@ class KnowledgeComponent:
         return f"Node({self.id}, S={self.state:.3f}{kw_str})"
 
 class CollectiveSynthesisGraph:
-    """Gestiona el Grafo de Síntesis (G') e integra la GNN."""
+    """Gestiona el Grafo de Síntesis (G'), integra GNN y persistencia completa."""
     def __init__(self, config):
         self.nodes = {}
         self.next_node_id = 0
         self.config = config
 
-        # --- Modificación GNN: Dimensión de entrada ahora es dinámica ---
-        # 4 características base + dimensión del embedding de texto
-        num_base_features = 4
-        num_node_features = num_base_features + TEXT_EMBEDDING_DIM
-        config['gnn_input_dim'] = num_node_features  # Actualizar config con la dimensión real
+        # Calcular dimensión de entrada GNN dinámicamente:
+        # 4 características base + dimensión del embedding de texto para el contenido y keywords combinados
+        self.num_base_features = 4
+        self.num_node_features = self.num_base_features + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
+        config['gnn_input_dim'] = self.num_node_features
 
         hidden_channels = config.get('gnn_hidden_dim', 16)
         embedding_dim = config.get('gnn_embedding_dim', 8)
 
-        self.gnn_model = GNNModel(num_node_features, hidden_channels, embedding_dim)
+        self.gnn_model = GNNModel(self.num_node_features, hidden_channels, embedding_dim)
         self.node_embeddings = {}
         self.node_id_to_idx = {}
         self.idx_to_node_id = {}
-        print(f"GNN Initialized: Input={num_node_features} (Base:{num_base_features}+Text:{TEXT_EMBEDDING_DIM}), Hidden={hidden_channels}, Embedding={embedding_dim}")
+        print(f"GNN Initialized: Input={self.num_node_features} (Base:{self.num_base_features}+Text:{TEXT_EMBEDDING_DIM if text_embedding_model else 0}), Hidden={hidden_channels}, Embedding={embedding_dim}")
 
     # --- MÉTODO _prepare_pyg_data ACTUALIZADO CON EMBEDDINGS DE TEXTO ---
     def _prepare_pyg_data(self):
-        """Prepara los datos del grafo actual para PyTorch Geometric, incluyendo embeddings de texto."""
+        """Prepara los datos del grafo actual para PyTorch Geometric, incluyendo embeddings de texto.
+        
+        Se combinan el contenido y las keywords en un solo string para calcular el embedding de texto.
+        """
         if not self.nodes:
             return None, None, None
 
@@ -84,30 +94,45 @@ class CollectiveSynthesisGraph:
         self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
         num_nodes = len(self.nodes)
         num_base_features = 4
-        num_node_features = num_base_features + TEXT_EMBEDDING_DIM
+        num_node_features = num_base_features + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
 
         print(f"GNN Prep: Preparing features for {num_nodes} nodes (Dim: {num_node_features})...")
-        all_node_content = [self.nodes[self.idx_to_node_id[i]].content for i in range(num_nodes)]
 
-        try:
-            with torch.no_grad():
-                text_embeddings_np = text_embedding_model.encode(all_node_content, convert_to_numpy=True, show_progress_bar=False)
-            text_embeddings = torch.tensor(text_embeddings_np, dtype=torch.float)
-        except Exception as e:
-            print(f"Error generating text embeddings: {e}. Using zero vectors.")
-            text_embeddings = torch.zeros((num_nodes, TEXT_EMBEDDING_DIM), dtype=torch.float)
+        # Construir una lista de textos combinados para cada nodo: contenido + keywords
+        all_node_text = []
+        for i in range(num_nodes):
+            node = self.nodes[self.idx_to_node_id[i]]
+            combined_text = node.content
+            if node.keywords:
+                combined_text += " " + " ".join(sorted(node.keywords))
+            all_node_text.append(combined_text)
 
+        # Calcular embeddings de texto para todos los nodos en batch (eficiente)
+        if text_embedding_model is not None and TEXT_EMBEDDING_DIM > 0:
+            try:
+                with torch.no_grad():
+                    text_embeddings_np = text_embedding_model.encode(all_node_text, convert_to_numpy=True, show_progress_bar=False)
+                text_embeddings = torch.tensor(text_embeddings_np, dtype=torch.float)
+            except Exception as e:
+                print(f"Error generating text embeddings: {e}. Using zero vectors.")
+                text_embeddings = torch.zeros((num_nodes, TEXT_EMBEDDING_DIM), dtype=torch.float)
+        else:
+            text_embeddings = torch.zeros((num_nodes, 0), dtype=torch.float)
+
+        # Construir el tensor de características combinadas
         node_features = torch.zeros((num_nodes, num_node_features), dtype=torch.float)
         for i in range(num_nodes):
-            node_id = self.idx_to_node_id[i]
-            node = self.nodes[node_id]
+            node = self.nodes[self.idx_to_node_id[i]]
+            # Características base
             node_features[i, 0] = node.state
             node_features[i, 1] = float(len(node.connections_in))
             node_features[i, 2] = float(len(node.connections_out))
             node_features[i, 3] = float(len(node.keywords))
-            if i < text_embeddings.shape[0]:
+            # Embedding de texto
+            if text_embeddings.shape[1] > 0 and i < text_embeddings.shape[0]:
                 node_features[i, num_base_features:] = text_embeddings[i]
 
+        # Preparar índice de aristas (edge_index)
         source_indices = []
         target_indices = []
         for source_node_id, node in self.nodes.items():
@@ -220,8 +245,8 @@ class CollectiveSynthesisGraph:
         node_sizes = []
         node_colors = []
         for node_id, node in self.nodes.items():
-            G.add_node(node_id)
-            node_labels[node_id] = f"{node_id}\nS={node.state:.2f}"
+            G.add_node(str(node_id))
+            node_labels[str(node_id)] = f"{node_id}\nS={node.state:.2f}"
             node_sizes.append(100 + node.state * 1500)
             node_colors.append(node.state)
         edge_list = []
@@ -229,8 +254,8 @@ class CollectiveSynthesisGraph:
         edge_colors = []
         for node_id, node in self.nodes.items():
             for target_id, utility in node.connections_out.items():
-                if target_id in G:
-                    edge_list.append((node_id, target_id))
+                if str(node_id) in G and str(target_id) in G:
+                    edge_list.append((str(node_id), str(target_id)))
                     edge_weights.append(1 + abs(utility) * 4)
                     edge_colors.append(utility)
         if not G.nodes:
@@ -262,10 +287,12 @@ class CollectiveSynthesisGraph:
         plt.show()
 
     def save_state(self, base_file_path):
+        """Guarda el estado completo: grafo (GraphML), modelo GNN (.pth), y embeddings (.pth)."""
         graphml_path = base_file_path + ".graphml"
         gnn_model_path = base_file_path + ".gnn.pth"
         embeddings_path = base_file_path + ".embeddings.pth"
         print(f"Attempting to save state to base path: {base_file_path}")
+        # 1. Guardar Grafo (GraphML)
         G = nx.DiGraph()
         for node_id, node in self.nodes.items():
             keywords_str = ",".join(sorted(list(node.keywords)))
@@ -279,11 +306,13 @@ class CollectiveSynthesisGraph:
             print(f"Graph structure saved to {graphml_path}")
         except Exception as e:
             print(f"Error saving GraphML to {graphml_path}: {e}")
+        # 2. Guardar Estado del Modelo GNN
         try:
             torch.save(self.gnn_model.state_dict(), gnn_model_path)
             print(f"GNN model state saved to {gnn_model_path}")
         except Exception as e:
             print(f"Error saving GNN model state to {gnn_model_path}: {e}")
+        # 3. Guardar Embeddings Calculados
         try:
             detached_embeddings = {node_id: emb.detach().cpu() for node_id, emb in self.node_embeddings.items()}
             torch.save(detached_embeddings, embeddings_path)
@@ -341,7 +370,8 @@ class CollectiveSynthesisGraph:
             print("Loading edges...")
             edge_count = 0
             for source_id_str, target_id_str, data in G.edges(data=True):
-                  try:  # Try interno para conversión de IDs de arista
+                  # --- Try/Except para Edge IDs (Revisado) ---
+                  try:
                        source_id = int(source_id_str)
                        target_id = int(target_id_str)
                        # Asegurarse que ambos nodos existen antes de añadir la arista
@@ -351,28 +381,30 @@ class CollectiveSynthesisGraph:
                   except ValueError:  # Captura error si IDs no son enteros
                        print(f"Warning: Skipping edge with non-integer source/target ID ('{source_id_str}' -> '{target_id_str}') from GraphML.")
                        continue  # Saltar a la siguiente arista
+                  # --- Fin Try/Except Edge IDs ---
             # Fin del bucle de aristas
             print(f"Loaded {edge_count} edges.")
             print(f"Graph structure loaded from {graphml_path}")
+
         except Exception as e:
-             print(f"CRITICAL Error loading GraphML from {graphml_path}: {e}")
-             return False  # Indicar fallo
+            print(f"CRITICAL Error loading GraphML from {graphml_path}: {e}")
+            return False  # Indicar fallo
 
         # 2. Cargar Estado del Modelo GNN
-        try:  # Try para cargar modelo GNN
+        try:
              if not os.path.exists(gnn_model_path):
                   print(f"Warning: GNN model state file not found at {gnn_model_path}. Using initialized GNN model.")
              else:
                   print(f"Loading GNN model state from {gnn_model_path}...")
                   state_dict = torch.load(gnn_model_path)
                   self.gnn_model.load_state_dict(state_dict)
-                  self.gnn_model.eval()  # Poner en modo evaluación
+                  self.gnn_model.eval()
                   print(f"GNN model state loaded successfully.")
         except Exception as e:
              print(f"Error loading GNN model state from {gnn_model_path}: {e}. Using initialized GNN model.")
 
         # 3. Cargar Embeddings Calculados
-        try:  # Try para cargar embeddings
+        try:
              if not os.path.exists(embeddings_path):
                   print(f"Warning: Node embeddings file not found at {embeddings_path}. Embeddings dictionary initialized empty.")
                   self.node_embeddings = {}
@@ -469,20 +501,17 @@ class EvaluatorAgent(Synthesizer):
         target_node.update_state(new_state)
         print(f"Evaluator {self.id}: Evaluated {target_node!r}. State: {current_state:.3f} -> {target_node.state:.3f} (Target: {influence_target:.3f})")
 
-# --- CLASE CombinerAgent (REVISADA INDENTACIÓN) ---
 class CombinerAgent(Synthesizer):
     """Combina nodos existentes basándose en la similitud de sus embeddings o fallback."""
     def __init__(self, agent_id, graph, config):
         super().__init__(agent_id, graph, config)
         self.similarity_threshold = config.get('combiner_similarity_threshold', 0.7)
         self.compatibility_threshold = config.get('combiner_compatibility_threshold', 0.6)
-
     def calculate_cosine_similarity(self, emb1, emb2):
         """Calcula la similitud coseno [-1, 1]. Devuelve 0.0 si falta un embedding."""
         if emb1 is None or emb2 is None:
             return 0.0
         return F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
-
     def act(self):
         if len(self.graph.nodes) < 2:
             return
@@ -519,7 +548,6 @@ class CombinerAgent(Synthesizer):
             max_possible_keywords = len(node_a.keywords.union(node_b.keywords))
             keyword_similarity = len(common_keywords) / max_possible_keywords if max_possible_keywords > 0 else 0
             compatibility_score = (state_product * 0.6) + (keyword_similarity * 0.4)
-
             if compatibility_score >= self.compatibility_threshold:
                 utility = compatibility_score * ((node_a.state + node_b.state) / 2.0)
                 utility = max(-1.0, min(1.0, utility))
@@ -563,14 +591,9 @@ def run_simulation(config):
         if step > 0 and step % gnn_update_frequency == 0:
             print(f"GNN: Updating embeddings at step {step+1}...")
             graph.update_embeddings()
-            if graph.node_embeddings:
-                print(f"GNN: Embeddings available for {len(graph.node_embeddings)} nodes.")
         agent = random.choice(agents)
         agent.act()
-        num_nodes_current = len(graph.nodes)
-        if not visualize_at_end and ((step + 1) % 20 == 0 or step == num_steps - 1):
-            graph.print_summary()
-        elif visualize_at_end and step == num_steps - 1:
+        if (step + 1) % 20 == 0 or step == num_steps - 1:
             graph.print_summary()
         time.sleep(step_delay)
     print("\n--- Simulation Finished ---")
@@ -606,7 +629,6 @@ def load_config(args):
         'combiner_compatibility_threshold': 0.6,
         'combiner_similarity_threshold': 0.7,
         'visualize_graph': False,
-        'gnn_input_dim': 4,
         'gnn_hidden_dim': 16,
         'gnn_embedding_dim': 8,
         'gnn_update_frequency': 10,
@@ -648,7 +670,6 @@ if __name__ == "__main__":
     parser.add_argument('--evaluator_decay_rate', type=float, help='State decay rate.')
     parser.add_argument('--combiner_compatibility_threshold', type=float, help='Fallback threshold for combiners.')
     parser.add_argument('--combiner_similarity_threshold', type=float, help='Embedding similarity threshold [0,1].')
-    parser.add_argument('--gnn_input_dim', type=int, help='Input feature dimension for GNN nodes (default should match feature prep).')
     parser.add_argument('--gnn_hidden_dim', type=int, help='Hidden dimension for GNN layers.')
     parser.add_argument('--gnn_embedding_dim', type=int, help='Output embedding dimension for GNN.')
     parser.add_argument('--gnn_update_frequency', type=int, help='Frequency (in steps) to update GNN embeddings.')
