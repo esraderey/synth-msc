@@ -10,31 +10,39 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 import os
-from sentence_transformers import SentenceTransformer
-import threading  # <-- Para ejecutar simulación en segundo plano
-from flask import Flask, jsonify  # <-- Para crear la API
-import logging  # <-- Para manejar salida en lugar de print excesivo
 
-# --- Configuración de Logging (Reemplaza prints excesivos) ---
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    print("WARNING: 'sentence-transformers' not found. Text embeddings disabled.")
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    SentenceTransformer = None
+
+import logging
+import threading
+from flask import Flask, jsonify
+
+# --- Configuración de Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Cargar Modelo de Embeddings de Texto ---
-# (Mantenido igual, pero errores ahora usan logging)
+# --- Cargar Modelo de Embeddings ---
 text_embedding_model = None
 TEXT_EMBEDDING_DIM = 0
-try:
-    logging.info("Loading Sentence Transformer model ('all-MiniLM-L6-v2')...")
-    embedding_model_name = 'all-MiniLM-L6-v2'
-    text_embedding_model = SentenceTransformer(embedding_model_name)
-    TEXT_EMBEDDING_DIM = text_embedding_model.get_sentence_embedding_dimension()
-    logging.info(f"Sentence Transformer model '{embedding_model_name}' loaded (Dim: {TEXT_EMBEDDING_DIM}).")
-except Exception as e:
-    logging.error(f"!!! ERROR loading Sentence Transformer model: {e}")
-    logging.warning("!!! Text embeddings will not be used. Ensure 'sentence-transformers' is installed.")
-# --- Fin Carga Modelo ---
+if SENTENCE_TRANSFORMERS_AVAILABLE:
+    try:
+        logging.info("Loading Sentence Transformer model ('all-MiniLM-L6-v2')...")
+        embedding_model_name = 'all-MiniLM-L6-v2'
+        text_embedding_model = SentenceTransformer(embedding_model_name)
+        TEXT_EMBEDDING_DIM = text_embedding_model.get_sentence_embedding_dimension()
+        logging.info(f"ST model '{embedding_model_name}' loaded (Dim: {TEXT_EMBEDDING_DIM}).")
+    except Exception as e:
+        logging.error(f"ERROR loading Sentence Transformer model: {e}")
+        logging.warning("Text embeddings disabled.")
+        text_embedding_model = None
+        TEXT_EMBEDDING_DIM = 0
 
-
-# --- Definición del Modelo GNN Básico ---
+# --- Modelo GNN ---
 class GNNModel(torch.nn.Module):
     def __init__(self, num_node_features, hidden_channels, embedding_dim):
         super().__init__()
@@ -43,12 +51,13 @@ class GNNModel(torch.nn.Module):
         self.conv2 = GCNConv(hidden_channels, embedding_dim)
 
     def forward(self, x, edge_index):
+        edge_index = edge_index.long()
         x = self.conv1(x, edge_index)
         x = F.relu(x)
         x = self.conv2(x, edge_index)
         return x
 
-# --- 1. Definiciones del Grafo de Síntesis ---
+# --- Grafo y Nodos ---
 class KnowledgeComponent:
     def __init__(self, node_id, content="Abstract Concept", initial_state=0.1, keywords=None):
         self.id = node_id
@@ -59,7 +68,8 @@ class KnowledgeComponent:
         self.connections_in = {}
 
     def update_state(self, new_state):
-        self.state = max(0.0, min(1.0, new_state))
+        MIN_STATE = 0.01
+        self.state = max(MIN_STATE, min(1.0, new_state))
 
     def add_connection(self, target_node, utility):
         if target_node.id != self.id:
@@ -88,7 +98,7 @@ class CollectiveSynthesisGraph:
 
     def _prepare_pyg_data(self):
         if not self.nodes:
-            return None, None, None
+            return None, None
         self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
         self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
         num_nodes = len(self.nodes)
@@ -98,19 +108,26 @@ class CollectiveSynthesisGraph:
         if text_embedding_model is not None and TEXT_EMBEDDING_DIM > 0:
             all_node_text = []
             for i in range(num_nodes):
+                if i not in self.idx_to_node_id:
+                    continue
                 node = self.nodes[self.idx_to_node_id[i]]
                 combined_text = node.content
                 if node.keywords:
                     combined_text += " " + " ".join(sorted(node.keywords))
                 all_node_text.append(combined_text)
-            try:
-                with torch.no_grad():
-                    text_embeddings_np = text_embedding_model.encode(all_node_text, convert_to_numpy=True, show_progress_bar=False)
-                    text_embeddings = torch.tensor(text_embeddings_np, dtype=torch.float)
-            except Exception as e:
-                logging.warning(f"GNN Prep Warning: Error generating text embeddings: {e}. Using zero vectors.")
+            if not all_node_text:
                 text_embeddings = torch.zeros((num_nodes, TEXT_EMBEDDING_DIM), dtype=torch.float)
+            else:
+                try:
+                    with torch.no_grad():
+                        text_embeddings_np = text_embedding_model.encode(all_node_text, convert_to_numpy=True, show_progress_bar=False)
+                        text_embeddings = torch.tensor(text_embeddings_np, dtype=torch.float)
+                except Exception as e:
+                    logging.warning(f"GNN Prep Warning: Error generating text embeddings: {e}")
+                    text_embeddings = torch.zeros((num_nodes, TEXT_EMBEDDING_DIM), dtype=torch.float)
         for i in range(num_nodes):
+            if i not in self.idx_to_node_id:
+                continue
             node_id = self.idx_to_node_id[i]
             node = self.nodes[node_id]
             node_features[i, 0] = node.state
@@ -140,21 +157,26 @@ class CollectiveSynthesisGraph:
         node_features, edge_index = self._prepare_pyg_data()
         if node_features is None or edge_index is None:
             return
+        if edge_index.numel() == 0:
+            logging.warning("GNN Warning: No edges found. Cannot compute GNN embeddings.")
+            self.node_embeddings = {nid: torch.zeros(self.config.get('gnn_embedding_dim', 8)) for nid in self.nodes}
+            return
         if edge_index.dim() == 1:
             edge_index = edge_index.unsqueeze(1) if edge_index.shape[0] == 2 else edge_index.unsqueeze(0)
-        if edge_index.shape[0] != 2:
+        if edge_index.shape[0] != 2 and edge_index.shape[1] == 2:
             edge_index = edge_index.t()
-        if edge_index.shape[1] == 0:
-            logging.warning("GNN Warning: No edges found. Skipping embedding update.")
-            self.node_embeddings = {nid: torch.zeros(self.config.get('gnn_embedding_dim', 8)) for nid in self.nodes}
+        if edge_index.shape[0] != 2:
+            logging.error(f"GNN Error: edge_index has wrong shape {edge_index.shape}. Expected [2, num_edges].")
             return
         self.gnn_model.eval()
         with torch.no_grad():
             try:
                 all_embeddings_tensor = self.gnn_model(node_features, edge_index)
-                self.node_embeddings = {self.idx_to_node_id[i]: embedding for i, embedding in enumerate(all_embeddings_tensor) if i in self.idx_to_node_id}
+                self.node_embeddings = {self.idx_to_node_id[i]: embedding
+                                        for i, embedding in enumerate(all_embeddings_tensor)
+                                        if i in self.idx_to_node_id}
             except IndexError as ie:
-                logging.error(f"GNN IndexError during forward pass: {ie}. Indices might be out of bounds. Num nodes: {node_features.shape[0]}, Edge index max: {edge_index.max() if edge_index.numel() > 0 else 'N/A'}")
+                logging.error(f"GNN IndexError during forward pass: {ie}. Indices: {self.idx_to_node_id.keys()}, EdgeIndexMax: {edge_index.max() if edge_index.numel() > 0 else 'N/A'}")
             except Exception as e:
                 logging.error(f"GNN Error during forward pass: {e}")
 
@@ -181,38 +203,20 @@ class CollectiveSynthesisGraph:
     def get_embedding(self, node_id):
         return self.node_embeddings.get(node_id, None)
 
-    def get_nodes_sorted_by_state(self, descending=True):
-        if not self.nodes:
-            return []
-        return sorted(self.nodes.values(), key=lambda node: node.state, reverse=descending)
-
     def get_random_node_biased(self):
         if not self.nodes:
             return None
         nodes = list(self.nodes.values())
         weights = [(node.state ** 2) + 0.01 for node in nodes]
         if sum(weights) <= 0.0:
-            return random.choice(nodes) if nodes else None
+            return random.choice(nodes)
         return random.choices(nodes, weights=weights, k=1)[0]
 
     def print_summary(self, log_level=logging.INFO):
         num_nodes = len(self.nodes)
-        logging.log(log_level, f"--- Graph Summary (Nodes: {num_nodes}, Embeddings: {len(self.node_embeddings)}) ---")
-        if num_nodes == 0:
-            logging.log(log_level, "  Graph is empty.")
-            return
-        top_n = min(5, num_nodes)
-        sorted_nodes = self.get_nodes_sorted_by_state()
-        for i in range(top_n):
-            node = sorted_nodes[i]
-            outs = len(node.connections_out)
-            ins = len(node.connections_in)
-            logging.log(log_level, f"  Top {i+1}: {node!r} - Content: '{node.content[:30]}...' (Out: {outs}, In: {ins})")
-        if num_nodes > 0:
-            avg_state = sum(n.state for n in self.nodes.values()) / num_nodes
-            avg_keywords = sum(len(n.keywords) for n in self.nodes.values()) / num_nodes
-            num_edges = sum(len(n.connections_out) for n in self.nodes.values())
-            logging.log(log_level, f"  Avg State: {avg_state:.3f}, Avg Keywords: {avg_keywords:.2f}, Total Edges: {num_edges}")
+        num_edges = sum(len(n.connections_out) for n in self.nodes.values())
+        avg_state = (sum(n.state for n in self.nodes.values()) / num_nodes) if num_nodes > 0 else 0
+        logging.log(log_level, f"Graph Summary - Nodes: {num_nodes}, Edges: {num_edges}, Average State: {avg_state:.3f}")
 
     def save_state(self, base_file_path):
         graphml_path = base_file_path + ".graphml"
@@ -220,13 +224,14 @@ class CollectiveSynthesisGraph:
         embeddings_path = base_file_path + ".embeddings.pth"
         logging.info(f"Attempting to save state to base path: {base_file_path}")
         G = nx.DiGraph()
+        G.graph['next_node_id'] = self.next_node_id
         for node_id, node in self.nodes.items():
             keywords_str = ",".join(sorted(list(node.keywords)))
-            G.add_node(node_id, state=node.state, content=node.content, keywords=keywords_str)
+            G.add_node(str(node_id), state=node.state, content=node.content, keywords=keywords_str)
         for node_id, node in self.nodes.items():
             for target_id, utility in node.connections_out.items():
-                if node_id in G and target_id in G:
-                    G.add_edge(node_id, target_id, utility=utility)
+                if str(node_id) in G and str(target_id) in G:
+                    G.add_edge(str(node_id), str(target_id), utility=utility)
         try:
             nx.write_graphml(G, graphml_path)
             logging.info(f"Graph structure saved to {graphml_path}")
@@ -262,14 +267,17 @@ class CollectiveSynthesisGraph:
                 try:
                     node_id = int(node_id_str)
                 except ValueError:
-                    logging.warning(f"Warning: Skipping node with non-integer ID '{node_id_str}'.")
+                    logging.warning(f"Skipping node with non-integer ID '{node_id_str}'.")
                     continue
                 keywords_str = data.get('keywords', '')
                 keywords = set(k for k in keywords_str.split(',') if k)
-                new_node = KnowledgeComponent(node_id, content=data.get('content', ""), initial_state=float(data.get('state', 0.1)), keywords=keywords)
+                new_node = KnowledgeComponent(node_id,
+                                              content=data.get('content', ""),
+                                              initial_state=float(data.get('state', 0.1)),
+                                              keywords=keywords)
                 self.nodes[node_id] = new_node
                 max_id = max(max_id, node_id)
-            self.next_node_id = max_id + 1
+            self.next_node_id = int(G.graph.get('next_node_id', max_id + 1))
             logging.info(f"Loaded {len(self.nodes)} nodes. Next ID: {self.next_node_id}")
             logging.info("Loading edges...")
             edge_count = 0
@@ -281,27 +289,28 @@ class CollectiveSynthesisGraph:
                         self.add_edge(source_id, target_id, float(data.get('utility', 0.0)))
                         edge_count += 1
                 except ValueError:
-                    logging.warning(f"Warning: Skipping edge with non-integer IDs ('{source_id_str}' -> '{target_id_str}').")
+                    logging.warning(f"Skipping edge with non-integer IDs ('{source_id_str}' -> '{target_id_str}').")
                     continue
             logging.info(f"Loaded {edge_count} edges.")
             logging.info(f"Graph structure loaded from {graphml_path}")
         except Exception as e:
             logging.critical(f"CRITICAL Error loading GraphML: {e}")
             return False
+
         try:
             if not os.path.exists(gnn_model_path):
-                logging.warning(f"Warning: GNN model file not found at {gnn_model_path}.")
+                logging.warning(f"GNN model file not found at {gnn_model_path}.")
             else:
                 logging.info(f"Loading GNN model state from {gnn_model_path}...")
                 state_dict = torch.load(gnn_model_path)
                 self.gnn_model.load_state_dict(state_dict)
                 self.gnn_model.eval()
-                logging.info(f"GNN model state loaded.")
+                logging.info("GNN model state loaded.")
         except Exception as e:
             logging.error(f"Error loading GNN model state: {e}. Using initialized model.")
         try:
             if not os.path.exists(embeddings_path):
-                logging.warning(f"Warning: Embeddings file not found at {embeddings_path}.")
+                logging.warning(f"Embeddings file not found at {embeddings_path}.")
                 self.node_embeddings = {}
             else:
                 logging.info(f"Loading node embeddings from {embeddings_path}...")
@@ -325,17 +334,20 @@ class CollectiveSynthesisGraph:
         node_sizes = []
         node_colors = []
         for node_id, node in self.nodes.items():
-            G.add_node(str(node_id))
-            node_labels[str(node_id)] = f"{node_id}\nS={node.state:.2f}"
+            node_id_str = str(node_id)
+            G.add_node(node_id_str)
+            node_labels[node_id_str] = f"{node_id}\nS={node.state:.2f}"
             node_sizes.append(100 + node.state * 1500)
             node_colors.append(node.state)
         edge_list = []
         edge_weights = []
         edge_colors = []
         for node_id, node in self.nodes.items():
+            node_id_str = str(node_id)
             for target_id, utility in node.connections_out.items():
-                if str(node_id) in G and str(target_id) in G:
-                    edge_list.append((str(node_id), str(target_id)))
+                target_id_str = str(target_id)
+                if node_id_str in G and target_id_str in G:
+                    edge_list.append((node_id_str, target_id_str))
                     edge_weights.append(1 + abs(utility) * 4)
                     edge_colors.append(utility)
         if not G.nodes:
@@ -349,8 +361,11 @@ class CollectiveSynthesisGraph:
         except Exception as e:
             logging.error(f"Error calculating layout: {e}. Using random layout.")
             pos = nx.random_layout(G)
-        nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, cmap=plt.cm.viridis, node_size=node_sizes, alpha=0.8)
-        nx.draw_networkx_edges(G, pos, ax=ax, edgelist=edge_list, edge_color=edge_colors, edge_cmap=plt.cm.coolwarm, width=edge_weights, alpha=0.6, arrows=True, arrowstyle='->', arrowsize=15)
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, cmap=plt.cm.viridis,
+                               node_size=node_sizes, alpha=0.8)
+        nx.draw_networkx_edges(G, pos, ax=ax, edgelist=edge_list, edge_color=edge_colors,
+                               edge_cmap=plt.cm.coolwarm, width=edge_weights, alpha=0.6,
+                               arrows=True, arrowstyle='->', arrowsize=15)
         nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=8)
         if node_colors:
             norm_nodes = plt.Normalize(vmin=min(node_colors or [0]), vmax=max(node_colors or [1]))
@@ -364,9 +379,9 @@ class CollectiveSynthesisGraph:
             sm_edges.set_array([])
             cbar_edges = fig.colorbar(sm_edges, ax=ax, shrink=0.5)
             cbar_edges.set_label('Edge Utility (uij)')
-        plt.show()  # NOTA: Esto seguirá bloqueando si se llama desde el bucle principal continuo
+        plt.show()
 
-# --- 2. Definiciones de Sintetizadores ---
+# --- Definiciones de Sintetizadores ---
 class Synthesizer:
     def __init__(self, agent_id, graph, config):
         self.id = agent_id
@@ -410,12 +425,12 @@ class EvaluatorAgent(Synthesizer):
 
     def act(self):
         target_node = self.graph.get_random_node_biased()
+        if target_node is None:
+            return
         influence_sum = 0.0
         weight_sum = 0.0
         accumulated_similarity_boost = 0.0
         penalty_factor = 1.0
-        if target_node is None:
-            return
         target_embedding = self.graph.get_embedding(target_node.id)
         if not target_node.connections_in:
             influence_target = target_node.state * (1 - self.decay_rate)
@@ -428,11 +443,11 @@ class EvaluatorAgent(Synthesizer):
                     weight = abs(utility_uji)
                     weight_sum += weight
                     source_embedding = self.graph.get_embedding(source_node.id)
-                    if source_node and source_node.state > 0.5 and utility_uji > 0.1 and target_embedding is not None and source_embedding is not None:
+                    if source_node.state > 0.5 and utility_uji > 0.1 and target_embedding is not None and source_embedding is not None:
                         similarity = self.calculate_cosine_similarity(target_embedding, source_embedding)
                         boost_from_source = similarity * source_node.state * weight * self.similarity_boost_factor
                         accumulated_similarity_boost += boost_from_source
-                    if source_node and utility_uji < 0 and source_node.state > 0.7:
+                    if source_node.state > 0.7 and utility_uji < 0:
                         penalty_factor *= 0.9
             if weight_sum > 0.01:
                 base_influence_target = influence_sum / weight_sum
@@ -463,7 +478,8 @@ class CombinerAgent(Synthesizer):
             return
         node_a = self.graph.get_random_node_biased()
         node_b = self.graph.get_random_node_biased()
-        if node_a is None or node_b is None or node_a.id == node_b.id or node_b.id in node_a.connections_out or node_a.id in node_b.connections_out:
+        if node_a is None or node_b is None or node_a.id == node_b.id or \
+           node_b.id in node_a.connections_out or node_a.id in node_b.connections_out:
             return
         emb_a = self.graph.get_embedding(node_a.id)
         emb_b = self.graph.get_embedding(node_b.id)
@@ -488,7 +504,7 @@ class CombinerAgent(Synthesizer):
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
                     logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
 
-# ---  NUEVA CLASE: SimulationRunner ---
+# --- Clase SimulationRunner ---
 class SimulationRunner:
     """Encapsula y ejecuta la simulación en un hilo separado."""
     def __init__(self, config):
@@ -498,21 +514,19 @@ class SimulationRunner:
         self.is_running = False
         self.simulation_thread = None
         self.step_count = 0
-        self.lock = threading.Lock()  # Lock para proteger acceso concurrente al grafo/estado
+        self.lock = threading.Lock()
 
-        # Cargar estado inicial si se especifica
         load_path = self.config.get('load_state', None)
         if load_path:
             logging.info(f"--- Loading initial state from: {load_path} ---")
-            if self.graph.load_state(load_path):
+            if not self.graph.load_state(load_path):
+                logging.error("Failed to load state. Starting fresh simulation.")
+            else:
                 logging.info("GNN: Initializing embeddings after load...")
                 self.graph.update_embeddings()
                 if self.graph.node_embeddings:
-                    logging.info(f"GNN: Initial embeddings calculated for {len(self.graph.node_embeddings)} nodes.")
-            else:
-                logging.error("Failed to load state. Starting fresh simulation.")
+                    logging.info(f"GNN: Initial embeddings available for {len(self.graph.node_embeddings)} nodes.")
 
-        # Crear agentes (después de posible carga de grafo)
         num_proposers = config.get('num_proposers', 3)
         num_evaluators = config.get('num_evaluators', 6)
         num_combiners = config.get('num_combiners', 2)
@@ -520,43 +534,43 @@ class SimulationRunner:
             self.agents.append(ProposerAgent(f"P{i}", self.graph, config))
         for i in range(num_evaluators):
             self.agents.append(EvaluatorAgent(f"E{i}", self.graph, config))
-        # Corrección: usando 'self.graph' en lugar de 'graph'
         for i in range(num_combiners):
             self.agents.append(CombinerAgent(f"C{i}", self.graph, config))
 
     def _simulation_loop(self):
-        """El bucle principal que corre en segundo plano."""
         step_delay = self.config.get('step_delay', 0.1)
         gnn_update_frequency = self.config.get('gnn_update_frequency', 10)
         summary_frequency = self.config.get('summary_frequency', 50)
+        max_steps = self.config.get('simulation_steps', None)
+        is_api_mode = self.config.get('run_api', False)
+        run_continuously = is_api_mode or (max_steps is None)
 
         while self.is_running:
             self.step_count += 1
-            logging.debug(f"--- Step {self.step_count} ---")
+            log_level = logging.DEBUG if self.step_count % summary_frequency != 0 else logging.INFO
+            logging.log(log_level, f"--- Step {self.step_count} ---")
+
+            if not run_continuously and max_steps is not None and self.step_count > max_steps:
+                logging.info(f"Reached max steps ({max_steps}). Stopping simulation loop.")
+                self.is_running = False
+                break
 
             if not self.agents:
-                logging.warning("No agents to run. Stopping simulation thread.")
+                logging.warning("No agents to run.")
                 self.is_running = False
                 break
 
             with self.lock:
-                if self.step_count > 0 and self.step_count % gnn_update_frequency == 0:
-                    logging.info(f"GNN: Updating embeddings at step {self.step_count}...")
+                if self.step_count % gnn_update_frequency == 0:
                     self.graph.update_embeddings()
-                    if self.graph.node_embeddings:
-                        logging.info(f"GNN: Embeddings calculated for {len(self.graph.node_embeddings)} nodes.")
-
                 agent = random.choice(self.agents)
                 agent.act()
-
                 if self.step_count % summary_frequency == 0:
                     self.graph.print_summary(logging.INFO)
             time.sleep(step_delay)
-
-        logging.info("--- Simulation loop stopped ---")
+        logging.info("--- Simulation loop finished ---")
 
     def start(self):
-        """Inicia la simulación en un hilo."""
         if not self.is_running:
             self.is_running = True
             self.simulation_thread = threading.Thread(target=self._simulation_loop, daemon=True)
@@ -566,32 +580,39 @@ class SimulationRunner:
             logging.warning("Simulation thread already running.")
 
     def stop(self):
-        """Detiene la simulación y realiza acciones finales."""
         if self.is_running:
             logging.info("--- Stopping simulation thread ---")
             self.is_running = False
-            if self.simulation_thread is not None:
-                self.simulation_thread.join(timeout=5.0)
-                if self.simulation_thread.is_alive():
-                    logging.warning("Simulation thread did not stop gracefully.")
-            logging.info("--- Performing final actions ---")
-            with self.lock:
-                logging.info("GNN: Final embedding update...")
-                self.graph.update_embeddings()
-                if self.graph.node_embeddings:
-                    logging.info(f"GNN: Final embeddings calculated for {len(self.graph.node_embeddings)} nodes.")
-
-                save_path = self.config.get('save_state', None)
-                if save_path:
-                    logging.info(f"--- Saving final state to: {save_path} ---")
-                    self.graph.save_state(save_path)
-
-                logging.info("--- Final Graph State ---")
-                self.graph.print_summary(logging.INFO)
-            logging.info("--- Simulation Runner Stopped ---")
+        if self.simulation_thread is not None and self.simulation_thread.is_alive():
+            self.simulation_thread.join(timeout=5.0)
+            if self.simulation_thread.is_alive():
+                logging.warning("Simulation thread did not stop gracefully.")
+        logging.info("--- Performing final actions ---")
+        with self.lock:
+            logging.info("GNN: Final embedding update...")
+            self.graph.update_embeddings()
+            if self.graph.node_embeddings:
+                logging.info(f"GNN: Final embeddings calculated for {len(self.graph.node_embeddings)} nodes.")
+            save_path = self.config.get('save_state', None)
+            if save_path:
+                logging.info(f"--- Saving final state to: {save_path} ---")
+                self.graph.save_state(save_path)
+            logging.info("--- Final Graph State ---")
+            self.graph.print_summary(logging.INFO)
+            is_api_mode = self.config.get('run_api', False)
+            should_visualize = (not is_api_mode) and self.config.get('visualize_graph', False)
+            if should_visualize:
+                if self.graph.nodes:
+                    logging.info("Attempting to display graph visualization...")
+                    try:
+                        self.graph.visualize_graph(self.config)
+                    except Exception as e:
+                        logging.error(f"Error during final visualization: {e}")
+                else:
+                    logging.warning("Graph is empty, skipping visualization.")
+        logging.info("--- Simulation Runner Stopped ---")
 
     def get_status(self):
-        """Devuelve el estado actual de la simulación (thread-safe)."""
         with self.lock:
             num_nodes = len(self.graph.nodes)
             num_edges = sum(len(n.connections_out) for n in self.graph.nodes.values())
@@ -606,10 +627,10 @@ class SimulationRunner:
             }
         return status
 
-# --- 4. Carga de Configuración ---
+# --- Carga de Configuración ---
 def load_config(args):
     config = {
-        'simulation_steps': 100,
+        'simulation_steps': None,
         'num_proposers': 3,
         'num_evaluators': 6,
         'num_combiners': 2,
@@ -624,7 +645,9 @@ def load_config(args):
         'gnn_embedding_dim': 8,
         'gnn_update_frequency': 10,
         'save_state': None,
-        'load_state': None
+        'load_state': None,
+        'summary_frequency': 50,
+        'run_api': False
     }
     if args.config:
         try:
@@ -638,75 +661,76 @@ def load_config(args):
         except Exception as e:
             logging.error(f"Error loading config file {args.config}: {e}.")
     cli_args = vars(args).copy()
-    config_file_path = cli_args.pop('config', None)
+    cli_args.pop('config', None)
     cli_args.pop('gnn_input_dim', None)
     if 'visualize_graph' in cli_args:
-        if cli_args['visualize_graph']:
-            config['visualize_graph'] = True
-        del cli_args['visualize_graph']
+        config['visualize_graph'] = cli_args.pop('visualize_graph')
+    if 'run_api' in cli_args:
+        config['run_api'] = cli_args.pop('run_api')
     for key, value in cli_args.items():
         if value is not None:
             config[key] = value
+    config['gnn_input_dim'] = 4 + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
     return config
 
-# --- 5. API Flask y Punto de Entrada ---
-
+# --- API Flask y Punto de Entrada ---
 simulation_runner = None
 app = Flask(__name__)
 
 @app.route('/status')
 def get_simulation_status():
-    """Endpoint para obtener el estado actual de la simulación."""
     if simulation_runner:
-        status = simulation_runner.get_status()
-        return jsonify(status)
+        return jsonify(simulation_runner.get_status())
     else:
         return jsonify({"error": "Simulation not initialized"}), 500
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run MSC Simulation with GNN and optional API.")
-    parser.add_argument('--config', type=str, help='Path to the YAML configuration file.')
-    parser.add_argument('--simulation_steps', type=int, help='Max steps if not running continuously (Not used in API mode).')
-    parser.add_argument('--num_proposers', type=int, help='Number of proposer agents.')
-    parser.add_argument('--num_evaluators', type=int, help='Number of evaluator agents.')
-    parser.add_argument('--num_combiners', type=int, help='Number of combiner agents.')
-    parser.add_argument('--step_delay', type=float, help='Delay between simulation steps.')
-    parser.add_argument('--evaluator_learning_rate', type=float, help='Learning rate for evaluators.')
-    parser.add_argument('--evaluator_similarity_boost', type=float, help='Embedding similarity boost factor.')
-    parser.add_argument('--evaluator_decay_rate', type=float, help='State decay rate.')
-    parser.add_argument('--combiner_compatibility_threshold', type=float, help='Fallback threshold for combiners.')
-    parser.add_argument('--combiner_similarity_threshold', type=float, help='Embedding similarity threshold [0,1].')
-    parser.add_argument('--gnn_hidden_dim', type=int, help='Hidden dimension for GNN layers.')
-    parser.add_argument('--gnn_embedding_dim', type=int, help='Output embedding dimension for GNN.')
-    parser.add_argument('--gnn_update_frequency', type=int, help='Frequency (in steps) to update GNN embeddings.')
-    parser.add_argument('--visualize_graph', action='store_true', help='Visualize graph at the end (Disabled in API mode).')
+    parser.add_argument('--config', type=str, help='Path to YAML config file.')
+    parser.add_argument('--simulation_steps', type=int, default=None,
+                        help='Run for a fixed number of steps (default: continuous if --run_api is off).')
+    parser.add_argument('--num_proposers', type=int)
+    parser.add_argument('--num_evaluators', type=int)
+    parser.add_argument('--num_combiners', type=int)
+    parser.add_argument('--step_delay', type=float)
+    parser.add_argument('--evaluator_learning_rate', type=float)
+    parser.add_argument('--evaluator_similarity_boost', type=float)
+    parser.add_argument('--evaluator_decay_rate', type=float)
+    parser.add_argument('--combiner_compatibility_threshold', type=float)
+    parser.add_argument('--combiner_similarity_threshold', type=float)
+    parser.add_argument('--gnn_hidden_dim', type=int)
+    parser.add_argument('--gnn_embedding_dim', type=int)
+    parser.add_argument('--gnn_update_frequency', type=int)
+    parser.add_argument('--visualize_graph', action='store_true', help='Show graph plot at the end (only in fixed-step mode without --run_api).')
     parser.add_argument('--save_state', type=str, help='Base path to save simulation state on stop.')
     parser.add_argument('--load_state', type=str, help='Base path to load simulation state at start.')
-    parser.add_argument('--run_api', action='store_true', help='Run the Flask API server alongside the simulation.')
+    parser.add_argument('--run_api', action='store_true', help='Run Flask API server (runs continuously).')
+    parser.add_argument('--summary_frequency', type=int, help='Frequency (in steps) to log graph summary.')
 
     args = parser.parse_args()
     final_config = load_config(args)
+    final_config['run_api'] = args.run_api
 
     simulation_runner = SimulationRunner(final_config)
     simulation_runner.start()
 
-    if args.run_api:
+    if final_config.get('run_api', False):
         logging.info("Starting Flask API server on http://127.0.0.1:5000")
-        app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
-        simulation_runner.stop()
-    else:
-        logging.info("Simulation running in background thread. Press Ctrl+C to stop.")
+        log = logging.getLogger('werkzeug')
+        log.setLevel(logging.ERROR)
         try:
-            while simulation_runner.is_running:
-                time.sleep(1)
+            app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
         except KeyboardInterrupt:
+            logging.info("Ctrl+C detected. Stopping Flask API and simulation...")
+        finally:
+            simulation_runner.stop()
+    else:
+        logging.info("Simulation running in background thread.")
+        logging.info("Press Ctrl+C to stop if running indefinitely.")
+        try:
+            while simulation_runner.is_running and simulation_runner.simulation_thread.is_alive():
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            logging.info("KeyboardInterrupt detected. Stopping simulation...")
             simulation_runner.stop()
 
-            def get_random_node_biased(self):
-                if not self.nodes:
-                    return None
-                nodes = list(self.nodes.values())
-                weights = [(node.state ** 2) + 0.01 for node in nodes]
-                if sum(weights) <= 0.0:
-                    return random.choice(nodes)
-                return random.choices(nodes, weights=weights, k=1)[0]
