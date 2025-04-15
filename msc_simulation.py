@@ -9,7 +9,11 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
+from torch_geometric.utils import negative_sampling
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Carga variables desde .env al entorno
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -57,6 +61,16 @@ class GNNModel(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return x
 
+    # --- NUEVO: Método Decode para Link Prediction ---
+    def decode(self, z, edge_label_index):
+        """Predice scores de enlace usando producto punto de embeddings."""
+        # z: embeddings [N, emb_dim]
+        # edge_label_index: pares de índices de nodo [2, num_pairs]
+        emb_src = z[edge_label_index[0]]
+        emb_dst = z[edge_label_index[1]]
+        return (emb_src * emb_dst).sum(dim=-1)
+    # --- Fin Decode ---
+
 # --- Grafo y Nodos ---
 class KnowledgeComponent:
     def __init__(self, node_id, content="Abstract Concept", initial_state=0.1, keywords=None):
@@ -95,6 +109,11 @@ class CollectiveSynthesisGraph:
         self.node_id_to_idx = {}
         self.idx_to_node_id = {}
         logging.info(f"GNN Initialized: Input={self.num_node_features}, Hidden={hidden_channels}, Embedding={embedding_dim}")
+
+        # --- NUEVO: Optimizador y Loss para GNN ---
+        self.gnn_optimizer = torch.optim.Adam(self.gnn_model.parameters(), lr=config.get('gnn_learning_rate', 0.01))
+        self.gnn_loss_fn = torch.nn.BCEWithLogitsLoss()  # Pérdida para predicción binaria
+        # --- Fin Optimizador/Loss ---
 
     def _prepare_pyg_data(self):
         if not self.nodes:
@@ -179,6 +198,54 @@ class CollectiveSynthesisGraph:
                 logging.error(f"GNN IndexError during forward pass: {ie}. Indices: {self.idx_to_node_id.keys()}, EdgeIndexMax: {edge_index.max() if edge_index.numel() > 0 else 'N/A'}")
             except Exception as e:
                 logging.error(f"GNN Error during forward pass: {e}")
+
+    def train_gnn(self, num_epochs=10):
+        """Entrena la GNN usando predicción de enlaces."""
+        if not self.nodes or len(self.nodes) < 2:
+            logging.warning("GNN Training: Not enough nodes to train.")
+            return
+        node_features, edge_index = self._prepare_pyg_data()
+        if node_features is None or edge_index is None or edge_index.numel() == 0:
+            logging.warning("GNN Training: Not enough data (nodes/edges) to train.")
+            return
+
+        num_nodes = node_features.shape[0]
+        self.gnn_model.train()
+
+        total_loss = 0
+        try:
+            for epoch in range(num_epochs):
+                self.gnn_optimizer.zero_grad()
+                z = self.gnn_model(node_features, edge_index)
+                pos_edge_label_index = edge_index
+                neg_edge_label_index = negative_sampling(
+                    edge_index=edge_index,
+                    num_nodes=num_nodes,
+                    num_neg_samples=pos_edge_label_index.size(1),
+                    method='sparse'
+                )
+                edge_label_index = torch.cat(
+                    [pos_edge_label_index, neg_edge_label_index],
+                    dim=-1,
+                )
+                edge_label = torch.cat([
+                    torch.ones(pos_edge_label_index.size(1)),
+                    torch.zeros(neg_edge_label_index.size(1))
+                ], dim=0).float()
+                out_scores = self.gnn_model.decode(z, edge_label_index)
+                loss = self.gnn_loss_fn(out_scores, edge_label)
+                total_loss += loss.item()
+                loss.backward()
+                self.gnn_optimizer.step()
+        except Exception as e:
+            logging.error(f"Error during GNN training epoch {epoch+1 if 'epoch' in locals() else 'N/A'}: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
+        finally:
+            self.gnn_model.eval()
+            if num_epochs > 0:
+                avg_loss = total_loss / num_epochs
+                logging.info(f"GNN Training Finished: {num_epochs} epochs, Avg Loss = {avg_loss:.4f}")
 
     def add_node(self, content="Abstract Concept", initial_state=0.1, keywords=None):
         node_id = self.next_node_id
@@ -324,7 +391,6 @@ class CollectiveSynthesisGraph:
         logging.info("Node ID mappings recalculated.")
         return True
 
-    # --- NUEVO MÉTODO: get_graph_elements_for_cytoscape ---
     def get_graph_elements_for_cytoscape(self):
         """Prepara los nodos y aristas en formato para Dash Cytoscape."""
         elements = []
@@ -332,7 +398,6 @@ class CollectiveSynthesisGraph:
             try:
                 cmap = plt.cm.viridis
                 norm = plt.Normalize(vmin=0, vmax=1)
-                # Procesar nodos
                 for node_id, node in self.nodes.items():
                     try:
                         node_color = cmap(norm(node.state))
@@ -353,7 +418,6 @@ class CollectiveSynthesisGraph:
                             'height': f"{20 + node.state * 40}px"
                         }
                     })
-                # Procesar aristas
                 for source_id, node in self.nodes.items():
                     for target_id, utility in node.connections_out.items():
                         if source_id in self.nodes and target_id in self.nodes:
@@ -372,7 +436,6 @@ class CollectiveSynthesisGraph:
                 app.logger.error("Unexpected error in get_graph_elements_for_cytoscape: %s", e)
                 raise e
         return elements
-    # --- FIN NUEVO MÉTODO ---
 
 class Synthesizer:
     def __init__(self, agent_id, graph, config):
@@ -496,6 +559,43 @@ class CombinerAgent(Synthesizer):
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
                     logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
 
+class AdvancedCoderAgent(Synthesizer):
+    def act(self):
+        target_node = self.graph.get_random_node_biased()
+        if target_node is None:
+            return
+        generated_code = f"# Code generated by AdvancedCoderAgent {self.id}"
+        new_state = max(0.05, target_node.state * random.uniform(0.3, 0.8))
+        node_repr = repr(target_node) if target_node else 'None'
+        new_node = self.graph.add_node(content=generated_code, initial_state=new_state, keywords={"code", "advanced"})
+        logging.info(
+            f"AdvancedCoderAgent {self.id}: Generated node {new_node.id} based on target node {node_repr}:\n"
+            f"```python\n{generated_code}\n```"
+        )
+
+def generate_code(prompt):
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        logging.error("¡ERROR FATAL! No se encontró la GEMINI_API_KEY en .env o variables de entorno.")
+        return None
+    try:
+        try:
+            import genai
+            genai.configure(api_key=api_key)
+        except ImportError:
+            logging.error("The 'genai' module is not installed. Please install it to use this feature.")
+            return None
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+        if response.text:
+            return response.text.strip()
+        else:
+            logging.warning(f"Gemini API did not return text. Response: {response}")
+            return ""
+    except Exception as e:
+        logging.error(f"Error calling the Gemini API: {e}")
+        return ""
+
 class SimulationRunner:
     """Encapsula y ejecuta la simulación en un hilo separado."""
     def __init__(self, config):
@@ -521,12 +621,15 @@ class SimulationRunner:
         num_proposers = config.get('num_proposers', 3)
         num_evaluators = config.get('num_evaluators', 6)
         num_combiners = config.get('num_combiners', 2)
+        num_coders = config.get('num_coders', 1)
         for i in range(num_proposers):
             self.agents.append(ProposerAgent(f"P{i}", self.graph, config))
         for i in range(num_evaluators):
             self.agents.append(EvaluatorAgent(f"E{i}", self.graph, config))
         for i in range(num_combiners):
             self.agents.append(CombinerAgent(f"C{i}", self.graph, config))
+        for i in range(num_coders):
+            self.agents.append(AdvancedCoderAgent(f"CD{i}", self.graph, config))
 
     def _simulation_loop(self):
         step_delay = self.config.get('step_delay', 0.1)
@@ -535,6 +638,8 @@ class SimulationRunner:
         max_steps = self.config.get('simulation_steps', None)
         is_api_mode = self.config.get('run_api', False)
         run_continuously = is_api_mode or (max_steps is None)
+        gnn_training_frequency = self.config.get('gnn_training_frequency', 50)  # NUEVO
+        gnn_training_epochs = self.config.get('gnn_training_epochs', 5)           # NUEVO
 
         while self.is_running:
             self.step_count += 1
@@ -552,8 +657,17 @@ class SimulationRunner:
                 break
 
             with self.lock:
-                if self.step_count % gnn_update_frequency == 0:
+                # --- Actualizar Embeddings Periódicamente ---
+                if self.step_count > 0 and self.step_count % gnn_update_frequency == 0:
                     self.graph.update_embeddings()
+
+                # --- NUEVO: Llamada a Entrenamiento GNN ---
+                if self.step_count > 0 and self.step_count % gnn_training_frequency == 0:
+                    logging.info(f"GNN: Training model at step {self.step_count}...")
+                    self.graph.train_gnn(num_epochs=gnn_training_epochs)
+                # --- Fin Llamada Entrenamiento ---
+
+                # Elegir y ejecutar agente
                 agent = random.choice(self.agents)
                 agent.act()
                 if self.step_count % summary_frequency == 0:
@@ -607,7 +721,6 @@ class SimulationRunner:
             }
         return status
 
-    # --- NUEVO MÉTODO: get_graph_elements_for_cytoscape ---
     def get_graph_elements_for_cytoscape(self):
         """Prepara los nodos y aristas en formato para Dash Cytoscape."""
         elements = []
@@ -615,7 +728,6 @@ class SimulationRunner:
             try:
                 cmap = plt.cm.viridis
                 norm = plt.Normalize(vmin=0, vmax=1)
-                # Procesar nodos
                 for node_id, node in self.graph.nodes.items():
                     try:
                         node_color = cmap(norm(node.state))
@@ -636,7 +748,6 @@ class SimulationRunner:
                             'height': f"{20 + node.state * 40}px"
                         }
                     })
-                # Procesar aristas
                 for source_id, node in self.graph.nodes.items():
                     for target_id, utility in node.connections_out.items():
                         if source_id in self.graph.nodes and target_id in self.graph.nodes:
@@ -655,7 +766,6 @@ class SimulationRunner:
                 app.logger.error("Unexpected error in get_graph_elements_for_cytoscape: %s", e)
                 raise e
         return elements
-    # --- FIN NUEVO MÉTODO ---
 
 def load_config(args):
     config = {
@@ -676,7 +786,12 @@ def load_config(args):
         'save_state': None,
         'load_state': None,
         'summary_frequency': 50,
-        'run_api': False
+        'run_api': False,
+        # --- Nuevos parámetros para entrenamiento ---
+        'gnn_training_frequency': 50,  # Cada cuántos pasos entrenar
+        'gnn_training_epochs': 5,        # Épocas en cada sesión
+        'gnn_learning_rate': 0.01        # Tasa de aprendizaje para GNN
+        # --- Fin Nuevos ---
     }
     if args.config:
         try:
@@ -712,7 +827,6 @@ def get_simulation_status():
     else:
         return jsonify({"error": "Simulation not initialized"}), 500
 
-# --- Endpoint NUEVO para Datos del Grafo ---
 @app.route('/graph_data')
 def get_graph_data():
     """Endpoint API para obtener elementos del grafo para Cytoscape."""
@@ -725,7 +839,6 @@ def get_graph_data():
     except Exception as e:
         app.logger.error("Error in /graph_data: %s", e)
         return jsonify({"error": str(e)}), 500
-# --- Fin Endpoint Nuevo ---
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run MSC Simulation with GNN and optional API.")
@@ -749,6 +862,11 @@ if __name__ == "__main__":
     parser.add_argument('--load_state', type=str, help='Base path to load simulation state at start.')
     parser.add_argument('--run_api', action='store_true', help='Run Flask API server (runs continuously).')
     parser.add_argument('--summary_frequency', type=int, help='Frequency (in steps) to log graph summary.')
+    # --- Nuevos argumentos para entrenamiento GNN ---
+    parser.add_argument('--gnn_training_frequency', type=int, help='Frequency (steps) to train GNN.')
+    parser.add_argument('--gnn_training_epochs', type=int, help='Epochs per GNN training session.')
+    parser.add_argument('--gnn_learning_rate', type=float, help='Learning rate for GNN optimizer.')
+    # --- Fin Nuevos ---
 
     args = parser.parse_args()
     final_config = load_config(args)
