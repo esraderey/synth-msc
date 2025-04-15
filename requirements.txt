@@ -5,3 +5,7 @@ torch
 torch_geometric
 sentence-transformers
 Flask
+dash
+dash-bootstrap-components
+requests
+dash-cytoscape

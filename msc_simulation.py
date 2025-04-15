@@ -324,64 +324,56 @@ class CollectiveSynthesisGraph:
         logging.info("Node ID mappings recalculated.")
         return True
 
-    def visualize_graph(self, config):
-        if not self.nodes:
-            logging.warning("Cannot visualize empty graph.")
-            return
-        logging.info("Generating graph visualization...")
-        G = nx.DiGraph()
-        node_labels = {}
-        node_sizes = []
-        node_colors = []
-        for node_id, node in self.nodes.items():
-            node_id_str = str(node_id)
-            G.add_node(node_id_str)
-            node_labels[node_id_str] = f"{node_id}\nS={node.state:.2f}"
-            node_sizes.append(100 + node.state * 1500)
-            node_colors.append(node.state)
-        edge_list = []
-        edge_weights = []
-        edge_colors = []
-        for node_id, node in self.nodes.items():
-            node_id_str = str(node_id)
-            for target_id, utility in node.connections_out.items():
-                target_id_str = str(target_id)
-                if node_id_str in G and target_id_str in G:
-                    edge_list.append((node_id_str, target_id_str))
-                    edge_weights.append(1 + abs(utility) * 4)
-                    edge_colors.append(utility)
-        if not G.nodes:
-            logging.warning("No nodes to visualize.")
-            return
-        fig, ax = plt.subplots(figsize=(16, 9))
-        ax.set_title("MSC Graph Visualization")
-        ax.axis('off')
-        try:
-            pos = nx.spring_layout(G, k=0.5, iterations=50)
-        except Exception as e:
-            logging.error(f"Error calculating layout: {e}. Using random layout.")
-            pos = nx.random_layout(G)
-        nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, cmap=plt.cm.viridis,
-                               node_size=node_sizes, alpha=0.8)
-        nx.draw_networkx_edges(G, pos, ax=ax, edgelist=edge_list, edge_color=edge_colors,
-                               edge_cmap=plt.cm.coolwarm, width=edge_weights, alpha=0.6,
-                               arrows=True, arrowstyle='->', arrowsize=15)
-        nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=8)
-        if node_colors:
-            norm_nodes = plt.Normalize(vmin=min(node_colors or [0]), vmax=max(node_colors or [1]))
-            sm_nodes = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=norm_nodes)
-            sm_nodes.set_array([])
-            cbar_nodes = fig.colorbar(sm_nodes, ax=ax, shrink=0.5)
-            cbar_nodes.set_label('Node State (sj)')
-        if edge_colors:
-            norm_edges = plt.Normalize(vmin=min(edge_colors or [-1]), vmax=max(edge_colors or [1]))
-            sm_edges = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=norm_edges)
-            sm_edges.set_array([])
-            cbar_edges = fig.colorbar(sm_edges, ax=ax, shrink=0.5)
-            cbar_edges.set_label('Edge Utility (uij)')
-        plt.show()
+    # --- NUEVO MÉTODO: get_graph_elements_for_cytoscape ---
+    def get_graph_elements_for_cytoscape(self):
+        """Prepara los nodos y aristas en formato para Dash Cytoscape."""
+        elements = []
+        with self.lock:
+            try:
+                cmap = plt.cm.viridis
+                norm = plt.Normalize(vmin=0, vmax=1)
+                # Procesar nodos
+                for node_id, node in self.nodes.items():
+                    try:
+                        node_color = cmap(norm(node.state))
+                        hex_color = '#%02x%02x%02x' % tuple([int(c * 255) for c in node_color[:3]])
+                    except Exception as ex:
+                        app.logger.error("Error procesando nodo %s: %s", node_id, ex)
+                        hex_color = "#cccccc"
+                    elements.append({
+                        'data': {
+                            'id': str(node_id),
+                            'label': f'Node {node_id}\nS={node.state:.2f}',
+                            'state': node.state,
+                            'keywords': ", ".join(sorted(list(node.keywords))) if node.keywords else ""
+                        },
+                        'style': {
+                            'background-color': hex_color,
+                            'width': f"{20 + node.state * 40}px",
+                            'height': f"{20 + node.state * 40}px"
+                        }
+                    })
+                # Procesar aristas
+                for source_id, node in self.nodes.items():
+                    for target_id, utility in node.connections_out.items():
+                        if source_id in self.nodes and target_id in self.nodes:
+                            elements.append({
+                                'data': {
+                                    'source': str(source_id),
+                                    'target': str(target_id),
+                                    'utility': utility
+                                },
+                                'style': {
+                                    'width': 1 + abs(utility) * 2,
+                                    'line-color': 'red' if utility < 0 else ('blue' if utility > 0 else 'grey')
+                                }
+                            })
+            except Exception as e:
+                app.logger.error("Unexpected error in get_graph_elements_for_cytoscape: %s", e)
+                raise e
+        return elements
+    # --- FIN NUEVO MÉTODO ---
 
-# --- Definiciones de Sintetizadores ---
 class Synthesizer:
     def __init__(self, agent_id, graph, config):
         self.id = agent_id
@@ -504,7 +496,6 @@ class CombinerAgent(Synthesizer):
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
                     logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
 
-# --- Clase SimulationRunner ---
 class SimulationRunner:
     """Encapsula y ejecuta la simulación en un hilo separado."""
     def __init__(self, config):
@@ -599,17 +590,6 @@ class SimulationRunner:
                 self.graph.save_state(save_path)
             logging.info("--- Final Graph State ---")
             self.graph.print_summary(logging.INFO)
-            is_api_mode = self.config.get('run_api', False)
-            should_visualize = (not is_api_mode) and self.config.get('visualize_graph', False)
-            if should_visualize:
-                if self.graph.nodes:
-                    logging.info("Attempting to display graph visualization...")
-                    try:
-                        self.graph.visualize_graph(self.config)
-                    except Exception as e:
-                        logging.error(f"Error during final visualization: {e}")
-                else:
-                    logging.warning("Graph is empty, skipping visualization.")
         logging.info("--- Simulation Runner Stopped ---")
 
     def get_status(self):
@@ -627,7 +607,56 @@ class SimulationRunner:
             }
         return status
 
-# --- Carga de Configuración ---
+    # --- NUEVO MÉTODO: get_graph_elements_for_cytoscape ---
+    def get_graph_elements_for_cytoscape(self):
+        """Prepara los nodos y aristas en formato para Dash Cytoscape."""
+        elements = []
+        with self.lock:
+            try:
+                cmap = plt.cm.viridis
+                norm = plt.Normalize(vmin=0, vmax=1)
+                # Procesar nodos
+                for node_id, node in self.graph.nodes.items():
+                    try:
+                        node_color = cmap(norm(node.state))
+                        hex_color = '#%02x%02x%02x' % tuple([int(c * 255) for c in node_color[:3]])
+                    except Exception as ex:
+                        app.logger.error("Error procesando nodo %s: %s", node_id, ex)
+                        hex_color = "#cccccc"
+                    elements.append({
+                        'data': {
+                            'id': str(node_id),
+                            'label': f'Node {node_id}\nS={node.state:.2f}',
+                            'state': node.state,
+                            'keywords': ", ".join(sorted(list(node.keywords))) if node.keywords else ""
+                        },
+                        'style': {
+                            'background-color': hex_color,
+                            'width': f"{20 + node.state * 40}px",
+                            'height': f"{20 + node.state * 40}px"
+                        }
+                    })
+                # Procesar aristas
+                for source_id, node in self.graph.nodes.items():
+                    for target_id, utility in node.connections_out.items():
+                        if source_id in self.graph.nodes and target_id in self.graph.nodes:
+                            elements.append({
+                                'data': {
+                                    'source': str(source_id),
+                                    'target': str(target_id),
+                                    'utility': utility
+                                },
+                                'style': {
+                                    'width': 1 + abs(utility) * 2,
+                                    'line-color': 'red' if utility < 0 else ('blue' if utility > 0 else 'grey')
+                                }
+                            })
+            except Exception as e:
+                app.logger.error("Unexpected error in get_graph_elements_for_cytoscape: %s", e)
+                raise e
+        return elements
+    # --- FIN NUEVO MÉTODO ---
+
 def load_config(args):
     config = {
         'simulation_steps': None,
@@ -673,7 +702,6 @@ def load_config(args):
     config['gnn_input_dim'] = 4 + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
     return config
 
-# --- API Flask y Punto de Entrada ---
 simulation_runner = None
 app = Flask(__name__)
 
@@ -683,6 +711,21 @@ def get_simulation_status():
         return jsonify(simulation_runner.get_status())
     else:
         return jsonify({"error": "Simulation not initialized"}), 500
+
+# --- Endpoint NUEVO para Datos del Grafo ---
+@app.route('/graph_data')
+def get_graph_data():
+    """Endpoint API para obtener elementos del grafo para Cytoscape."""
+    try:
+        if simulation_runner:
+            elements = simulation_runner.get_graph_elements_for_cytoscape()
+            return jsonify(elements)
+        else:
+            return jsonify({"error": "Simulation not initialized"}), 500
+    except Exception as e:
+        app.logger.error("Error in /graph_data: %s", e)
+        return jsonify({"error": str(e)}), 500
+# --- Fin Endpoint Nuevo ---
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run MSC Simulation with GNN and optional API.")
@@ -714,6 +757,9 @@ if __name__ == "__main__":
     simulation_runner = SimulationRunner(final_config)
     simulation_runner.start()
 
+    # Esperamos unos segundos para asegurar que la simulación se inicia y la API responda adecuadamente
+    time.sleep(2)
+
     if final_config.get('run_api', False):
         logging.info("Starting Flask API server on http://127.0.0.1:5000")
         log = logging.getLogger('werkzeug')
@@ -733,4 +779,3 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             logging.info("KeyboardInterrupt detected. Stopping simulation...")
             simulation_runner.stop()
-
