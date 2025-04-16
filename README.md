@@ -1,6 +1,6 @@
 # Marco de Síntesis Colectiva (MSC) / Collective Synthesis Framework (MSC)
 
-[![Estado Construcción](https://img.shields.io/badge/build-passing-brightgreen)] [![Licencia](https://img.shields.io/badge/license-MIT-blue.svg)][![License](https://img.shields.io/badge/License-BUSL--1.1-lightgrey)](LICENSE) [[Contribuciones Bienvenidas](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md) **Un marco para la emergencia de soluciones complejas y conocimiento estructurado a través de inteligencia colectiva sintética.**
+[![Estado Construcción](https://img.shields.io/badge/build-passing-brightgreen)][![License](https://img.shields.io/badge/License-BUSL--1.1-lightgrey)](LICENSE) [[Contribuciones Bienvenidas](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md) **Un marco para la emergencia de soluciones complejas y conocimiento estructurado a través de inteligencia colectiva sintética.**
 
 ## Resumen
 
