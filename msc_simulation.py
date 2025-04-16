@@ -438,11 +438,15 @@ class CollectiveSynthesisGraph:
         return elements
 
 class Synthesizer:
+    """Clase base para los agentes."""
     def __init__(self, agent_id, graph, config):
         self.id = agent_id
         self.graph = graph
         self.config = config
-
+        # --- AÑADIDO: Inicializar Omega ---
+        self.omega = config.get('initial_omega', 100.0)
+        # --- Fin Añadido ---
+        
     def act(self):
         raise NotImplementedError
 
@@ -682,9 +686,52 @@ class SimulationRunner:
                     self.graph.train_gnn(num_epochs=gnn_training_epochs)
                 # --- Fin Llamada Entrenamiento ---
 
-                # Elegir y ejecutar agente
-                agent = random.choice(self.agents)
-                agent.act()
+                # --- INICIO: Lógica Modificada Selección/Acción con Omega ---
+                runnable_agents = []
+                # Obtener costes (podríamos hacerlo una vez en __init__ si no cambian)
+                agent_costs = {
+                    "ProposerAgent": self.config.get('proposer_cost', 1.0),
+                    "EvaluatorAgent": self.config.get('evaluator_cost', 0.5),
+                    "CombinerAgent": self.config.get('combiner_cost', 1.5)
+                    # Añadir costes para otros tipos de agente si los hubiera
+                }
+
+                # Filtrar agentes que pueden actuar
+                for agent in self.agents:
+                    cost = agent_costs.get(type(agent).__name__, 1.0)  # Coste default 1.0 si tipo no encontrado
+                    if agent.omega >= cost:
+                        runnable_agents.append({'agent': agent, 'cost': cost})
+
+                if runnable_agents:
+                    # Elegir uno al azar de los que PUEDEN actuar
+                    chosen = random.choice(runnable_agents)
+                    agent = chosen['agent']
+                    cost = chosen['cost']
+
+                    # Registrar estado ANTES de actuar
+                    omega_before = agent.omega
+                    # Consumir Omega
+                    agent.omega -= cost
+                    # Ejecutar acción
+                    agent.act()
+                    # Loguear acción y consumo
+                    logging.debug(f"Agent {agent.id} acted (Cost: {cost:.2f}, Omega: {omega_before:.2f} -> {agent.omega:.2f})")
+
+                else:
+                    # Si ningún agente tiene suficiente Omega
+                    logging.warning("No agents have enough Omega to act this step!")
+                    # Pueden implementarse otras medidas (pausar o terminar la simulación)
+
+                # --- Aplicar Regeneración de Omega a TODOS los agentes ---
+                regen_rate = self.config.get('omega_regeneration_rate', 0.1)
+                if regen_rate > 0:  # Solo regenerar si la tasa es positiva
+                    for a in self.agents:
+                        a.omega += regen_rate
+                        # Opcional: Añadir un límite máximo a Omega
+                        # max_omega = self.config.get('max_omega', 1000)
+                        # a.omega = min(a.omega, max_omega)
+                # --- FIN: Lógica Modificada Selección/Acción con Omega ---
+
                 if self.step_count % summary_frequency == 0:
                     self.graph.print_summary(logging.INFO)
             time.sleep(step_delay)
@@ -804,7 +851,13 @@ def load_config(args):
         # --- Nuevos parámetros para entrenamiento ---
         'gnn_training_frequency': 50,
         'gnn_training_epochs': 5,
-        'gnn_learning_rate': 0.01
+        'gnn_learning_rate': 0.01,
+        # --- Nuevos Defaults para Omega ---
+        'initial_omega': 100.0,       # Omega inicial para cada agente
+        'proposer_cost': 1.0,         # Coste de acción para Proposer
+        'evaluator_cost': 0.5,        # Coste de acción para Evaluator
+        'combiner_cost': 1.5,         # Coste de acción para Combiner
+        'omega_regeneration_rate': 0.1 # Omega regenerado por paso
     }
     if args.config:
         try:
@@ -873,7 +926,14 @@ if __name__ == "__main__":
     parser.add_argument('--save_state', type=str, help='Base path to save simulation state on stop.')
     parser.add_argument('--load_state', type=str, help='Base path to load simulation state at start.')
     parser.add_argument('--run_api', action='store_true', help='Run Flask API server (runs continuously).')
-    parser.add_argument('--summary_frequency', type=int, help='Frequency (in steps) to log graph summary.')
+    parser.add_argument('--summary_frequency', type=int, help='Log summary frequency (steps).')
+    # --- Nuevos args para Omega ---
+    parser.add_argument('--initial_omega', type=float, help='Initial Omega resource for agents.')
+    parser.add_argument('--proposer_cost', type=float, help='Omega cost for Proposer action.')
+    parser.add_argument('--evaluator_cost', type=float, help='Omega cost for Evaluator action.')
+    parser.add_argument('--combiner_cost', type=float, help='Omega cost for Combiner action.')
+    parser.add_argument('--omega_regeneration_rate', type=float, help='Omega regenerated per agent per step.')
+    # --- Fin Nuevos Args ---
     # --- Nuevos argumentos para entrenamiento GNN ---
     parser.add_argument('--gnn_training_frequency', type=int, help='Frequency (steps) to train GNN.')
     parser.add_argument('--gnn_training_epochs', type=int, help='Epochs per GNN training session.')
