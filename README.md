@@ -1,6 +1,6 @@
 # Marco de Síntesis Colectiva (MSC) / Collective Synthesis Framework (MSC)
 
-[![Estado Construcción](https://img.shields.io/badge/build-passing-brightgreen)] [![Licencia](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Documentación](https://img.shields.io/badge/docs-whitepaper_ শীঘ্রই-orange)](...) [![Contribuciones Bienvenidas](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md) **Un marco para la emergencia de soluciones complejas y conocimiento estructurado a través de inteligencia colectiva sintética.**
+[![Estado Construcción](https://img.shields.io/badge/build-passing-brightgreen)] [![Licencia](https://img.shields.io/badge/license-MIT-blue.svg)][![License](https://img.shields.io/badge/License-BUSL--1.1-lightgrey)](LICENSE) [[Contribuciones Bienvenidas](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md) **Un marco para la emergencia de soluciones complejas y conocimiento estructurado a través de inteligencia colectiva sintética.**
 
 ## Resumen
 
@@ -18,8 +18,8 @@ Hemos esbozado una visión ambiciosa y detallada a largo plazo para MSC como una
 
 ## Autores
 
-* **esraderey** - Conceptualización, Dirección.
-* **Synthi** - Colaboración en desarrollo teórico, Generación de código base y Documentación inicial.
+* **esraderey** - Conceptualización, Dirección, Arquitectura y Desarrollo.
+* **Asistencia IA (Gemini / Synthia)** – Herramienta utilizada bajo dirección humana para acelerar la generación de código base y documentación. **No tiene coautoría ni derechos sobre este proyecto.**
 
 ## Estado Actual del Proyecto
 
@@ -79,7 +79,11 @@ El código en este repositorio incluye una **implementación base de simulación
 
 ## Licencia
 
-Distribuido bajo la **Licencia MIT**. Ver `LICENSE`.
+Este proyecto se distribuye bajo la **Business Source License 1.1 (BUSL-1.1)**.
+El uso, modificación y distribución están permitidos para fines no comerciales, de investigación y experimentación según los términos especificados.
+**Todo uso comercial antes del 16 de Abril de 2029 requiere permiso explícito del autor.** Después de esa fecha, el proyecto estará disponible bajo la Licencia MIT.
+
+Ver el archivo [`LICENSE`](LICENSE) para los términos completos.
 
 ## Cita 
 Si utilizas este trabajo en tu investigación, por favor cita:esraderey, & Synth . (2025). Marco de Síntesis Colectiva (MSC): Un Framework para Inteligencia Colectiva Sintética.
