@@ -926,38 +926,23 @@ class BridgingAgent(Synthesizer):
 class KnowledgeFetcherAgent(Synthesizer):
     """Agente que busca información en Wikipedia sobre nodos existentes."""
     def _get_search_term(self, node):
-        """Extrae un término de búsqueda útil del nodo (Lógica Refinada)."""
-        logging.info(f"FetcherAgent {self.id}: _get_search_term called for {node!r}")
-
-        # 1. Intentar con keywords específicas primero
+        """Extrae un término de búsqueda útil del nodo (Versión Limpia)."""
         if node.keywords:
-            logging.info(f"FetcherAgent {self.id}: Node keywords: {node.keywords}")
             specific_keywords = [k for k in node.keywords if not (k.startswith("kw_") or k in ["code", "inicio", "semilla", "related", "generated", "advanced", "wikipedia", "summary"])]
             if specific_keywords:
-                chosen_keyword = random.choice(specific_keywords)
-                logging.info(f"FetcherAgent {self.id}: Found specific keywords. Using: '{chosen_keyword}'")
-                return chosen_keyword
+                return random.choice(specific_keywords)
             else:
-                # 2. Fallback: Si no hay específicas, intentar combinar TODAS las keywords
-                logging.info(f"FetcherAgent {self.id}: No specific keywords found. Trying combined keywords.")
+                # Fallback: combinar todas las keywords si no hay específicas
                 if len(node.keywords) > 0:
-                     combined_kws = " ".join(sorted(list(node.keywords)))
-                     logging.info(f"FetcherAgent {self.id}: Using combined keywords: '{combined_kws}'")
-                     return combined_kws
-                else:
-                     logging.info(f"FetcherAgent {self.id}: Node has keywords, but none are specific and combining resulted empty?")
-        
-        # 3. Fallback: Intentar con contenido si es razonable y no hay keywords útiles
-        logging.info(f"FetcherAgent {self.id}: No usable keywords found. Trying content.")
+                     return " ".join(sorted(list(node.keywords)))
+
+        # Fallback: intentar con contenido si es razonable
         content_term = node.content.strip()
         if 3 < len(content_term) < 50:
-             logging.info(f"FetcherAgent {self.id}: Using content as search term: '{content_term}'")
-             return content_term
-        else:
-             logging.info(f"FetcherAgent {self.id}: Content too short/long/empty ('{content_term}').")
-        
-        logging.info(f"FetcherAgent {self.id}: Could not extract usable search term.")
-        return None
+            # Podríamos re-añadir el filtro de contenido genérico si quisiéramos
+            return content_term
+
+        return None # No se pudo obtener término
 
     def act(self):
         if not WIKIPEDIA_AVAILABLE:
@@ -1148,7 +1133,7 @@ class SimulationRunner:
                     self.graph.train_gnn(num_epochs=gnn_training_epochs)
                 # --- Fin Llamada Entrenamiento ---
 
-                # --- Lógica Restaurada para Selección/Acción de Agente ---
+                # --- Lógica NORMAL para Selección/Acción de Agente ---
                 runnable_agents = []
                 agent_costs = { # Obtener costes
                     "ProposerAgent": self.config.get('proposer_cost', 1.0),
@@ -1156,7 +1141,7 @@ class SimulationRunner:
                     "CombinerAgent": self.config.get('combiner_cost', 1.5),
                     "BridgingAgent": self.config.get('bridging_agent_cost', 2.0),
                     "KnowledgeFetcherAgent": self.config.get('knowledge_fetcher_cost', 2.5)
-                    # Añadir otros agentes si existen
+                    # Añadir otros si existen
                 }
                 for agent in self.agents: # Filtrar agentes que pueden actuar
                     cost = agent_costs.get(type(agent).__name__, 1.0)
@@ -1169,25 +1154,28 @@ class SimulationRunner:
                     cost = chosen['cost']
                     omega_before = agent.omega
                     agent.omega -= cost # Consumir Omega
-                    agent.act() # Ejecutar acción (ya no necesita lock interno)
+                    agent.act() # Ejecutar acción
                     logging.debug(f"Agent {agent.id} acted (Cost: {cost:.2f}, Omega: {omega_before:.2f} -> {agent.omega:.2f})")
                 else:
                     logging.warning("No agents have enough Omega to act this step!")
-                # --- Fin Lógica Restaurada ---
 
-                # Loguear resumen periódico
+                # Aplicar Regeneración de Omega (sin cambios)
+                regen_rate = self.config.get('omega_regeneration_rate', 0.05)
+                if regen_rate > 0:
+                    for a in self.agents: a.omega += regen_rate
+                # --- FIN Lógica NORMAL ---
+
+                # Loguear resumen periódico (sin cambios)
                 if self.step_count % summary_frequency == 0:
                     self.graph.print_summary(logging.INFO)
-                    # Llamada a métricas globales (si la tienes aquí)
-                    if self.config.get('metrics_log_path'):
-                         if self.metrics_writer: # Verificar que exista
-                             metrics = self.graph.get_global_metrics()
-                             if metrics: metrics["Step"] = self.step_count;
-                             try: self.metrics_writer.writerow(metrics); self.metrics_file.flush()
-                             except Exception as e: logging.error(f"Error writing metrics CSV step {self.step_count}: {e}")
-
+                    # Escribir métricas si está configurado (sin cambios)
+                    if self.metrics_writer:
+                         metrics = self.graph.get_global_metrics();
+                         if metrics: metrics["Step"] = self.step_count;
+                         try: self.metrics_writer.writerow(metrics); self.metrics_file.flush()
+                         except Exception as e: logging.error(f"Error writing CSV step {self.step_count}: {e}")
             # --- Fin del bloque with self.lock ---
-            time.sleep(step_delay) # Sleep fuera del lock
+            time.sleep(step_delay)
 
         logging.info("--- Simulation loop finished ---")
 
