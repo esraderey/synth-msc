@@ -572,7 +572,7 @@ class CollectiveSynthesisGraph:
             cbar_edges.set_label('Edge Utility (uij)')
 
         try:
-            plt.savefig(output_path, bbox_inches='tight', dpi=150)
+            plt.savefig(config.get('visualization_output_path'), bbox_inches='tight', dpi=150)
             logging.info(f"Graph visualization saved successfully to {output_path}")
         except Exception as e:
             logging.error(f"Error saving visualization to {output_path}: {e}")
@@ -939,13 +939,18 @@ class SimulationRunner:
             self.graph.print_summary(logging.INFO)
             self.graph.log_global_metrics(logging.INFO)  # NUEVO: Loguear métricas globales
 
-            # --- Llamada a guardar visualización (si está configurado) ---
-            logging.info("Attempting to save final graph visualization if configured...")
-            try:
-                self.graph.visualize_graph(self.config)
-            except Exception as e:
-                logging.error(f"Error during final visualization saving attempt: {e}")
-            # --- Fin llamada ---
+            # --- Llamada a guardar visualización (si path está configurado) ---
+            save_vis_path = self.config.get('visualization_output_path', None)
+            if save_vis_path:  # Solo intenta visualizar si se dio una ruta
+                if self.graph.nodes:
+                    logging.info(f"Attempting to save final graph visualization to {save_vis_path}...")
+                    try:
+                        self.graph.visualize_graph(self.config)  # visualize_graph usará el path de config
+                    except Exception as e:
+                        logging.error(f"Error during final visualization saving: {e}")
+                else:
+                    logging.warning("Graph is empty, skipping visualization saving.")
+            # --- Fin Llamada Visualización ---
         logging.info("--- Simulation Runner Stopped ---")
 
     def get_status(self):
