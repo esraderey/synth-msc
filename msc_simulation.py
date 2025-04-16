@@ -465,57 +465,72 @@ class ProposerAgent(Synthesizer):
         self.graph.add_edge(source_node.id, new_node.id, utility)
         logging.info(f"Proposer {self.id}: Proposed {new_node!r} linked from {source_node!r} with U={utility:.2f}")
 
+# --- CLASE EvaluatorAgent ACTUALIZADA para usar similitud en influencia ---
 class EvaluatorAgent(Synthesizer):
+    """Evalúa nodos usando embeddings para calcular la influencia ponderada por similitud."""
     def __init__(self, agent_id, graph, config):
         super().__init__(agent_id, graph, config)
         self.learning_rate = config.get('evaluator_learning_rate', 0.1)
-        self.similarity_boost_factor = config.get('evaluator_similarity_boost', 0.05)
+        # Ya no necesitamos similarity_boost_factor como parámetro separado
         self.decay_rate = config.get('evaluator_decay_rate', 0.01)
 
     def calculate_cosine_similarity(self, emb1, emb2):
+        """Calcula similitud coseno normalizada a [0, 1]. Devuelve 0.5 si falta embedding."""
         if emb1 is None or emb2 is None:
-            return 0.0
+            return 0.5  # Similitud neutral si falta embedding
         sim = F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
-        return (sim + 1) / 2
+        return (sim + 1) / 2  # Normalizar a [0, 1]
 
     def act(self):
         target_node = self.graph.get_random_node_biased()
         if target_node is None:
             return
+
+        target_embedding = self.graph.get_embedding(target_node.id)
         influence_sum = 0.0
         weight_sum = 0.0
-        accumulated_similarity_boost = 0.0
+        # accumulated_similarity_boost ya no se usa
         penalty_factor = 1.0
-        target_embedding = self.graph.get_embedding(target_node.id)
+
         if not target_node.connections_in:
             influence_target = target_node.state * (1 - self.decay_rate)
         else:
+            # --- Lógica de evaluación basada en embedding ---
             for source_id, utility_uji in target_node.connections_in.items():
                 source_node = self.graph.get_node(source_id)
                 if source_node:
-                    influence = source_node.state * utility_uji
-                    influence_sum += influence
-                    weight = abs(utility_uji)
-                    weight_sum += weight
                     source_embedding = self.graph.get_embedding(source_node.id)
-                    if source_node.state > 0.5 and utility_uji > 0.1 and target_embedding is not None and source_embedding is not None:
-                        similarity = self.calculate_cosine_similarity(target_embedding, source_embedding)
-                        boost_from_source = similarity * source_node.state * weight * self.similarity_boost_factor
-                        accumulated_similarity_boost += boost_from_source
-                    if source_node.state > 0.7 and utility_uji < 0:
+                    # Calcular similitud normalizada [0, 1]
+                    similarity = self.calculate_cosine_similarity(target_embedding, source_embedding)
+                    # Influencia base = EstadoFuente * UtilidadEnlace
+                    base_influence = source_node.state * utility_uji
+                    # Ponderar influencia por similitud:
+                    # Si sim = 1.0 (muy similar), factor = 2*1 = 2 (máxima influencia)
+                    # Si sim = 0.5 (neutral), factor = 2*0.5 = 1 (influencia base)
+                    # Si sim = 0.0 (muy distinto), factor = 2*0 = 0 (sin influencia)
+                    similarity_factor = similarity * 2
+                    similarity_weighted_influence = base_influence * similarity_factor
+                    influence_sum += similarity_weighted_influence
+                    weight = abs(utility_uji)  # Ponderar por fuerza de conexión absoluta
+                    weight_sum += weight
+                    # Penalización por inconsistencia (sin cambios)
+                    if utility_uji < 0 and source_node.state > 0.7:
                         penalty_factor *= 0.9
+            # --- Fin del bucle ---
             if weight_sum > 0.01:
-                base_influence_target = influence_sum / weight_sum
-                normalized_similarity_boost = accumulated_similarity_boost / weight_sum
-                influence_target = base_influence_target + normalized_similarity_boost
+                influence_target = influence_sum / weight_sum
             else:
-                influence_target = target_node.state
+                influence_target = target_node.state  # Mantener si no hay influencia ponderable
+            # Aplicar penalización acumulada
             influence_target *= penalty_factor
-        influence_target = max(-0.5, min(1.5, influence_target))
+
+        # --- Fin Lógica de evaluación ---
+        influence_target = max(-0.5, min(1.5, influence_target))  # Limitar objetivo
         current_state = target_node.state
         new_state = current_state + self.learning_rate * (influence_target - current_state)
-        target_node.update_state(new_state)
+        target_node.update_state(new_state)  # Asegura [MIN_STATE, 1.0]
         logging.info(f"Evaluator {self.id}: Evaluated {target_node!r}. State: {current_state:.3f} -> {target_node.state:.3f} (Target: {influence_target:.3f})")
+# --- Fin EvaluatorAgent Modificado ---
 
 class CombinerAgent(Synthesizer):
     def __init__(self, agent_id, graph, config):
@@ -775,7 +790,6 @@ def load_config(args):
         'num_combiners': 2,
         'step_delay': 0.1,
         'evaluator_learning_rate': 0.1,
-        'evaluator_similarity_boost': 0.05,
         'evaluator_decay_rate': 0.01,
         'combiner_compatibility_threshold': 0.6,
         'combiner_similarity_threshold': 0.7,
@@ -788,10 +802,9 @@ def load_config(args):
         'summary_frequency': 50,
         'run_api': False,
         # --- Nuevos parámetros para entrenamiento ---
-        'gnn_training_frequency': 50,  # Cada cuántos pasos entrenar
-        'gnn_training_epochs': 5,        # Épocas en cada sesión
-        'gnn_learning_rate': 0.01        # Tasa de aprendizaje para GNN
-        # --- Fin Nuevos ---
+        'gnn_training_frequency': 50,
+        'gnn_training_epochs': 5,
+        'gnn_learning_rate': 0.01
     }
     if args.config:
         try:
@@ -850,7 +863,6 @@ if __name__ == "__main__":
     parser.add_argument('--num_combiners', type=int)
     parser.add_argument('--step_delay', type=float)
     parser.add_argument('--evaluator_learning_rate', type=float)
-    parser.add_argument('--evaluator_similarity_boost', type=float)
     parser.add_argument('--evaluator_decay_rate', type=float)
     parser.add_argument('--combiner_compatibility_threshold', type=float)
     parser.add_argument('--combiner_similarity_threshold', type=float)
