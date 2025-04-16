@@ -25,6 +25,15 @@ except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
     SentenceTransformer = None
 
+try:
+    import wikipedia
+    WIKIPEDIA_AVAILABLE = True
+    wikipedia.set_lang("es")  # O usa "en" si prefieres inglés
+except ImportError:
+    print("WARNING: 'wikipedia' library not found. KnowledgeFetcherAgent disabled.")
+    WIKIPEDIA_AVAILABLE = False
+    wikipedia = None
+
 import logging
 import threading
 from flask import Flask, jsonify
@@ -913,6 +922,98 @@ class BridgingAgent(Synthesizer):
                 logging.info(f"BridgingAgent {self.id}: **** Bridge CREATED between node {node_a_id} and {node_b_id} (Similarity Norm: {similarity:.3f}, Utility: {bridge_utility:.3f}) ****")
 # --- Fin BridgingAgent ---
 
+# --- NUEVA CLASE: KnowledgeFetcherAgent ---
+class KnowledgeFetcherAgent(Synthesizer):
+    """Agente que busca información en Wikipedia sobre nodos existentes."""
+    def _get_search_term(self, node):
+        """Extrae un término de búsqueda útil del nodo (Lógica Refinada)."""
+        logging.info(f"FetcherAgent {self.id}: _get_search_term called for {node!r}")
+
+        # 1. Intentar con keywords específicas primero
+        if node.keywords:
+            logging.info(f"FetcherAgent {self.id}: Node keywords: {node.keywords}")
+            specific_keywords = [k for k in node.keywords if not (k.startswith("kw_") or k in ["code", "inicio", "semilla", "related", "generated", "advanced", "wikipedia", "summary"])]
+            if specific_keywords:
+                chosen_keyword = random.choice(specific_keywords)
+                logging.info(f"FetcherAgent {self.id}: Found specific keywords. Using: '{chosen_keyword}'")
+                return chosen_keyword
+            else:
+                # 2. Fallback: Si no hay específicas, intentar combinar TODAS las keywords
+                logging.info(f"FetcherAgent {self.id}: No specific keywords found. Trying combined keywords.")
+                if len(node.keywords) > 0:
+                     combined_kws = " ".join(sorted(list(node.keywords)))
+                     logging.info(f"FetcherAgent {self.id}: Using combined keywords: '{combined_kws}'")
+                     return combined_kws
+                else:
+                     logging.info(f"FetcherAgent {self.id}: Node has keywords, but none are specific and combining resulted empty?")
+        
+        # 3. Fallback: Intentar con contenido si es razonable y no hay keywords útiles
+        logging.info(f"FetcherAgent {self.id}: No usable keywords found. Trying content.")
+        content_term = node.content.strip()
+        if 3 < len(content_term) < 50:
+             logging.info(f"FetcherAgent {self.id}: Using content as search term: '{content_term}'")
+             return content_term
+        else:
+             logging.info(f"FetcherAgent {self.id}: Content too short/long/empty ('{content_term}').")
+        
+        logging.info(f"FetcherAgent {self.id}: Could not extract usable search term.")
+        return None
+
+    def act(self):
+        if not WIKIPEDIA_AVAILABLE:
+            return
+        logging.info(f"--- Agent {self.id} (KnowledgeFetcher) ACTING ---")
+
+        # 1. Seleccionar nodo fuente
+        source_node = self.graph.get_random_node_biased()
+        if source_node is None:
+            logging.debug(f"FetcherAgent {self.id}: No source node found.")
+            return
+
+        # 2. Obtener término de búsqueda
+        search_term = self._get_search_term(source_node)
+        if not search_term:
+            return
+
+        logging.info(f"FetcherAgent {self.id}: Researching '{search_term}' based on {source_node!r}...")
+
+        # 3. Buscar en Wikipedia
+        summary = None
+        page_title = None
+        try:
+            search_results = wikipedia.search(search_term, results=1)
+            if search_results:
+                page_title = search_results[0]
+                logging.debug(f"FetcherAgent {self.id}: Found potential Wikipedia page: '{page_title}'")
+                try:
+                    summary = wikipedia.summary(page_title, sentences=5)
+                    logging.info(f"FetcherAgent {self.id}: Found Wikipedia summary for '{page_title}'. Length: {len(summary)}")
+                except wikipedia.exceptions.DisambiguationError as e: 
+                    logging.warning(f"FetcherAgent {self.id}: Wikipedia disambiguation for '{page_title}': {e.options[:3]}...")
+                except wikipedia.exceptions.PageError: 
+                    logging.warning(f"FetcherAgent {self.id}: Wikipedia page not found for '{page_title}'.")
+                except Exception as e_summ: 
+                    logging.error(f"FetcherAgent {self.id}: Error getting Wikipedia summary for '{page_title}': {e_summ}")
+            else:
+                logging.info(f"FetcherAgent {self.id}: No Wikipedia page found for search term '{search_term}'.")
+        except requests.exceptions.RequestException as e_req:
+            logging.error(f"FetcherAgent {self.id}: Network error connecting to Wikipedia: {e_req}")
+        except Exception as e_search:
+            logging.error(f"FetcherAgent {self.id}: Error searching Wikipedia for '{search_term}': {e_search}")
+
+        # 4. Si se encontró resumen, crear nodo y enlace
+        if summary:
+            new_content = f"Wikipedia Summary ({page_title if page_title else search_term}):\n{summary}"
+            new_keywords = {"wikipedia", "summary", search_term.lower()}
+            if source_node.keywords:
+                new_keywords.update(k for k in source_node.keywords if not k.startswith("kw_"))
+            initial_state = 0.4
+            new_node = self.graph.add_node(content=new_content, initial_state=initial_state, keywords=new_keywords)
+            link_utility = 0.7
+            self.graph.add_edge(source_node.id, new_node.id, link_utility)
+            logging.info(f"FetcherAgent {self.id}: Created info node {new_node!r} linked from {source_node!r}")
+# --- Fin KnowledgeFetcherAgent ---
+
 def generate_code(prompt):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -991,6 +1092,7 @@ class SimulationRunner:
         num_combiners = config.get('num_combiners', 2)
         num_coders = config.get('num_coders', 1)
         num_bridging_agents = config.get('num_bridging_agents', 1)  # NUEVO
+        num_knowledge_fetchers = config.get('num_knowledge_fetchers', 1)  # NUEVO
         for i in range(num_proposers):
             self.agents.append(ProposerAgent(f"P{i}", self.graph, config))
         for i in range(num_evaluators):
@@ -1000,12 +1102,15 @@ class SimulationRunner:
         for i in range(num_coders):
             self.agents.append(AdvancedCoderAgent(f"CD{i}", self.graph, config))
         # --- AÑADIR Creación de BridgingAgent ---
-        num_bridging_agents = config.get('num_bridging_agents', 1)
         for i in range(num_bridging_agents):
              self.agents.append(BridgingAgent(f"B{i}", self.graph, config))
         # --- Fin Creación Bridging ---
+        # --- AÑADIR Creación de KnowledgeFetcherAgent ---
+        for i in range(num_knowledge_fetchers):
+            self.agents.append(KnowledgeFetcherAgent(f"KF{i}", self.graph, config))
+        # --- Fin Creación KnowledgeFetcher ---
         
-        logging.info(f"Created agents: Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}")
+        logging.info(f"Created agents: Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}, KnowledgeFetchers={num_knowledge_fetchers}")
 
     def _simulation_loop(self):
         step_delay = self.config.get('step_delay', 0.1)
@@ -1043,79 +1148,47 @@ class SimulationRunner:
                     self.graph.train_gnn(num_epochs=gnn_training_epochs)
                 # --- Fin Llamada Entrenamiento ---
 
-                # --- INICIO: Lógica Modificada Selección/Acción con Omega ---
+                # --- Lógica Restaurada para Selección/Acción de Agente ---
                 runnable_agents = []
-                # Obtener costes (podríamos hacerlo una vez en __init__ si no cambian)
-                agent_costs = {
+                agent_costs = { # Obtener costes
                     "ProposerAgent": self.config.get('proposer_cost', 1.0),
                     "EvaluatorAgent": self.config.get('evaluator_cost', 0.5),
                     "CombinerAgent": self.config.get('combiner_cost', 1.5),
-                    "BridgingAgent": self.config.get('bridging_agent_cost', 2.0)  # <-- AÑADIDO
+                    "BridgingAgent": self.config.get('bridging_agent_cost', 2.0),
+                    "KnowledgeFetcherAgent": self.config.get('knowledge_fetcher_cost', 2.5)
+                    # Añadir otros agentes si existen
                 }
-
-                # Filtrar agentes que pueden actuar
-                for agent in self.agents:
-                    cost = agent_costs.get(type(agent).__name__, 1.0)  # Coste default 1.0 si tipo no encontrado
+                for agent in self.agents: # Filtrar agentes que pueden actuar
+                    cost = agent_costs.get(type(agent).__name__, 1.0)
                     if agent.omega >= cost:
                         runnable_agents.append({'agent': agent, 'cost': cost})
 
-                if runnable_agents:
-                    # Elegir uno al azar de los que PUEDEN actuar
-                    chosen = random.choice(runnable_agents)
+                if runnable_agents: # Si hay agentes que pueden actuar
+                    chosen = random.choice(runnable_agents) # Elegir uno al azar
                     agent = chosen['agent']
                     cost = chosen['cost']
-
-                    # Registrar estado ANTES de actuar
                     omega_before = agent.omega
-                    # Consumir Omega
-                    agent.omega -= cost
-                    # Ejecutar acción
-                    agent.act()
-                    # Loguear acción y consumo
+                    agent.omega -= cost # Consumir Omega
+                    agent.act() # Ejecutar acción (ya no necesita lock interno)
                     logging.debug(f"Agent {agent.id} acted (Cost: {cost:.2f}, Omega: {omega_before:.2f} -> {agent.omega:.2f})")
-
                 else:
-                    # Si ningún agente tiene suficiente Omega
                     logging.warning("No agents have enough Omega to act this step!")
-                    # Pueden implementarse otras medidas (pausar o terminar la simulación)
+                # --- Fin Lógica Restaurada ---
 
-                # --- Aplicar Regeneración de Omega a TODOS los agentes ---
-                regen_rate = self.config.get('omega_regeneration_rate', 0.0)
-                if regen_rate > 0:  # Solo regenerar si la tasa es positiva
-                    for a in self.agents:
-                        a.omega += regen_rate
-                        # Opcional: Añadir un límite máximo a Omega
-                        # max_omega = self.config.get('max_omega', 1000)
-                        # a.omega = min(a.omega, max_omega)
-                # --- FIN: Lógica Modificada Selección/Acción con Omega ---
-
-                # --- NUEVO: Obtener y escribir métricas globales ---
-                if self.metrics_writer:
-                    metrics = self.graph.get_global_metrics()
-                    if metrics:
-                        metrics["Step"] = self.step_count
-                        try:
-                            self.metrics_writer.writerow(metrics)
-                            self.metrics_file.flush()
-                        except Exception as e:
-                            logging.error(f"Error writing metrics to CSV at step {self.step_count}: {e}")
-                # --- FIN Escritura Métricas ---
-
+                # Loguear resumen periódico
                 if self.step_count % summary_frequency == 0:
-                    self.graph.print_summary(logging.INFO)  # Loguea el resumen normal
-                    # --- NUEVO: Obtener y escribir métricas globales a CSV ---
-                    if self.metrics_writer:
-                        metrics = self.graph.get_global_metrics()
-                        if metrics:
-                            metrics["Step"] = self.step_count  # Añadir el paso actual
-                            try:
-                                self.metrics_writer.writerow(metrics)
-                                self.metrics_file.flush()
-                            except Exception as e:
-                                logging.error(f"Error writing metrics to CSV at step {self.step_count}: {e}")
-                    # --- FIN Escritura Métricas ---
-                    self.graph.log_global_metrics(logging.INFO, current_step=self.step_count)
-            time.sleep(step_delay)
+                    self.graph.print_summary(logging.INFO)
+                    # Llamada a métricas globales (si la tienes aquí)
+                    if self.config.get('metrics_log_path'):
+                         if self.metrics_writer: # Verificar que exista
+                             metrics = self.graph.get_global_metrics()
+                             if metrics: metrics["Step"] = self.step_count;
+                             try: self.metrics_writer.writerow(metrics); self.metrics_file.flush()
+                             except Exception as e: logging.error(f"Error writing metrics CSV step {self.step_count}: {e}")
+
+            # --- Fin del bloque with self.lock ---
+            time.sleep(step_delay) # Sleep fuera del lock
+
         logging.info("--- Simulation loop finished ---")
 
     def start(self):
@@ -1287,6 +1360,10 @@ def load_config(args):
         'bridging_agent_cost': 2.0,         # Coste Omega por intento de puente
         'bridging_similarity_threshold': 0.75, # Umbral similitud [0,1] para crear puente
         # --- Fin Nuevos Defaults ---
+        # --- Nuevo Default para KnowledgeFetcher ---
+        'knowledge_fetcher_cost': 2.5, # Coste Omega por búsqueda/creación
+        'num_knowledge_fetchers': 1,   # Default 1 fetcher
+        # --- Fin Nuevo Default ---
     }
     if args.config:
         try:
@@ -1385,6 +1462,10 @@ if __name__ == "__main__":
     parser.add_argument('--num_bridging_agents', type=int, help='Number of BridgingAgents.')
     parser.add_argument('--bridging_agent_cost', type=float, help='Omega cost for BridgingAgent action.')
     parser.add_argument('--bridging_similarity_threshold', type=float, help='Embedding similarity threshold [0,1] for bridging.')
+    # --- Fin Nuevos Args ---
+    # --- Nuevos args para KnowledgeFetcher ---
+    parser.add_argument('--knowledge_fetcher_cost', type=float, help='Omega cost for KnowledgeFetcher action.')
+    parser.add_argument('--num_knowledge_fetchers', type=int, default=1, help='Number of KnowledgeFetcher agents.')
     # --- Fin Nuevos Args ---
 
     args = parser.parse_args()
