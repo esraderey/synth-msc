@@ -347,19 +347,20 @@ class CollectiveSynthesisGraph:
             logging.log(log_level, "  Node State (sj) Stats: N/A (no nodes)")
     # --- Fin del método log_global_metrics ---
 
-    # --- NUEVO MÉTODO PARA OBTENER MÉTRICAS ---
+    # --- MÉTODO PARA OBTENER MÉTRICAS ---
     def get_global_metrics(self):
         """Calcula y devuelve métricas globales del grafo como diccionario."""
-        metrics = {k: None for k in [
+        metrics = {fieldname: None for fieldname in [
             "Nodes", "Edges", "Density", "AvgClustering", "Components",
             "MeanState", "MedianState", "StdDevState", "MinState", "MaxState"
         ]}
         num_nodes = len(self.nodes)
         metrics["Nodes"] = num_nodes
 
-        if num_nodes < 1: 
+        if num_nodes == 0:
             return metrics
 
+        # Métricas de estado
         node_states = [n.state for n in self.nodes.values()]
         if node_states:
             metrics["MeanState"] = statistics.mean(node_states)
@@ -368,6 +369,7 @@ class CollectiveSynthesisGraph:
             metrics["MaxState"] = max(node_states)
             metrics["StdDevState"] = statistics.stdev(node_states) if num_nodes > 1 else 0.0
 
+        # Métricas estructurales con NetworkX
         G = nx.DiGraph()
         for node_id in self.nodes.keys():
             G.add_node(str(node_id))
@@ -390,13 +392,15 @@ class CollectiveSynthesisGraph:
             except:
                 pass
             try:
-                if num_edges > 0:
-                    metrics["AvgClustering"] = nx.average_clustering(G.to_undirected(as_view=True))
+                if num_edges > 0 and num_nodes > 1:
+                    metrics["AvgClustering"] = nx.average_clustering(G)
                 else:
                     metrics["AvgClustering"] = 0.0
-            except:
-                pass
+            except Exception as cluster_e:
+                logging.warning(f"Could not calculate avg clustering: {cluster_e}")
+                metrics["AvgClustering"] = None
 
+        # Redondear valores flotantes
         for key, value in metrics.items():
             if isinstance(value, float):
                 metrics[key] = round(value, 4)
@@ -932,7 +936,7 @@ class SimulationRunner:
         self.step_count = 0
         self.lock = threading.Lock()
 
-        # --- NUEVO: Inicializar Log de Métricas CSV ---
+        # --- INICIO: Inicializar Log de Métricas CSV ---
         self.metrics_file = None
         self.metrics_writer = None
         self.metrics_fieldnames = [
@@ -943,17 +947,18 @@ class SimulationRunner:
         metrics_path = self.config.get('metrics_log_path', None)
         if metrics_path:
             try:
-                write_header = not os.path.exists(metrics_path) or os.path.getsize(metrics_path) == 0
+                # Comprobar si el archivo existe y está vacío
+                is_new_file = not os.path.exists(metrics_path) or os.path.getsize(metrics_path) == 0
                 self.metrics_file = open(metrics_path, 'a', newline='', encoding='utf-8')
                 self.metrics_writer = csv.DictWriter(self.metrics_file, fieldnames=self.metrics_fieldnames)
-                if write_header:
+                if is_new_file:
                     self.metrics_writer.writeheader()
-                logging.info(f"Logging global metrics to: {metrics_path}")
+                logging.info(f"Logging global metrics to CSV: {metrics_path}")
             except Exception as e:
                 logging.error(f"Failed to open metrics log file {metrics_path}: {e}")
                 self.metrics_file = None
                 self.metrics_writer = None
-        # --- Fin Inicializar Log ---
+        # --- FIN Inicializar Log ---
 
         load_path = self.config.get('load_state', None)
         if load_path:
@@ -1082,8 +1087,18 @@ class SimulationRunner:
                 # --- FIN Escritura Métricas ---
 
                 if self.step_count % summary_frequency == 0:
-                    self.graph.print_summary(logging.INFO)
-                    # Pasar el step actual al método de métricas
+                    self.graph.print_summary(logging.INFO)  # Loguea el resumen normal
+                    # --- NUEVO: Obtener y escribir métricas globales a CSV ---
+                    if self.metrics_writer:
+                        metrics = self.graph.get_global_metrics()
+                        if metrics:
+                            metrics["Step"] = self.step_count  # Añadir el paso actual
+                            try:
+                                self.metrics_writer.writerow(metrics)
+                                self.metrics_file.flush()
+                            except Exception as e:
+                                logging.error(f"Error writing metrics to CSV at step {self.step_count}: {e}")
+                    # --- FIN Escritura Métricas ---
                     self.graph.log_global_metrics(logging.INFO, current_step=self.step_count)
             time.sleep(step_delay)
         logging.info("--- Simulation loop finished ---")
@@ -1121,10 +1136,10 @@ class SimulationRunner:
 
             # --- NUEVO: Escribir Métricas Finales ---
             if self.metrics_writer:
-                logging.info("Writing final metrics...")
+                logging.info("Writing final metrics to CSV...")
                 metrics = self.graph.get_global_metrics()
                 if metrics:
-                    metrics["Step"] = self.step_count
+                    metrics["Step"] = self.step_count  # Paso final
                     try:
                         self.metrics_writer.writerow(metrics)
                     except Exception as e:
@@ -1251,7 +1266,7 @@ def load_config(args):
         # --- Nuevo Default para Guardar Visualización ---
         'visualization_output_path': None,
         # --- Nuevo Default para Log de Métricas ---
-        'metrics_log_path': None,
+        'metrics_log_path': None, # Default: no guardar log
         # --- Nuevos Defaults para BridgingAgent ---
         'num_bridging_agents': 1,         # Número de agentes puente
         'bridging_agent_cost': 2.0,         # Coste Omega por intento de puente
