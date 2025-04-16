@@ -551,13 +551,20 @@ class ProposerAgent(Synthesizer):
         self.graph.add_edge(source_node.id, new_node.id, utility)
         logging.info(f"Proposer {self.id}: Proposed {new_node!r} linked from {source_node!r} with U={utility:.2f}")
 
+        # --- Añadir Recompensa si la utilidad es positiva ---
+        reward_factor = self.config.get('proposer_reward_factor', 0.5)
+        if utility > 0:
+            reward = utility * reward_factor
+            self.omega += reward
+            logging.debug(f"Proposer {self.id}: Earned {reward:.2f} Omega (Total: {self.omega:.2f})")
+        # --- Fin Recompensa ---
+
 # --- CLASE EvaluatorAgent ACTUALIZADA para usar similitud en influencia ---
 class EvaluatorAgent(Synthesizer):
     """Evalúa nodos usando embeddings para calcular la influencia ponderada por similitud."""
     def __init__(self, agent_id, graph, config):
         super().__init__(agent_id, graph, config)
         self.learning_rate = config.get('evaluator_learning_rate', 0.1)
-        # Ya no necesitamos similarity_boost_factor como parámetro separado
         self.decay_rate = config.get('evaluator_decay_rate', 0.01)
 
     def calculate_cosine_similarity(self, emb1, emb2):
@@ -575,46 +582,45 @@ class EvaluatorAgent(Synthesizer):
         target_embedding = self.graph.get_embedding(target_node.id)
         influence_sum = 0.0
         weight_sum = 0.0
-        # accumulated_similarity_boost ya no se usa
         penalty_factor = 1.0
 
         if not target_node.connections_in:
             influence_target = target_node.state * (1 - self.decay_rate)
         else:
-            # --- Lógica de evaluación basada en embedding ---
             for source_id, utility_uji in target_node.connections_in.items():
                 source_node = self.graph.get_node(source_id)
                 if source_node:
                     source_embedding = self.graph.get_embedding(source_node.id)
-                    # Calcular similitud normalizada [0, 1]
                     similarity = self.calculate_cosine_similarity(target_embedding, source_embedding)
-                    # Influencia base = EstadoFuente * UtilidadEnlace
                     base_influence = source_node.state * utility_uji
-                    # Ponderar influencia por similitud:
-                    # Si sim = 1.0 (muy similar), factor = 2*1 = 2 (máxima influencia)
-                    # Si sim = 0.5 (neutral), factor = 2*0.5 = 1 (influencia base)
-                    # Si sim = 0.0 (muy distinto), factor = 2*0 = 0 (sin influencia)
                     similarity_factor = similarity * 2
                     similarity_weighted_influence = base_influence * similarity_factor
                     influence_sum += similarity_weighted_influence
-                    weight = abs(utility_uji)  # Ponderar por fuerza de conexión absoluta
+                    weight = abs(utility_uji)
                     weight_sum += weight
-                    # Penalización por inconsistencia (sin cambios)
                     if utility_uji < 0 and source_node.state > 0.7:
                         penalty_factor *= 0.9
-            # --- Fin del bucle ---
             if weight_sum > 0.01:
                 influence_target = influence_sum / weight_sum
             else:
-                influence_target = target_node.state  # Mantener si no hay influencia ponderable
-            # Aplicar penalización acumulada
+                influence_target = target_node.state
             influence_target *= penalty_factor
 
-        # --- Fin Lógica de evaluación ---
-        influence_target = max(-0.5, min(1.5, influence_target))  # Limitar objetivo
+        influence_target = max(-0.5, min(1.5, influence_target))
         current_state = target_node.state
         new_state = current_state + self.learning_rate * (influence_target - current_state)
-        target_node.update_state(new_state)  # Asegura [MIN_STATE, 1.0]
+        target_node.update_state(new_state)  # actualiza el estado
+
+        # --- Añadir Recompensa si el estado aumentó significativamente ---
+        reward_factor = self.config.get('evaluator_reward_factor', 2.0)
+        reward_threshold = self.config.get('evaluator_reward_threshold', 0.05)
+        state_increase = new_state - current_state
+        if state_increase >= reward_threshold:
+            reward = state_increase * reward_factor
+            self.omega += reward
+            logging.debug(f"Evaluator {self.id}: Earned {reward:.2f} Omega for state increase (Total: {self.omega:.2f})")
+        # --- Fin Recompensa ---
+
         logging.info(f"Evaluator {self.id}: Evaluated {target_node!r}. State: {current_state:.3f} -> {target_node.state:.3f} (Target: {influence_target:.3f})")
 # --- Fin EvaluatorAgent Modificado ---
 
@@ -648,6 +654,13 @@ class CombinerAgent(Synthesizer):
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
                     logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} based on embedding similarity (Score: {normalized_sim:.2f}, U={utility:.2f})")
                     edge_added = True
+                    # --- Añadir Recompensa ---
+                    reward_factor = self.config.get('combiner_reward_factor', 1.0)
+                    if utility > 0:
+                        reward = utility * reward_factor
+                        self.omega += reward
+                        logging.debug(f"Combiner {self.id}: Earned {reward:.2f} Omega (Total: {self.omega:.2f})")
+                    # --- Fin Recompensa ---
         if not edge_added:
             state_product = node_a.state * node_b.state
             common_keywords = node_a.keywords.intersection(node_b.keywords)
@@ -659,6 +672,13 @@ class CombinerAgent(Synthesizer):
                 utility = max(-1.0, min(1.0, utility))
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
                     logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
+                    # --- Añadir Recompensa ---
+                    reward_factor = self.config.get('combiner_reward_factor', 1.0)
+                    if utility > 0:
+                        reward = utility * reward_factor
+                        self.omega += reward
+                        logging.debug(f"Combiner {self.id}: Earned {reward:.2f} Omega via fallback (Total: {self.omega:.2f})")
+                    # --- Fin Recompensa ---
 
 class AdvancedCoderAgent(Synthesizer):
     def act(self):
@@ -681,7 +701,11 @@ def generate_code(prompt):
         return None
     try:
         try:
-            import genai
+            try:
+                import genai
+            except ImportError:
+                logging.error("The 'genai' module is not installed. Please install it to use this feature.")
+                return None
             genai.configure(api_key=api_key)
         except ImportError:
             logging.error("The 'genai' module is not installed. Please install it to use this feature.")
@@ -805,7 +829,7 @@ class SimulationRunner:
                     # Pueden implementarse otras medidas (pausar o terminar la simulación)
 
                 # --- Aplicar Regeneración de Omega a TODOS los agentes ---
-                regen_rate = self.config.get('omega_regeneration_rate', 0.1)
+                regen_rate = self.config.get('omega_regeneration_rate', 0.0)
                 if regen_rate > 0:  # Solo regenerar si la tasa es positiva
                     for a in self.agents:
                         a.omega += regen_rate
@@ -948,8 +972,14 @@ def load_config(args):
         'evaluator_cost': 0.5,
         'combiner_cost': 1.5,
         'omega_regeneration_rate': 0.1,
+        # --- Nuevos Defaults para Recompensas Omega ---
+        'evaluator_reward_factor': 2.0,      # Multiplicador para recompensa de evaluación
+        'evaluator_reward_threshold': 0.05,    # Aumento mínimo de estado para recompensa
+        'proposer_reward_factor': 0.5,         # Multiplicador por utilidad positiva de proposición
+        'combiner_reward_factor': 1.0,         # Multiplicador por utilidad positiva de combinación
+        # --- Fin Nuevos Defaults ---
         # --- Nuevo Default para Guardar Visualización ---
-        'visualization_output_path': None  # Default: no guardar imagen
+        'visualization_output_path': None     # Default: no guardar imagen
         # --- Fin Nuevo Default ---
     }
     if args.config:
@@ -1030,6 +1060,11 @@ if __name__ == "__main__":
     parser.add_argument('--evaluator_cost', type=float, help='Omega cost for Evaluator action.')
     parser.add_argument('--combiner_cost', type=float, help='Omega cost for Combiner action.')
     parser.add_argument('--omega_regeneration_rate', type=float, help='Omega regenerated per agent per step.')
+    # --- Nuevos args para Recompensas Omega ---
+    parser.add_argument('--evaluator_reward_factor', type=float, help='Omega reward multiplier for evaluation.')
+    parser.add_argument('--evaluator_reward_threshold', type=float, help='Min state increase for evaluator reward.')
+    parser.add_argument('--proposer_reward_factor', type=float, help='Omega reward multiplier for proposer.')
+    parser.add_argument('--combiner_reward_factor', type=float, help='Omega reward multiplier for combiner.')
     # --- Fin Nuevos Args ---
     # --- Nuevos argumentos para entrenamiento GNN ---
     parser.add_argument('--gnn_training_frequency', type=int, help='Frequency (steps) to train GNN.')
