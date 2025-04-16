@@ -110,7 +110,7 @@ class CollectiveSynthesisGraph:
         self.nodes = {}
         self.next_node_id = 0
         self.config = config
-        self.num_base_features = 4
+        self.num_base_features = 5  # Se añade una feature extra para PageRank
         self.num_node_features = self.num_base_features + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
         config['gnn_input_dim'] = self.num_node_features
         hidden_channels = config.get('gnn_hidden_dim', 16)
@@ -134,6 +134,20 @@ class CollectiveSynthesisGraph:
         num_nodes = len(self.nodes)
         num_node_features = self.num_node_features
         node_features = torch.zeros((num_nodes, num_node_features), dtype=torch.float)
+
+        # --- NUEVO: Calcular métricas estructurales adicionales, ej. PageRank ---
+        # Construir grafo temporal
+        temp_G = nx.DiGraph()
+        for node_id in self.nodes.keys():
+            temp_G.add_node(node_id)
+        for node in self.nodes.values():
+            for target_id in node.connections_out.keys():
+                if target_id in self.nodes:
+                    temp_G.add_edge(node.id, target_id)
+        # Calcular PageRank (se pueden incluir otras métricas)
+        pagerank = nx.pagerank(temp_G) if temp_G.number_of_nodes() > 0 else {nid: 0.0 for nid in self.nodes.keys()}
+        # --- Fin métricas adicionales ---
+
         text_embeddings = None
         if text_embedding_model is not None and TEXT_EMBEDDING_DIM > 0:
             all_node_text = []
@@ -155,15 +169,20 @@ class CollectiveSynthesisGraph:
                 except Exception as e:
                     logging.warning(f"GNN Prep Warning: Error generating text embeddings: {e}")
                     text_embeddings = torch.zeros((num_nodes, TEXT_EMBEDDING_DIM), dtype=torch.float)
+
         for i in range(num_nodes):
             if i not in self.idx_to_node_id:
                 continue
             node_id = self.idx_to_node_id[i]
             node = self.nodes[node_id]
+            # Características base originales
             node_features[i, 0] = node.state
             node_features[i, 1] = float(len(node.connections_in))
             node_features[i, 2] = float(len(node.connections_out))
             node_features[i, 3] = float(len(node.keywords))
+            # NUEVA característica: PageRank (normalizado [0,1] por ser probabilidad)
+            node_features[i, 4] = pagerank.get(node_id, 0.0)
+            # Si hay embeddings de texto, se añaden a continuación
             if text_embeddings is not None and i < text_embeddings.shape[0]:
                 node_features[i, self.num_base_features:] = text_embeddings[i]
         source_indices = []
@@ -211,52 +230,84 @@ class CollectiveSynthesisGraph:
                 logging.error(f"GNN Error during forward pass: {e}")
 
     def train_gnn(self, num_epochs=10):
-        """Entrena la GNN usando predicción de enlaces."""
+        """Entrena la GNN usando predicción de enlaces con validaciones y manejo de dispositivo."""
+        # Verifica que existan suficientes nodos
         if not self.nodes or len(self.nodes) < 2:
             logging.warning("GNN Training: Not enough nodes to train.")
             return
+
         node_features, edge_index = self._prepare_pyg_data()
         if node_features is None or edge_index is None or edge_index.numel() == 0:
             logging.warning("GNN Training: Not enough data (nodes/edges) to train.")
             return
 
         num_nodes = node_features.shape[0]
-        self.gnn_model.train()
+        # Asigna dispositivo (GPU si está disponible)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.gnn_model.to(device)
+        node_features = node_features.to(device)
+        edge_index = edge_index.to(device)
 
-        total_loss = 0
+        self.gnn_model.train()
+        total_loss = 0.0
+
         try:
             for epoch in range(num_epochs):
                 self.gnn_optimizer.zero_grad()
+                
+                # Paso forward: obtener embeddings
                 z = self.gnn_model(node_features, edge_index)
+                
+                # Aristas positivas: usar todas las aristas existentes
                 pos_edge_label_index = edge_index
+                
+                # Muestreo negativo: se generan tantos ejemplos negativos como positivos
                 neg_edge_label_index = negative_sampling(
                     edge_index=edge_index,
                     num_nodes=num_nodes,
                     num_neg_samples=pos_edge_label_index.size(1),
                     method='sparse'
                 )
-                edge_label_index = torch.cat(
-                    [pos_edge_label_index, neg_edge_label_index],
-                    dim=-1,
-                )
-                edge_label = torch.cat([
-                    torch.ones(pos_edge_label_index.size(1)),
-                    torch.zeros(neg_edge_label_index.size(1))
-                ], dim=0).float()
+                if neg_edge_label_index.numel() == 0:
+                    logging.warning(f"Epoch {epoch+1}: No negative samples generated, skipping this epoch.")
+                    continue
+
+                # Concatenar índices de aristas positivas y negativas
+                edge_label_index = torch.cat([pos_edge_label_index, neg_edge_label_index], dim=-1)
+                # Crear etiquetas: 1 para positivas, 0 para negativas
+                pos_labels = torch.ones(pos_edge_label_index.size(1), device=device)
+                neg_labels = torch.zeros(neg_edge_label_index.size(1), device=device)
+                edge_labels = torch.cat([pos_labels, neg_labels], dim=0)
+                
+                # Decodificar las predicciones para obtener scores de enlace
                 out_scores = self.gnn_model.decode(z, edge_label_index)
-                loss = self.gnn_loss_fn(out_scores, edge_label)
-                total_loss += loss.item()
+                
+                # Validación de dimensiones
+                if out_scores.size(0) != edge_labels.size(0):
+                    logging.error(
+                        f"Epoch {epoch+1}: Mismatch in output scores and labels: "
+                        f"{out_scores.size(0)} vs {edge_labels.size(0)}"
+                    )
+                    continue
+
+                # Calcular la pérdida
+                loss = self.gnn_loss_fn(out_scores, edge_labels)
                 loss.backward()
                 self.gnn_optimizer.step()
+                
+                total_loss += loss.item()
+                logging.debug(f"Epoch {epoch+1}/{num_epochs}: Loss = {loss.item():.4f}")
+
         except Exception as e:
-            logging.error(f"Error during GNN training epoch {epoch+1 if 'epoch' in locals() else 'N/A'}: {e}")
+            logging.error(
+                f"Error during GNN training epoch {epoch+1 if 'epoch' in locals() else 'N/A'}: {e}"
+            )
             import traceback
             logging.error(traceback.format_exc())
         finally:
             self.gnn_model.eval()
-            if num_epochs > 0:
-                avg_loss = total_loss / num_epochs
-                logging.info(f"GNN Training Finished: {num_epochs} epochs, Avg Loss = {avg_loss:.4f}")
+            avg_loss = total_loss / num_epochs if num_epochs > 0 else float('inf')
+            logging.info(f"GNN Training Finished: {num_epochs} epochs, Avg Loss = {avg_loss:.4f}")
 
     def add_node(self, content="Abstract Concept", initial_state=0.1, keywords=None):
         node_id = self.next_node_id
@@ -657,10 +708,11 @@ class Synthesizer:
         self.id = agent_id
         self.graph = graph
         self.config = config
-        # --- AÑADIDO: Inicializar Omega ---
         self.omega = config.get('initial_omega', 100.0)
+        # --- AÑADIDO: Inicializar Reputación ---
+        self.reputation = config.get('initial_reputation', 1.0)
         # --- Fin Añadido ---
-        
+
     def act(self):
         raise NotImplementedError
 
@@ -682,14 +734,30 @@ class ProposerAgent(Synthesizer):
         utility = max(-1.0, min(1.0, utility))
         self.graph.add_edge(source_node.id, new_node.id, utility)
         logging.info(f"Proposer {self.id}: Proposed {new_node!r} linked from {source_node!r} with U={utility:.2f}")
-
-        # --- Añadir Recompensa si la utilidad es positiva ---
+        # --- Additional Secondary Connection ---
+        # Attempt to connect the new node with one of the parent's similar neighbors,
+        # thereby reinforcing local structure.
+        parent_neighbors = list(source_node.connections_out.keys())
+        if parent_neighbors:
+            candidate = random.choice(parent_neighbors)
+            candidate_node = self.graph.get_node(candidate)
+            if candidate_node and candidate_node.id != new_node.id and candidate_node.id not in new_node.connections_out:
+                # Check if similarity (or keyword overlap) is significant
+                common_kw = len(new_node.keywords.intersection(candidate_node.keywords))
+                if common_kw > 0:
+                    sec_utility = (utility + 0.2) * (common_kw / (len(new_node.keywords.union(candidate_node.keywords)) or 1))
+                    sec_utility = max(-1.0, min(1.0, sec_utility))
+                    self.graph.add_edge(new_node.id, candidate_node.id, sec_utility)
+                    logging.info(f"Proposer {self.id}: Created secondary connection from {new_node.id} to {candidate_node.id} (Utility: {sec_utility:.2f})")
+        # --- End Additional Connection ---
+        psi_reward = self.config.get('proposer_psi_reward', 0.02)
+        self.reputation += psi_reward
+        logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
         reward_factor = self.config.get('proposer_reward_factor', 0.5)
         if utility > 0:
             reward = utility * reward_factor
             self.omega += reward
             logging.debug(f"Proposer {self.id}: Earned {reward:.2f} Omega (Total: {self.omega:.2f})")
-        # --- Fin Recompensa ---
 
 # --- CLASE EvaluatorAgent ACTUALIZADA para usar similitud en influencia ---
 class EvaluatorAgent(Synthesizer):
@@ -740,7 +808,7 @@ class EvaluatorAgent(Synthesizer):
 
         influence_target = max(-0.5, min(1.5, influence_target))
         current_state = target_node.state
-        new_state = current_state + self.learning_rate * (influence_target - current_state)
+        new_state = current_state + self.learning_rate * self.reputation * (influence_target - current_state)
         target_node.update_state(new_state)  # actualiza el estado
 
         # --- Añadir Recompensa si el estado aumentó significativamente ---
@@ -754,6 +822,11 @@ class EvaluatorAgent(Synthesizer):
         # --- Fin Recompensa ---
 
         logging.info(f"Evaluator {self.id}: Evaluated {target_node!r}. State: {current_state:.3f} -> {target_node.state:.3f} (Target: {influence_target:.3f})")
+        # --- Añadir Recompensa Psi ---
+        psi_reward = self.config.get('evaluator_psi_reward', 0.01)
+        self.reputation += psi_reward
+        logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
+        # --- Fin Recompensa Psi ---
 # --- Fin EvaluatorAgent Modificado ---
 
 class CombinerAgent(Synthesizer):
@@ -784,33 +857,32 @@ class CombinerAgent(Synthesizer):
             if normalized_sim >= self.similarity_threshold:
                 utility = max(-1.0, min(1.0, cosine_sim))
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
-                    logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} based on embedding similarity (Score: {normalized_sim:.2f}, U={utility:.2f})")
+                    logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} by embedding (Score: {normalized_sim:.2f}, U={utility:.2f})")
                     edge_added = True
-                    # --- Añadir Recompensa ---
-                    reward_factor = self.config.get('combiner_reward_factor', 1.0)
-                    if utility > 0:
-                        reward = utility * reward_factor
-                        self.omega += reward
-                        logging.debug(f"Combiner {self.id}: Earned {reward:.2f} Omega (Total: {self.omega:.2f})")
-                    # --- Fin Recompensa ---
+                    psi_reward = self.config.get('combiner_psi_reward', 0.03)
+                    self.reputation += psi_reward
+                    logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
         if not edge_added:
+            # Fallback: also consider shared neighbors for local connection support
+            neighbors_a = set(node_a.connections_out.keys()).union({node for node in self.graph.nodes if node_a.id in self.graph.nodes[node].connections_out})
+            neighbors_b = set(node_b.connections_out.keys()).union({node for node in self.graph.nodes if node_b.id in self.graph.nodes[node].connections_out})
+            common_neighbors = neighbors_a.intersection(neighbors_b)
+            local_factor = (len(common_neighbors) / (len(neighbors_a.union(neighbors_b)) + 1))
             state_product = node_a.state * node_b.state
-            common_keywords = node_a.keywords.intersection(node_b.keywords)
-            max_possible_keywords = len(node_a.keywords.union(node_b.keywords))
-            keyword_similarity = len(common_keywords) / max_possible_keywords if max_possible_keywords > 0 else 0
-            compatibility_score = (state_product * 0.6) + (keyword_similarity * 0.4)
-            if compatibility_score >= self.compatibility_threshold:
+            keyword_overlap = len(node_a.keywords.intersection(node_b.keywords))
+            max_kw = len(node_a.keywords.union(node_b.keywords)) or 1
+            keyword_factor = keyword_overlap / max_kw
+            compatibility_score = (state_product * 0.5) + (keyword_factor * 0.3) + (local_factor * 0.2)
+            if compatibility_score >= self.config.get('combiner_compatibility_threshold', 0.6):
                 utility = compatibility_score * ((node_a.state + node_b.state) / 2.0)
                 utility = max(-1.0, min(1.0, utility))
                 if self.graph.add_edge(node_a.id, node_b.id, utility):
-                    logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using FALLBACK logic (Score: {compatibility_score:.2f}, U={utility:.2f})")
-                    # --- Añadir Recompensa ---
+                    logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using LOCAL fallback (Score: {compatibility_score:.2f}, U={utility:.2f})")
                     reward_factor = self.config.get('combiner_reward_factor', 1.0)
                     if utility > 0:
                         reward = utility * reward_factor
                         self.omega += reward
                         logging.debug(f"Combiner {self.id}: Earned {reward:.2f} Omega via fallback (Total: {self.omega:.2f})")
-                    # --- Fin Recompensa ---
 
 class AdvancedCoderAgent(Synthesizer):
     def act(self):
@@ -912,14 +984,20 @@ class BridgingAgent(Synthesizer):
         logging.info(f"BridgingAgent {self.id}: Checking bridge between node {node_a_id} (Comp {comp_indices[0]}) and {node_b_id} (Comp {comp_indices[1]}). Similarity Norm: {similarity:.3f}")
 
         # 6. Crear enlace si la similitud es alta
-        if similarity >= self.similarity_threshold:
-            # Utilizar similitud normalizada [0, 1] como utilidad
+        adjusted_threshold = self.config.get('bridging_adjusted_threshold', self.similarity_threshold - 0.1)
+        effective_threshold = self.similarity_threshold if similarity >= self.similarity_threshold else adjusted_threshold
+        logging.info(f"BridgingAgent {self.id}: Checking bridge between node {node_a_id} and {node_b_id}. Similarity: {similarity:.3f} (Effective threshold: {effective_threshold:.3f})")
+        if similarity >= effective_threshold:
             bridge_utility = similarity
-            # Añadir aristas en ambas direcciones para conectar componentes
             added1 = self.graph.add_edge(node_a_id, node_b_id, bridge_utility)
             added2 = self.graph.add_edge(node_b_id, node_a_id, bridge_utility)
             if added1 or added2:
                 logging.info(f"BridgingAgent {self.id}: **** Bridge CREATED between node {node_a_id} and {node_b_id} (Similarity Norm: {similarity:.3f}, Utility: {bridge_utility:.3f}) ****")
+                # --- Añadir Recompensa Psi ---
+                psi_reward = self.config.get('bridging_psi_reward', 0.05)
+                self.reputation += psi_reward
+                logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
+                # --- Fin Recompensa Psi ---
 # --- Fin BridgingAgent ---
 
 # --- NUEVA CLASE: KnowledgeFetcherAgent ---
@@ -997,7 +1075,192 @@ class KnowledgeFetcherAgent(Synthesizer):
             link_utility = 0.7
             self.graph.add_edge(source_node.id, new_node.id, link_utility)
             logging.info(f"FetcherAgent {self.id}: Created info node {new_node!r} linked from {source_node!r}")
+            # --- Añadir Recompensa Psi ---
+            psi_reward = self.config.get('fetcher_psi_reward', 0.04)
+            self.reputation += psi_reward
+            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
+            # --- Fin Recompensa Psi ---
 # --- Fin KnowledgeFetcherAgent ---
+
+# --- NUEVA CLASE: HorizonScannerAgent ---
+class HorizonScannerAgent(Synthesizer):
+    """
+    HorizonScannerAgent
+    Propósito: Detectar conexiones entre ideas que podrían anticipar una nueva tecnología, teoría o invención.
+    
+    Funcionamiento:
+      - Explora nodos con baja conectividad (poca entrada y salida) pero con alto estado (potencial semántico).
+      - Identifica combinaciones "raras pero plausibles" evaluando la rareza de la superposición de keywords y el estado.
+      - Si se cumple un umbral heurístico, propone un nuevo nodo de "potencial disruptivo" y conecta los nodos base.
+      - Omega Reward: Se recompensa si el nodo resultante es enlazado o evaluado posteriormente.
+    """
+    def act(self):
+        # Filtrar nodos con baja conectividad pero alto potencial (estado) 
+        candidate_nodes = [node for node in self.graph.nodes.values() 
+                           if (len(node.connections_in) + len(node.connections_out)) <= 1 and node.state >= 0.7]
+        if len(candidate_nodes) < 2:
+            return
+
+        # Seleccionar dos candidatos al azar
+        node_a, node_b = random.sample(candidate_nodes, 2)
+
+        # Calcular rareza basada en keywords: menor traslape indica mayor rareza
+        common_keywords = node_a.keywords.intersection(node_b.keywords)
+        rarity_score = 1.0 / (len(common_keywords) + 1)  # Mayor si hay menos keywords en común
+
+        # Factor de potencial semántico basado en el estado promedio
+        state_factor = (node_a.state + node_b.state) / 2.0
+
+        # Calcular score de síntesis; umbral heurístico para síntesis disruptiva
+        synthesis_score = rarity_score * state_factor
+        threshold = 0.8  # Valor ajustable vía configuración si se desea
+
+        if synthesis_score >= threshold:
+            # Crear nodo de potencial disruptivo
+            disruptive_content = f"Disruptive Synthesis of nodes {node_a.id} & {node_b.id}"
+            new_keywords = set(node_a.keywords.union(node_b.keywords))
+            new_keywords.add("disruptive")
+            new_node = self.graph.add_node(content=disruptive_content,
+                                             initial_state=0.9,
+                                             keywords=new_keywords)
+            # Crear conexiones desde los nodos base al nuevo nodo
+            utility_a = min(1.0, node_a.state * synthesis_score)
+            utility_b = min(1.0, node_b.state * synthesis_score)
+            self.graph.add_edge(node_a.id, new_node.id, utility_a)
+            self.graph.add_edge(node_b.id, new_node.id, utility_b)
+            logging.info(f"HorizonScannerAgent {self.id}: Created disruptive node {new_node.id} "
+                         f"from nodes {node_a.id} & {node_b.id} (Score: {synthesis_score:.2f})")
+            # Añadir Recompensa Psi
+            psi_reward = self.config.get('horizonscanner_psi_reward', 0.05)
+            self.reputation += psi_reward
+            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} "
+                          f"to {self.reputation:.3f}")
+# --- Fin HorizonScannerAgent ---
+
+# --- NUEVA CLASE: EpistemicValidatorAgent ---
+class EpistemicValidatorAgent(Synthesizer):
+    """
+    EpistemicValidatorAgent
+    Propósito: Validar la coherencia lógica, evidencia asociada y grado de especulación de nodos.
+    
+    Funcionamiento:
+      - Clasifica nodos en un eje: factual – especulativo – contradictorio.
+      - Penaliza nodos redundantes o sin base.
+      - Recompensa aquellos que conectan ideas sin contradicción aparente.
+    
+    Omega Reward: Se gana Omega si su validación mejora la robustez del grafo (medido por clustering y reducción de contradicciones).
+    """
+    def act(self):
+        # Seleccionar aleatoriamente un nodo candidato
+        candidate = self.graph.get_random_node_biased()
+        if candidate is None:
+            return
+        
+        # Heurística para validación basada en keywords y estado
+        evidence_keywords = {"evidence", "data", "proven", "fact"}
+        contradiction_keywords = {"contradict", "inconsistency", "error"}
+        
+        evidence_overlap = len(candidate.keywords.intersection(evidence_keywords))
+        contradiction_overlap = len(candidate.keywords.intersection(contradiction_keywords))
+        
+        # Asignar score de clasificación: 0 (contradictorio), 0.5 (especulativo), 1 (factual)
+        if contradiction_overlap > 0:
+            classification_score = 0.0
+        elif evidence_overlap > 0:
+            classification_score = 1.0
+        else:
+            classification_score = 0.5
+        
+        # Penalización por redundancia: mayor traslape con keywords de nodos vecinos
+        neighbor_keywords = set()
+        for neighbor_id in candidate.connections_out.keys():
+            neighbor = self.graph.get_node(neighbor_id)
+            if neighbor:
+                neighbor_keywords.update(neighbor.keywords)
+        redundancy_penalty = len(candidate.keywords.intersection(neighbor_keywords)) * 0.05
+        
+        # Evaluación final: se pondera el estado con la clasificación y se resta la penalización
+        evaluation = candidate.state * classification_score - redundancy_penalty
+        
+        # Actualizar estado del nodo (ponderación conservadora)
+        new_state = max(0.01, min(1.0, 0.5 * candidate.state + 0.5 * evaluation))
+        candidate.update_state(new_state)
+        
+        logging.info(f"EpistemicValidatorAgent {self.id}: Validated {candidate!r}; Eval Score: {evaluation:.2f}, State updated: {new_state:.3f}")
+        
+        # Recompensa Omega si la validación muestra un buen score (simulando impacto en clustering/contradicciones)
+        if evaluation >= 0.6:
+            omega_reward = self.config.get('epistemic_validator_omega_reward', 0.05)
+            self.omega += omega_reward
+            logging.debug(f"EpistemicValidatorAgent {self.id}: Earned Omega reward {omega_reward:.2f} (Total: {self.omega:.2f})")
+            
+            psi_reward = self.config.get('epistemic_validator_psi_reward', 0.01)
+            self.reputation += psi_reward
+            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
+# --- Fin EpistemicValidatorAgent ---
+
+# --- NUEVA CLASE: TechnogenesisAgent ---
+class TechnogenesisAgent(Synthesizer):
+    """
+    TechnogenesisAgent
+    Propósito: Simular la evolución hipotética de una tecnología a partir de sus componentes conceptuales.
+    
+    Funcionamiento:
+      - Toma un nodo (por ejemplo, "blockchain" o alguno relacionado a "tech") y rastrea sus vecinos influyentes.
+      - Proyecta un “siguiente paso posible” y lo expresa como un nodo tecnológico futuro.
+      - Puede usar heurísticas basadas en el estado y keywords.
+    
+    Omega Reward: Se gana Omega si la predicción es retomada o validada por KnowledgeFetcher o Evaluators.
+    """
+    def act(self):
+        # Filtrar candidatos tecnológicos (se asume que el contenido incluye "blockchain" o "tech")
+        tech_candidates = [node for node in self.graph.nodes.values() 
+                           if "blockchain" in node.content.lower() or "tech" in node.content.lower()]
+        if not tech_candidates:
+            return
+        
+        base_node = random.choice(tech_candidates)
+        
+        # Obtener vecinos influyentes: aquellos con un estado alto
+        influential_neighbors = []
+        for neighbor_id in base_node.connections_out.keys():
+            neighbor = self.graph.get_node(neighbor_id)
+            if neighbor and neighbor.state >= 0.7:
+                influential_neighbors.append(neighbor)
+        
+        if not influential_neighbors:
+            return
+        
+        # Calcular un promedio del estado y combinar keywords de vecinos influyentes
+        avg_state = sum(n.state for n in influential_neighbors) / len(influential_neighbors)
+        combined_keywords = set()
+        for n in influential_neighbors:
+            combined_keywords = combined_keywords.union(n.keywords)
+        combined_keywords.add("future")
+        
+        # Crear el contenido para el nuevo nodo tecnológico
+        new_content = f"Projected Evolution from {base_node.id}: Next-Gen Tech"
+        new_state = max(0.7, min(1.0, avg_state + 0.1))
+        
+        new_node = self.graph.add_node(content=new_content,
+                                         initial_state=new_state,
+                                         keywords=combined_keywords)
+        # Generar una conexión que refleje la influencia del nodo base
+        utility = (base_node.state + new_state) / 2 * 0.8
+        self.graph.add_edge(base_node.id, new_node.id, utility)
+        
+        logging.info(f"TechnogenesisAgent {self.id}: Predicted future tech node {new_node.id} from base {base_node.id} (Utility: {utility:.2f})")
+        
+        # Recompensa si el nodo propuesto alcanza un estado robusto (se simula con un umbral)
+        if new_node.state > 0.8:
+            omega_reward = self.config.get('technogenesis_omega_reward', 0.05)
+            self.omega += omega_reward
+            logging.debug(f"TechnogenesisAgent {self.id}: Earned Omega reward {omega_reward:.2f} for prediction (Total: {self.omega:.2f})")
+            
+            psi_reward = self.config.get('technogenesis_psi_reward', 0.01)
+            self.reputation += psi_reward
+            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
+# --- Fin TechnogenesisAgent ---
 
 def generate_code(prompt):
     api_key = os.getenv("GEMINI_API_KEY")
@@ -1078,6 +1341,9 @@ class SimulationRunner:
         num_coders = config.get('num_coders', 1)
         num_bridging_agents = config.get('num_bridging_agents', 1)  # NUEVO
         num_knowledge_fetchers = config.get('num_knowledge_fetchers', 1)  # NUEVO
+        num_horizon_scanners = config.get('num_horizon_scanners', 1)  # NUEVO
+        num_epistemic_validators = config.get('num_epistemic_validators', 1)  # NUEVO
+        num_technogenesis_agents = config.get('num_technogenesis_agents', 1)  # NUEVO
         for i in range(num_proposers):
             self.agents.append(ProposerAgent(f"P{i}", self.graph, config))
         for i in range(num_evaluators):
@@ -1094,8 +1360,20 @@ class SimulationRunner:
         for i in range(num_knowledge_fetchers):
             self.agents.append(KnowledgeFetcherAgent(f"KF{i}", self.graph, config))
         # --- Fin Creación KnowledgeFetcher ---
+        # --- AÑADIR Creación de HorizonScannerAgent ---
+        for i in range(num_horizon_scanners):
+            self.agents.append(HorizonScannerAgent(f"HS{i}", self.graph, config))
+        # --- Fin Creación HorizonScanner ---
+        # --- AÑADIR Creación de EpistemicValidatorAgent ---
+        for i in range(num_epistemic_validators):
+            self.agents.append(EpistemicValidatorAgent(f"EV{i}", self.graph, config))
+        # --- Fin Creación EpistemicValidator ---
+        # --- AÑADIR Creación de TechnogenesisAgent ---
+        for i in range(num_technogenesis_agents):
+            self.agents.append(TechnogenesisAgent(f"TG{i}", self.graph, config))
+        # --- Fin Creación Technogenesis ---
         
-        logging.info(f"Created agents: Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}, KnowledgeFetchers={num_knowledge_fetchers}")
+        logging.info(f"Created agents: Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}, KnowledgeFetchers={num_knowledge_fetchers}, HorizonScanners={num_horizon_scanners}, EpistemicValidators={num_epistemic_validators}, TechnogenesisAgents={num_technogenesis_agents}")
 
     def _simulation_loop(self):
         step_delay = self.config.get('step_delay', 0.1)
@@ -1140,7 +1418,10 @@ class SimulationRunner:
                     "EvaluatorAgent": self.config.get('evaluator_cost', 0.5),
                     "CombinerAgent": self.config.get('combiner_cost', 1.5),
                     "BridgingAgent": self.config.get('bridging_agent_cost', 2.0),
-                    "KnowledgeFetcherAgent": self.config.get('knowledge_fetcher_cost', 2.5)
+                    "KnowledgeFetcherAgent": self.config.get('knowledge_fetcher_cost', 2.5),
+                    "HorizonScannerAgent": self.config.get('horizonscanner_cost', 3.0),
+                    "EpistemicValidatorAgent": self.config.get('epistemic_validator_cost', 2.0),
+                    "TechnogenesisAgent": self.config.get('technogenesis_cost', 2.5)
                     # Añadir otros si existen
                 }
                 for agent in self.agents: # Filtrar agentes que pueden actuar
@@ -1159,10 +1440,11 @@ class SimulationRunner:
                 else:
                     logging.warning("No agents have enough Omega to act this step!")
 
-                # Aplicar Regeneración de Omega (sin cambios)
+                # Aplicar Regeneración de Omega con reputación
                 regen_rate = self.config.get('omega_regeneration_rate', 0.05)
                 if regen_rate > 0:
-                    for a in self.agents: a.omega += regen_rate
+                    for a in self.agents:
+                        a.omega += regen_rate * a.reputation
                 # --- FIN Lógica NORMAL ---
 
                 # Loguear resumen periódico (sin cambios)
@@ -1246,18 +1528,24 @@ class SimulationRunner:
         logging.info("--- Simulation Runner Stopped ---")
 
     def get_status(self):
+        """Devuelve el estado actual de la simulación (thread-safe)."""
         with self.lock:
-            num_nodes = len(self.graph.nodes)
-            num_edges = sum(len(n.connections_out) for n in self.graph.nodes.values())
-            avg_state = (sum(n.state for n in self.graph.nodes.values()) / num_nodes) if num_nodes > 0 else 0
-            status = {
-                "is_running": self.is_running,
-                "current_step": self.step_count,
-                "node_count": num_nodes,
-                "edge_count": num_edges,
-                "average_state": round(avg_state, 3),
-                "embeddings_count": len(self.graph.node_embeddings)
-            }
+             num_nodes = len(self.graph.nodes)
+             num_edges = sum(len(n.connections_out) for n in self.graph.nodes.values())
+             avg_state = (sum(n.state for n in self.graph.nodes.values()) / num_nodes) if num_nodes > 0 else 0
+             num_agents = len(self.agents)
+             avg_reputation = (sum(a.reputation for a in self.agents) / num_agents) if num_agents > 0 else 0.0
+             avg_omega = (sum(a.omega for a in self.agents) / num_agents) if num_agents > 0 else 0.0
+             status = {
+                 "is_running": self.is_running,
+                 "current_step": self.step_count,
+                 "node_count": num_nodes,
+                 "edge_count": num_edges,
+                 "average_state": round(avg_state, 3),
+                 "embeddings_count": len(self.graph.node_embeddings),
+                 "average_reputation": round(avg_reputation, 3),
+                 "average_omega": round(avg_omega, 2)
+             }
         return status
 
     def get_graph_elements_for_cytoscape(self):
@@ -1347,11 +1635,31 @@ def load_config(args):
         'num_bridging_agents': 1,         # Número de agentes puente
         'bridging_agent_cost': 2.0,         # Coste Omega por intento de puente
         'bridging_similarity_threshold': 0.75, # Umbral similitud [0,1] para crear puente
+        'bridging_adjusted_threshold': 0.65, # Umbral ajustado para similitud
         # --- Fin Nuevos Defaults ---
         # --- Nuevo Default para KnowledgeFetcher ---
         'knowledge_fetcher_cost': 2.5, # Coste Omega por búsqueda/creación
         'num_knowledge_fetchers': 1,   # Default 1 fetcher
         # --- Fin Nuevo Default ---
+        # --- Nuevos Defaults para Reputación Psi ---
+        'initial_reputation': 1.0,     # Reputación inicial
+        'proposer_psi_reward': 0.02,   # Recompensa Ψ por proponer nodo/enlace
+        'evaluator_psi_reward': 0.01,  # Recompensa Ψ por evaluar nodo
+        'combiner_psi_reward': 0.03,   # Recompensa Ψ por combinación exitosa
+        'bridging_psi_reward': 0.05,   # Recompensa Ψ por crear puente exitoso
+        'fetcher_psi_reward': 0.04,    # Recompensa Ψ por añadir nodo de info
+        'horizonscanner_cost': 3.0,    # Coste Omega por HorizonScanner
+        'horizonscanner_psi_reward': 0.05, # Recompensa Ψ por HorizonScanner
+        'num_horizon_scanners': 1,     # Número de HorizonScanner
+        'epistemic_validator_cost': 2.0, # Coste Omega por EpistemicValidator
+        'epistemic_validator_omega_reward': 0.05, # Recompensa Omega por EpistemicValidator
+        'epistemic_validator_psi_reward': 0.01, # Recompensa Ψ por EpistemicValidator
+        'num_epistemic_validators': 1, # Número de EpistemicValidator
+        'technogenesis_cost': 2.5, # Coste Omega por TechnogenesisAgent
+        'technogenesis_omega_reward': 0.05, # Recompensa Omega por TechnogenesisAgent
+        'technogenesis_psi_reward': 0.01, # Recompensa Ψ por TechnogenesisAgent
+        'num_technogenesis_agents': 1, # Número de TechnogenesisAgent
+        # --- Fin Nuevos Defaults ---
     }
     if args.config:
         try:
@@ -1399,6 +1707,20 @@ def get_graph_data():
     except Exception as e:
         app.logger.error("Error in /graph_data: %s", e)
         return jsonify({"error": str(e)}), 500
+
+@app.route('/control/stop', methods=['POST'])
+def stop_simulation():
+    if simulation_runner:
+        simulation_runner.stop()
+        return jsonify({"status": "stopped"})
+    return jsonify({"error": "Simulation not initialized"}), 500
+
+@app.route('/control/start', methods=['POST'])
+def start_simulation():
+    if simulation_runner and not simulation_runner.is_running:
+        simulation_runner.start()
+        return jsonify({"status": "started"})
+    return jsonify({"error": "Simulation already running or not initialized"}), 500
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run MSC Simulation with GNN and optional API.")
@@ -1450,10 +1772,36 @@ if __name__ == "__main__":
     parser.add_argument('--num_bridging_agents', type=int, help='Number of BridgingAgents.')
     parser.add_argument('--bridging_agent_cost', type=float, help='Omega cost for BridgingAgent action.')
     parser.add_argument('--bridging_similarity_threshold', type=float, help='Embedding similarity threshold [0,1] for bridging.')
+    parser.add_argument('--bridging_adjusted_threshold', type=float, help='Adjusted similarity threshold for bridging.')
     # --- Fin Nuevos Args ---
     # --- Nuevos args para KnowledgeFetcher ---
     parser.add_argument('--knowledge_fetcher_cost', type=float, help='Omega cost for KnowledgeFetcher action.')
     parser.add_argument('--num_knowledge_fetchers', type=int, default=1, help='Number of KnowledgeFetcher agents.')
+    # --- Fin Nuevos Args ---
+    # --- Nuevos args para Reputación Psi ---
+    parser.add_argument('--initial_reputation', type=float, help='Initial Psi reputation for agents.')
+    parser.add_argument('--proposer_psi_reward', type=float, help='Psi reward for Proposer action.')
+    parser.add_argument('--evaluator_psi_reward', type=float, help='Psi reward for Evaluator action.')
+    parser.add_argument('--combiner_psi_reward', type=float, help='Psi reward for Combiner action.')
+    parser.add_argument('--bridging_psi_reward', type=float, help='Psi reward for Bridging action.')
+    parser.add_argument('--fetcher_psi_reward', type=float, help='Psi reward for KnowledgeFetcher action.')
+    # --- Fin Nuevos Args ---
+    # --- Nuevos args para HorizonScanner ---
+    parser.add_argument('--horizonscanner_cost', type=float, help='Omega cost for HorizonScanner action.')
+    parser.add_argument('--horizonscanner_psi_reward', type=float, help='Psi reward for HorizonScanner action.')
+    parser.add_argument('--num_horizon_scanners', type=int, default=1, help='Number of HorizonScanner agents.')
+    # --- Fin Nuevos Args ---
+    # --- Nuevos args para EpistemicValidator ---
+    parser.add_argument('--epistemic_validator_cost', type=float, help='Omega cost for EpistemicValidator action.')
+    parser.add_argument('--epistemic_validator_omega_reward', type=float, help='Omega reward for EpistemicValidator action.')
+    parser.add_argument('--epistemic_validator_psi_reward', type=float, help='Psi reward for EpistemicValidator action.')
+    parser.add_argument('--num_epistemic_validators', type=int, default=1, help='Number of EpistemicValidator agents.')
+    # --- Fin Nuevos Args ---
+    # --- Nuevos args para TechnogenesisAgent ---
+    parser.add_argument('--technogenesis_cost', type=float, help='Omega cost for TechnogenesisAgent action.')
+    parser.add_argument('--technogenesis_omega_reward', type=float, help='Omega reward for TechnogenesisAgent action.')
+    parser.add_argument('--technogenesis_psi_reward', type=float, help='Psi reward for TechnogenesisAgent action.')
+    parser.add_argument('--num_technogenesis_agents', type=int, default=1, help='Number of TechnogenesisAgent agents.')
     # --- Fin Nuevos Args ---
 
     args = parser.parse_args()

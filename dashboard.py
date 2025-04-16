@@ -1,122 +1,106 @@
 import dash
-from dash import dcc, html, Input, Output, State # Input, Output, State son necesarios para callbacks
-import dash_bootstrap_components as dbc
-import requests # Para llamar a la API
-import plotly.graph_objects as go
-import time
-import dash_cytoscape as cyto # Importar Cytoscape
+from dash import dcc, html, Input, Output
+import dash_cytoscape as cyto
+import plotly.graph_objs as go
+import requests
+import pandas as pd
+import os
 
-# --- Configuración App Dash ---
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server
-app.title = "MSC Dashboard" # Título de la pestaña del navegador
+# Base URL where msc_simulation's Flask server is running
+BASE_URL = "http://127.0.0.1:5000"
 
-SIMULATION_API_URL = "http://127.0.0.1:5000" # URL del backend
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
+server = app.server  # Expose Flask server if needed by deployment
 
-# --- Layout de la Aplicación ---
-app.layout = dbc.Container([
-    html.H1("MSC Simulation Dashboard", className="text-center my-4"),
-    dbc.Row([
-        # Columna para Estado
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Simulation Status"),
-                dbc.CardBody(
-                    html.Div(id='status-text', children="Connecting to simulation API...")
-                )
-            ])
-        ], width=12, md=4, lg=3, className="mb-3"),
+app.layout = html.Div([
+    html.H1("MSC Simulation Dashboard"),
+    html.Div(id='simulation-status'),
+    html.Button("Refresh Data", id='refresh-button', n_clicks=0),
+    html.H2("Graph Visualization"),
+    cyto.Cytoscape(
+        id='cytoscape-graph',
+        layout={'name': 'cose'},
+        style={'width': '100%', 'height': '500px'},
+        elements=[]
+    ),
+    html.H2("Metrics Evolution"),
+    dcc.Graph(id='metrics-graph'),
+    html.H2("Controls"),
+    html.Button("Stop Simulation", id='stop-button', n_clicks=0),
+    html.Button("Start Simulation", id='start-button', n_clicks=0)
+])
 
-        # Columna para Visualización del Grafo
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Graph Visualization"),
-                dbc.CardBody([
-                    cyto.Cytoscape(
-                        id='cytoscape-graph',
-                        layout={'name': 'cose',
-                                'idealEdgeLength': 100,
-                                'nodeOverlap': 20,
-                                'padding': 30,
-                                'animate': False, # Desactivar animación de layout en cada update
-                                'randomize': False
-                               },
-                        style={'width': '100%', 'height': '600px', 'border': '1px solid #ddd', 'border-radius': '5px'},
-                        elements=[], # Empezar vacío
-                        stylesheet=[ # Estilos definidos antes
-                            {'selector': 'node', 'style': {'label': 'data(label)','font-size': '8px','color': '#333','text-valign': 'center','text-halign': 'center'}},
-                            {'selector': 'node[state]', 'style': {'background-color': 'mapData(state, 0, 1, #adebff, #ccff99)','width': 'mapData(state, 0, 1, 15, 50)','height': 'mapData(state, 0, 1, 15, 50)'}},
-                            {'selector': 'edge', 'style': {'width': 1, 'curve-style': 'bezier', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#ccc'}},
-                            {'selector': 'edge[utility]', 'style': {'line-color': 'mapData(utility, -1, 1, red, blue)', 'width': 'mapData(utility, -1, 1, 3, 1)'}} # Grosor inverso a utilidad? Ajustar mapeo si es necesario, ej 'mapData(abs(utility), 0, 1, 1, 5)'
-                        ]
-                    )
-                ])
-            ])
-        ], width=12, md=8, lg=9)
-    ]),
-
-    # Componente Interval para actualizaciones periódicas
-    dcc.Interval(
-        id='interval-component',
-        interval=5*1000, # Cada 5 segundos
-        n_intervals=0
-    )
-], fluid=True)
-
-# --- Callback ACTUALIZADO para Estado Y Grafo ---
 @app.callback(
-    Output('status-text', 'children'),      # Output 1
-    Output('cytoscape-graph', 'elements'), # Output 2 <-- NUEVO
-    Input('interval-component', 'n_intervals') # Trigger
+    Output('simulation-status', 'children'),
+    Input('refresh-button', 'n_clicks')
 )
-def update_dashboard(n):
-    """Consulta AMBAS APIs (/status y /graph_data) y actualiza el dashboard."""
-
-    # Valores por defecto
-    status_text_content = "Failed to load status."
-    cytoscape_elements = [] # Grafo vacío si falla
-
-    # 1. Obtener Estado
+def update_status(n_clicks):
     try:
-        response_status = requests.get(f"{SIMULATION_API_URL}/status", timeout=4)
-        response_status.raise_for_status()
-        status_data = response_status.json()
-        status_text_content = [
-            f"Running: {status_data.get('is_running', 'N/A')}", html.Br(),
-            f"Step: {status_data.get('current_step', 'N/A')}", html.Br(),
-            f"Nodes: {status_data.get('node_count', 'N/A')}", html.Br(),
-            f"Edges: {status_data.get('edge_count', 'N/A')}", html.Br(),
-            f"Avg State: {status_data.get('average_state', 'N/A')}", html.Br(),
-            f"Embeddings: {status_data.get('embeddings_count', 'N/A')}"
-        ]
-    except requests.exceptions.RequestException as e:
-        status_text_content = f"Error Status API: {e}"
+        res = requests.get(f"{BASE_URL}/status")
+        status = res.json()
+        return html.Div([
+            html.P(f"Simulation Running: {status.get('is_running')}"),
+            html.P(f"Current Step: {status.get('current_step')}"),
+            html.P(f"Node Count: {status.get('node_count')}"),
+            html.P(f"Edge Count: {status.get('edge_count')}"),
+            html.P(f"Average State: {status.get('average_state')}"),
+            html.P(f"Average Reputation: {status.get('average_reputation')}"),
+            html.P(f"Average Omega: {status.get('average_omega')}")
+        ])
     except Exception as e:
-        status_text_content = f"Error Status processing: {e}"
+        return f"Error fetching status: {e}"
 
-    # 2. Obtener Datos del Grafo (NUEVO)
+@app.callback(
+    Output('cytoscape-graph', 'elements'),
+    Input('refresh-button', 'n_clicks')
+)
+def update_graph(n_clicks):
     try:
-        response_graph = requests.get(f"{SIMULATION_API_URL}/graph_data", timeout=4)
-        response_graph.raise_for_status()
-        cytoscape_elements = response_graph.json() # La API ya devuelve el formato correcto
-    except requests.exceptions.RequestException as e:
-        # Añadir mensaje de error al status si falla la carga del grafo
-        error_msg = f"Error Graph API: {e}"
-        if isinstance(status_text_content, list): status_text_content.append(html.Br()); status_text_content.append(html.Span(error_msg, style={'color':'red'}))
-        else: status_text_content = html.Div([html.Span(status_text_content), html.Br(), html.Span(error_msg, style={'color':'red'})])
-        # Devolver grafo vacío en caso de error
-        cytoscape_elements = []
+        res = requests.get(f"{BASE_URL}/graph_data")
+        elements = res.json()
+        return elements
     except Exception as e:
-        error_msg = f"Error Graph processing: {e}"
-        if isinstance(status_text_content, list): status_text_content.append(html.Br()); status_text_content.append(html.Span(error_msg, style={'color':'red'}))
-        else: status_text_content = html.Div([html.Span(status_text_content), html.Br(), html.Span(error_msg, style={'color':'red'})])
-        cytoscape_elements = []
+        return []
 
-    # Devolver AMBOS outputs para actualizar el dashboard
-    return status_text_content, cytoscape_elements
+@app.callback(
+    Output('metrics-graph', 'figure'),
+    Input('refresh-button', 'n_clicks')
+)
+def update_metrics(n_clicks):
+    # CSV metrics file path can be configured via an environment variable
+    metrics_path = os.getenv("METRICS_CSV_PATH", "metrics.csv")
+    if not os.path.exists(metrics_path):
+        return {'data': [], 'layout': go.Layout(title="Metrics Evolution (CSV not found)")}
+    try:
+        df = pd.read_csv(metrics_path)
+        if df.empty:
+            return {'data': [], 'layout': go.Layout(title="Metrics Evolution (No Data)")}
+        figure = go.Figure()
+        if "Step" in df.columns and "Nodes" in df.columns:
+            figure.add_trace(go.Scatter(x=df["Step"], y=df["Nodes"],
+                                        mode='lines+markers', name='Nodes'))
+        if "Step" in df.columns and "Edges" in df.columns:
+            figure.add_trace(go.Scatter(x=df["Step"], y=df["Edges"],
+                                        mode='lines+markers', name='Edges'))
+        if "Step" in df.columns and "MeanState" in df.columns:
+            figure.add_trace(go.Scatter(x=df["Step"], y=df["MeanState"],
+                                        mode='lines+markers', name='MeanState'))
+        figure.update_layout(title="Global Metrics Evolution",
+                             xaxis_title="Step", yaxis_title="Value")
+        return figure
+    except Exception as e:
+        return {'data': [], 'layout': go.Layout(title=f"Error reading CSV: {e}")}
 
+@app.callback(
+    Output('stop-button', 'children'),
+    Output('start-button', 'children'),
+    Input('stop-button', 'n_clicks'),
+    Input('start-button', 'n_clicks')
+)
+def control_simulation(stop_n, start_n):
+    # These are placeholders; integration with simulation control endpoints is expected.
+    # For example, POST requests to /control/stop or /control/start could be invoked here.
+    return "Stop Simulation", "Start Simulation"
 
-# --- Ejecutar la App Dash ---
 if __name__ == '__main__':
-    print(f"Dash app running on http://127.0.0.1:8050")
-    app.run_server(debug=True, host='127.0.0.1', port=8050)
+    app.run_server(debug=True, port=8050)
