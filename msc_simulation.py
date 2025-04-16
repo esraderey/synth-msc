@@ -13,6 +13,7 @@ from torch_geometric.utils import negative_sampling
 import os
 from dotenv import load_dotenv
 import statistics         # <-- AÑADIR para métricas de estado
+import csv                # <-- AÑADIR para escribir archivos CSV
 
 load_dotenv()  # Carga variables desde .env al entorno
 
@@ -287,14 +288,14 @@ class CollectiveSynthesisGraph:
         logging.log(log_level, f"Graph Summary - Nodes: {num_nodes}, Edges: {num_edges}, Average State: {avg_state:.3f}")
 
     # --- NUEVO MÉTODO PARA MÉTRICAS GLOBALES ---
-    def log_global_metrics(self, log_level=logging.INFO):
+    def log_global_metrics(self, log_level=logging.INFO, current_step="N/A"):  # <-- Añadir current_step
         """Calcula y loguea métricas globales del grafo."""
+        logging.log(log_level, f"--- Global Metrics (Step: {current_step}) ---")  # <-- Usar current_step
+
         num_nodes = len(self.nodes)
         if num_nodes < 2:  # No se pueden calcular muchas métricas con 0 o 1 nodo
             logging.log(log_level, "--- Global Metrics: Skipped (Graph too small) ---")
             return
-
-        logging.log(log_level, f"--- Global Metrics (Step: {self.config.get('current_step_for_log', 'N/A')}) ---")
 
         # Crear grafo NetworkX temporal para cálculos
         G = nx.DiGraph()
@@ -345,6 +346,63 @@ class CollectiveSynthesisGraph:
         else:
             logging.log(log_level, "  Node State (sj) Stats: N/A (no nodes)")
     # --- Fin del método log_global_metrics ---
+
+    # --- NUEVO MÉTODO PARA OBTENER MÉTRICAS ---
+    def get_global_metrics(self):
+        """Calcula y devuelve métricas globales del grafo como diccionario."""
+        metrics = {k: None for k in [
+            "Nodes", "Edges", "Density", "AvgClustering", "Components",
+            "MeanState", "MedianState", "StdDevState", "MinState", "MaxState"
+        ]}
+        num_nodes = len(self.nodes)
+        metrics["Nodes"] = num_nodes
+
+        if num_nodes < 1: 
+            return metrics
+
+        node_states = [n.state for n in self.nodes.values()]
+        if node_states:
+            metrics["MeanState"] = statistics.mean(node_states)
+            metrics["MedianState"] = statistics.median(node_states)
+            metrics["MinState"] = min(node_states)
+            metrics["MaxState"] = max(node_states)
+            metrics["StdDevState"] = statistics.stdev(node_states) if num_nodes > 1 else 0.0
+
+        G = nx.DiGraph()
+        for node_id in self.nodes.keys():
+            G.add_node(str(node_id))
+        num_edges = 0
+        for node_id, node in self.nodes.items():
+            for target_id in node.connections_out.keys():
+                if str(node_id) in G and str(target_id) in G:
+                    G.add_edge(str(node_id), str(target_id))
+                    num_edges += 1
+        metrics["Edges"] = num_edges
+
+        if num_nodes >= 2:
+            try: 
+                metrics["Density"] = nx.density(G)
+            except:
+                pass
+        if num_nodes >= 1:
+            try: 
+                metrics["Components"] = nx.number_weakly_connected_components(G)
+            except:
+                pass
+            try:
+                if num_edges > 0:
+                    metrics["AvgClustering"] = nx.average_clustering(G.to_undirected(as_view=True))
+                else:
+                    metrics["AvgClustering"] = 0.0
+            except:
+                pass
+
+        for key, value in metrics.items():
+            if isinstance(value, float):
+                metrics[key] = round(value, 4)
+
+        return metrics
+    # --- Fin get_global_metrics ---
 
     def save_state(self, base_file_path):
         graphml_path = base_file_path + ".graphml"
@@ -793,6 +851,29 @@ class SimulationRunner:
         self.step_count = 0
         self.lock = threading.Lock()
 
+        # --- NUEVO: Inicializar Log de Métricas CSV ---
+        self.metrics_file = None
+        self.metrics_writer = None
+        self.metrics_fieldnames = [
+            "Step", "Nodes", "Edges", "Density", "AvgClustering",
+            "Components", "MeanState", "MedianState", "StdDevState",
+            "MinState", "MaxState"
+        ]
+        metrics_path = self.config.get('metrics_log_path', None)
+        if metrics_path:
+            try:
+                write_header = not os.path.exists(metrics_path) or os.path.getsize(metrics_path) == 0
+                self.metrics_file = open(metrics_path, 'a', newline='', encoding='utf-8')
+                self.metrics_writer = csv.DictWriter(self.metrics_file, fieldnames=self.metrics_fieldnames)
+                if write_header:
+                    self.metrics_writer.writeheader()
+                logging.info(f"Logging global metrics to: {metrics_path}")
+            except Exception as e:
+                logging.error(f"Failed to open metrics log file {metrics_path}: {e}")
+                self.metrics_file = None
+                self.metrics_writer = None
+        # --- Fin Inicializar Log ---
+
         load_path = self.config.get('load_state', None)
         if load_path:
             logging.info(f"--- Loading initial state from: {load_path} ---")
@@ -899,12 +980,22 @@ class SimulationRunner:
                         # a.omega = min(a.omega, max_omega)
                 # --- FIN: Lógica Modificada Selección/Acción con Omega ---
 
+                # --- NUEVO: Obtener y escribir métricas globales ---
+                if self.metrics_writer:
+                    metrics = self.graph.get_global_metrics()
+                    if metrics:
+                        metrics["Step"] = self.step_count
+                        try:
+                            self.metrics_writer.writerow(metrics)
+                            self.metrics_file.flush()
+                        except Exception as e:
+                            logging.error(f"Error writing metrics to CSV at step {self.step_count}: {e}")
+                # --- FIN Escritura Métricas ---
+
                 if self.step_count % summary_frequency == 0:
                     self.graph.print_summary(logging.INFO)
-                    # --- NUEVA LLAMADA A MÉTRICAS ---
-                    self.config['current_step_for_log'] = self.step_count  # (opcional) para pasar el paso actual
-                    self.graph.log_global_metrics(logging.INFO)
-                    # --- FIN NUEVA LLAMADA ---
+                    # Pasar el step actual al método de métricas
+                    self.graph.log_global_metrics(logging.INFO, current_step=self.step_count)
             time.sleep(step_delay)
         logging.info("--- Simulation loop finished ---")
 
@@ -937,7 +1028,28 @@ class SimulationRunner:
                 self.graph.save_state(save_path)
             logging.info("--- Final Graph State ---")
             self.graph.print_summary(logging.INFO)
-            self.graph.log_global_metrics(logging.INFO)  # NUEVO: Loguear métricas globales
+            self.graph.log_global_metrics(logging.INFO, current_step=self.step_count)  # <-- Pasar current_step
+
+            # --- NUEVO: Escribir Métricas Finales ---
+            if self.metrics_writer:
+                logging.info("Writing final metrics...")
+                metrics = self.graph.get_global_metrics()
+                if metrics:
+                    metrics["Step"] = self.step_count
+                    try:
+                        self.metrics_writer.writerow(metrics)
+                    except Exception as e:
+                        logging.error(f"Error writing final metrics to CSV: {e}")
+            # --- FIN Escritura Final ---
+
+            # --- NUEVO: Cerrar archivo CSV al final de stop() ---
+            if self.metrics_file:
+                try:
+                    self.metrics_file.close()
+                    logging.info("Metrics log file closed.")
+                except Exception as e:
+                    logging.error(f"Error closing metrics log file: {e}")
+            # --- FIN Cerrar Archivo ---
 
             # --- Llamada a guardar visualización (si path está configurado) ---
             save_vis_path = self.config.get('visualization_output_path', None)
@@ -1025,7 +1137,6 @@ def load_config(args):
         'evaluator_decay_rate': 0.01,
         'combiner_compatibility_threshold': 0.6,
         'combiner_similarity_threshold': 0.7,
-        'visualize_graph': False,
         'gnn_hidden_dim': 16,
         'gnn_embedding_dim': 8,
         'gnn_update_frequency': 10,
@@ -1044,14 +1155,14 @@ def load_config(args):
         'combiner_cost': 1.5,
         'omega_regeneration_rate': 0.1,
         # --- Nuevos Defaults para Recompensas Omega ---
-        'evaluator_reward_factor': 2.0,      # Multiplicador para recompensa de evaluación
-        'evaluator_reward_threshold': 0.05,    # Aumento mínimo de estado para recompensa
-        'proposer_reward_factor': 0.5,         # Multiplicador por utilidad positiva de proposición
-        'combiner_reward_factor': 1.0,         # Multiplicador por utilidad positiva de combinación
-        # --- Fin Nuevos Defaults ---
+        'evaluator_reward_factor': 2.0,
+        'evaluator_reward_threshold': 0.05,
+        'proposer_reward_factor': 0.5,
+        'combiner_reward_factor': 1.0,
         # --- Nuevo Default para Guardar Visualización ---
-        'visualization_output_path': None     # Default: no guardar imagen
-        # --- Fin Nuevo Default ---
+        'visualization_output_path': None,
+        # --- Nuevo Default para Log de Métricas ---
+        'metrics_log_path': None
     }
     if args.config:
         try:
@@ -1122,6 +1233,10 @@ if __name__ == "__main__":
     # --- Nuevo Arg para Guardar Visualización ---
     parser.add_argument('--visualization_output_path', type=str, default=None,
                         help='Path to save the final graph visualization image (e.g., graph.png).')
+    # --- Fin Nuevo Arg ---
+    # --- Nuevo Arg para Log de Métricas ---
+    parser.add_argument('--metrics_log_path', type=str, default=None,
+                        help='Path to save the global metrics CSV log (e.g., metrics.csv).')
     # --- Fin Nuevo Arg ---
     parser.add_argument('--run_api', action='store_true', help='Run Flask API server (runs continuously).')
     parser.add_argument('--summary_frequency', type=int, help='Log summary frequency (steps).')
