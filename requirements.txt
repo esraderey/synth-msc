@@ -11,3 +11,5 @@ requests
 dash-cytoscape
 pandas
 wikipedia
+ecdsa
+base58
