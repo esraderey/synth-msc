@@ -17,3 +17,9 @@ __pycache__/
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
+# Simulation Outputs & Analysis Scripts
+*.csv
+*.png
+*.pth
+*.graphml
+analyze_metrics.py
