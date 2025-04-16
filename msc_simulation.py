@@ -437,6 +437,88 @@ class CollectiveSynthesisGraph:
                 raise e
         return elements
 
+    # --- MÉTODO visualize_graph ACTUALIZADO PARA GUARDAR ---
+    def visualize_graph(self, config):
+        """Genera y guarda una visualización del grafo si se especifica en config."""
+        output_path = config.get('visualization_output_path', None)
+        # Solo proceder si hay una ruta de salida configurada
+        if not output_path:
+            return
+
+        if not self.nodes:
+            logging.warning("Cannot visualize empty graph. Image not saved.")
+            return
+
+        logging.info(f"Generating graph visualization to save at: {output_path}")
+        G = nx.DiGraph()
+        node_labels = {}
+        node_sizes = []
+        node_colors = []
+        # Procesar nodos
+        for node_id, node in self.nodes.items():
+            node_id_str = str(node_id)
+            G.add_node(node_id_str)
+            node_labels[node_id_str] = f"{node_id}\nS={node.state:.2f}"
+            node_sizes.append(100 + node.state * 1500)
+            node_colors.append(node.state)
+        edge_list = []
+        edge_weights = []
+        edge_colors = []
+        # Procesar aristas
+        for node_id, node in self.nodes.items():
+            node_id_str = str(node_id)
+            for target_id, utility in node.connections_out.items():
+                target_id_str = str(target_id)
+                if node_id_str in G and target_id_str in G:
+                    edge_list.append((node_id_str, target_id_str))
+                    edge_weights.append(1 + abs(utility) * 4)
+                    edge_colors.append(utility)
+
+        if not G.nodes:
+            logging.warning("No nodes to visualize after processing. Image not saved.")
+            return
+
+        fig, ax = plt.subplots(figsize=(16, 9))
+        ax.set_title("MSC Graph Visualization")
+        ax.axis('off')
+
+        # Calcular layout
+        try:
+            pos = nx.spring_layout(G, k=0.5, iterations=50)
+        except Exception as e:
+            logging.error(f"Error calculating layout: {e}. Using random layout.")
+            pos = nx.random_layout(G)
+
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, cmap=plt.cm.viridis,
+                               node_size=node_sizes, alpha=0.8)
+        nx.draw_networkx_edges(G, pos, ax=ax, edgelist=edge_list, edge_color=edge_colors,
+                               edge_cmap=plt.cm.coolwarm, width=edge_weights, alpha=0.6,
+                               arrows=True, arrowstyle='->', arrowsize=15)
+        nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=8)
+
+        if node_colors:
+            norm_nodes = plt.Normalize(vmin=min(node_colors or [0]), vmax=max(node_colors or [1]))
+            sm_nodes = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=norm_nodes)
+            sm_nodes.set_array([])
+            cbar_nodes = fig.colorbar(sm_nodes, ax=ax, shrink=0.5, aspect=20)
+            cbar_nodes.set_label('Node State (sj)')
+
+        if edge_colors:
+            norm_edges = plt.Normalize(vmin=min(edge_colors or [-1]), vmax=max(edge_colors or [1]))
+            sm_edges = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=norm_edges)
+            sm_edges.set_array([])
+            cbar_edges = fig.colorbar(sm_edges, ax=ax, shrink=0.5, aspect=20)
+            cbar_edges.set_label('Edge Utility (uij)')
+
+        try:
+            plt.savefig(output_path, bbox_inches='tight', dpi=150)
+            logging.info(f"Graph visualization saved successfully to {output_path}")
+        except Exception as e:
+            logging.error(f"Error saving visualization to {output_path}: {e}")
+        finally:
+            plt.close(fig)
+    # --- Fin método visualize_graph ---
+
 class Synthesizer:
     """Clase base para los agentes."""
     def __init__(self, agent_id, graph, config):
@@ -766,6 +848,14 @@ class SimulationRunner:
                 self.graph.save_state(save_path)
             logging.info("--- Final Graph State ---")
             self.graph.print_summary(logging.INFO)
+
+            # --- Llamada a guardar visualización (si está configurado) ---
+            logging.info("Attempting to save final graph visualization if configured...")
+            try:
+                self.graph.visualize_graph(self.config)
+            except Exception as e:
+                logging.error(f"Error during final visualization saving attempt: {e}")
+            # --- Fin llamada ---
         logging.info("--- Simulation Runner Stopped ---")
 
     def get_status(self):
@@ -853,11 +943,14 @@ def load_config(args):
         'gnn_training_epochs': 5,
         'gnn_learning_rate': 0.01,
         # --- Nuevos Defaults para Omega ---
-        'initial_omega': 100.0,       # Omega inicial para cada agente
-        'proposer_cost': 1.0,         # Coste de acción para Proposer
-        'evaluator_cost': 0.5,        # Coste de acción para Evaluator
-        'combiner_cost': 1.5,         # Coste de acción para Combiner
-        'omega_regeneration_rate': 0.1 # Omega regenerado por paso
+        'initial_omega': 100.0,
+        'proposer_cost': 1.0,
+        'evaluator_cost': 0.5,
+        'combiner_cost': 1.5,
+        'omega_regeneration_rate': 0.1,
+        # --- Nuevo Default para Guardar Visualización ---
+        'visualization_output_path': None  # Default: no guardar imagen
+        # --- Fin Nuevo Default ---
     }
     if args.config:
         try:
@@ -924,7 +1017,11 @@ if __name__ == "__main__":
     parser.add_argument('--gnn_update_frequency', type=int)
     parser.add_argument('--visualize_graph', action='store_true', help='Show graph plot at the end (only in fixed-step mode without --run_api).')
     parser.add_argument('--save_state', type=str, help='Base path to save simulation state on stop.')
-    parser.add_argument('--load_state', type=str, help='Base path to load simulation state at start.')
+    parser.add_argument('--load_state', type=str, help='Base path to load simulation state from.')
+    # --- Nuevo Arg para Guardar Visualización ---
+    parser.add_argument('--visualization_output_path', type=str, default=None,
+                        help='Path to save the final graph visualization image (e.g., graph.png).')
+    # --- Fin Nuevo Arg ---
     parser.add_argument('--run_api', action='store_true', help='Run Flask API server (runs continuously).')
     parser.add_argument('--summary_frequency', type=int, help='Log summary frequency (steps).')
     # --- Nuevos args para Omega ---
