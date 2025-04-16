@@ -12,6 +12,7 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.utils import negative_sampling
 import os
 from dotenv import load_dotenv
+import statistics         # <-- AÑADIR para métricas de estado
 
 load_dotenv()  # Carga variables desde .env al entorno
 
@@ -284,6 +285,66 @@ class CollectiveSynthesisGraph:
         num_edges = sum(len(n.connections_out) for n in self.nodes.values())
         avg_state = (sum(n.state for n in self.nodes.values()) / num_nodes) if num_nodes > 0 else 0
         logging.log(log_level, f"Graph Summary - Nodes: {num_nodes}, Edges: {num_edges}, Average State: {avg_state:.3f}")
+
+    # --- NUEVO MÉTODO PARA MÉTRICAS GLOBALES ---
+    def log_global_metrics(self, log_level=logging.INFO):
+        """Calcula y loguea métricas globales del grafo."""
+        num_nodes = len(self.nodes)
+        if num_nodes < 2:  # No se pueden calcular muchas métricas con 0 o 1 nodo
+            logging.log(log_level, "--- Global Metrics: Skipped (Graph too small) ---")
+            return
+
+        logging.log(log_level, f"--- Global Metrics (Step: {self.config.get('current_step_for_log', 'N/A')}) ---")
+
+        # Crear grafo NetworkX temporal para cálculos
+        G = nx.DiGraph()
+        node_states = []
+        for node_id, node in self.nodes.items():
+            node_id_str = str(node_id)
+            G.add_node(node_id_str)
+            node_states.append(node.state)
+        num_edges = 0
+        for node_id, node in self.nodes.items():
+            node_id_str = str(node_id)
+            for target_id, utility in node.connections_out.items():
+                target_id_str = str(target_id)
+                if node_id_str in G and target_id_str in G:
+                    G.add_edge(node_id_str, target_id_str)
+                    num_edges += 1
+
+        # Calcular Métricas Estructurales
+        try:
+            density = nx.density(G)
+            logging.log(log_level, f"  Density: {density:.4f}")
+        except Exception as e:
+            logging.warning(f"  Could not calculate density: {e}")
+
+        try:
+            if num_nodes > 0:
+                avg_clustering = nx.average_clustering(G.to_undirected(as_view=True))
+                logging.log(log_level, f"  Avg. Clustering Coefficient: {avg_clustering:.4f}")
+            else:
+                logging.log(log_level, "  Avg. Clustering Coefficient: N/A (no nodes)")
+        except Exception as e:
+            logging.warning(f"  Could not calculate avg clustering: {e}")
+
+        try:
+            num_components = nx.number_weakly_connected_components(G)
+            logging.log(log_level, f"  Weakly Connected Components: {num_components}")
+        except Exception as e:
+            logging.warning(f"  Could not calculate connected components: {e}")
+
+        # Calcular Métricas de Estado
+        if node_states:
+            mean_state = statistics.mean(node_states)
+            median_state = statistics.median(node_states)
+            stdev_state = statistics.stdev(node_states) if len(node_states) > 1 else 0.0
+            min_state = min(node_states)
+            max_state = max(node_states)
+            logging.log(log_level, f"  Node State (sj) Stats: Mean={mean_state:.4f}, Median={median_state:.4f}, StdDev={stdev_state:.4f}, Min={min_state:.4f}, Max={max_state:.4f}")
+        else:
+            logging.log(log_level, "  Node State (sj) Stats: N/A (no nodes)")
+    # --- Fin del método log_global_metrics ---
 
     def save_state(self, base_file_path):
         graphml_path = base_file_path + ".graphml"
@@ -840,6 +901,10 @@ class SimulationRunner:
 
                 if self.step_count % summary_frequency == 0:
                     self.graph.print_summary(logging.INFO)
+                    # --- NUEVA LLAMADA A MÉTRICAS ---
+                    self.config['current_step_for_log'] = self.step_count  # (opcional) para pasar el paso actual
+                    self.graph.log_global_metrics(logging.INFO)
+                    # --- FIN NUEVA LLAMADA ---
             time.sleep(step_delay)
         logging.info("--- Simulation loop finished ---")
 
@@ -872,6 +937,7 @@ class SimulationRunner:
                 self.graph.save_state(save_path)
             logging.info("--- Final Graph State ---")
             self.graph.print_summary(logging.INFO)
+            self.graph.log_global_metrics(logging.INFO)  # NUEVO: Loguear métricas globales
 
             # --- Llamada a guardar visualización (si está configurado) ---
             logging.info("Attempting to save final graph visualization if configured...")
