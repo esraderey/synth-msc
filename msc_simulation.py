@@ -813,6 +813,87 @@ class AdvancedCoderAgent(Synthesizer):
             f"```python\n{generated_code}\n```"
         )
 
+# --- NUEVA CLASE: BridgingAgent ---
+class BridgingAgent(Synthesizer):
+    """Intenta conectar componentes desconectados del grafo basados en similitud de embeddings."""
+    def __init__(self, agent_id, graph, config):
+        super().__init__(agent_id, graph, config)
+        self.similarity_threshold = config.get('bridging_similarity_threshold', 0.75)
+
+    def _get_highest_state_node_in_component(self, component_node_ids):
+        """Encuentra el nodo con mayor estado dentro de un conjunto de IDs."""
+        max_state = -1.0
+        best_node_id = -1
+        component_nodes_int = {int(nid) for nid in component_node_ids}  # Convertir IDs string a int
+
+        for node_id in component_nodes_int:
+            node = self.graph.get_node(node_id)
+            if node and node.state > max_state:
+                if self.graph.get_embedding(node_id) is not None:
+                     max_state = node.state
+                     best_node_id = node_id
+        return best_node_id  # Devuelve el ID entero o -1 si no se encontró
+
+    def calculate_cosine_similarity(self, emb1, emb2):
+        """Calcula similitud coseno normalizada [0, 1]."""
+        if emb1 is None or emb2 is None:
+            return 0.0
+        sim = F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
+        return (sim + 1) / 2
+
+    def act(self):
+        if len(self.graph.nodes) < 2 or not self.graph.node_embeddings:
+            return  # Necesita nodos y embeddings
+
+        # 1. Construir grafo NetworkX temporal (usar IDs como string)
+        G = nx.DiGraph()
+        valid_node_ids_str = {str(nid) for nid in self.graph.nodes.keys()}
+        for node_id_str in valid_node_ids_str:
+            G.add_node(node_id_str)
+        for source_id, node in self.graph.nodes.items():
+            source_id_str = str(source_id)
+            for target_id in node.connections_out.keys():
+                target_id_str = str(target_id)
+                if source_id_str in G and target_id_str in G:
+                    G.add_edge(source_id_str, target_id_str)
+
+        # 2. Encontrar componentes conectados (grafo no dirigido)
+        components = list(nx.connected_components(G.to_undirected()))
+        num_components = len(components)
+
+        if num_components <= 1:
+            return  # El grafo ya es conexo
+
+        logging.info(f"BridgingAgent {self.id}: Found {num_components} components. Attempting to bridge.")
+
+        # 3. Seleccionar dos componentes distintos al azar
+        comp_indices = random.sample(range(num_components), 2)
+        component_a_ids_str = components[comp_indices[0]]
+        component_b_ids_str = components[comp_indices[1]]
+
+        # 4. Encontrar nodo representante en cada componente
+        node_a_id = self._get_highest_state_node_in_component(component_a_ids_str)
+        node_b_id = self._get_highest_state_node_in_component(component_b_ids_str)
+
+        if node_a_id == -1 or node_b_id == -1:
+            logging.debug(f"BridgingAgent {self.id}: Could not find suitable nodes with embeddings in selected components.")
+            return
+
+        # 5. Calcular similitud de embeddings
+        emb_a = self.graph.get_embedding(node_a_id)
+        emb_b = self.graph.get_embedding(node_b_id)
+        similarity = self.calculate_cosine_similarity(emb_a, emb_b)
+        logging.info(f"BridgingAgent {self.id}: Checking bridge between node {node_a_id} (Comp {comp_indices[0]}) and {node_b_id} (Comp {comp_indices[1]}). Similarity: {similarity:.3f}")
+
+        # 6. Crear enlace si la similitud es alta
+        if similarity >= self.similarity_threshold:
+            bridge_utility = self.config.get('bridging_utility', 0.6)
+            added1 = self.graph.add_edge(node_a_id, node_b_id, bridge_utility)
+            added2 = self.graph.add_edge(node_b_id, node_a_id, bridge_utility)
+            if added1 or added2:
+                 logging.info(f"BridgingAgent {self.id}: **** Bridge CREATED between node {node_a_id} and {node_b_id} (Similarity: {similarity:.3f}) ****")
+# --- Fin BridgingAgent ---
+
 def generate_code(prompt):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -889,6 +970,7 @@ class SimulationRunner:
         num_evaluators = config.get('num_evaluators', 6)
         num_combiners = config.get('num_combiners', 2)
         num_coders = config.get('num_coders', 1)
+        num_bridging_agents = config.get('num_bridging_agents', 1)  # NUEVO
         for i in range(num_proposers):
             self.agents.append(ProposerAgent(f"P{i}", self.graph, config))
         for i in range(num_evaluators):
@@ -897,6 +979,13 @@ class SimulationRunner:
             self.agents.append(CombinerAgent(f"C{i}", self.graph, config))
         for i in range(num_coders):
             self.agents.append(AdvancedCoderAgent(f"CD{i}", self.graph, config))
+        # --- AÑADIR Creación de BridgingAgent ---
+        num_bridging_agents = config.get('num_bridging_agents', 1)
+        for i in range(num_bridging_agents):
+             self.agents.append(BridgingAgent(f"B{i}", self.graph, config))
+        # --- Fin Creación Bridging ---
+        
+        logging.info(f"Created agents: Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}")
 
     def _simulation_loop(self):
         step_delay = self.config.get('step_delay', 0.1)
@@ -940,8 +1029,8 @@ class SimulationRunner:
                 agent_costs = {
                     "ProposerAgent": self.config.get('proposer_cost', 1.0),
                     "EvaluatorAgent": self.config.get('evaluator_cost', 0.5),
-                    "CombinerAgent": self.config.get('combiner_cost', 1.5)
-                    # Añadir costes para otros tipos de agente si los hubiera
+                    "CombinerAgent": self.config.get('combiner_cost', 1.5),
+                    "BridgingAgent": self.config.get('bridging_agent_cost', 2.0)  # <-- AÑADIDO
                 }
 
                 # Filtrar agentes que pueden actuar
@@ -1162,7 +1251,12 @@ def load_config(args):
         # --- Nuevo Default para Guardar Visualización ---
         'visualization_output_path': None,
         # --- Nuevo Default para Log de Métricas ---
-        'metrics_log_path': None
+        'metrics_log_path': None,
+        # --- Nuevos Defaults para BridgingAgent ---
+        'num_bridging_agents': 1,         # Número de agentes puente
+        'bridging_agent_cost': 2.0,         # Coste Omega por intento de puente
+        'bridging_similarity_threshold': 0.75, # Umbral similitud [0,1] para crear puente
+        # --- Fin Nuevos Defaults ---
     }
     if args.config:
         try:
@@ -1257,6 +1351,11 @@ if __name__ == "__main__":
     parser.add_argument('--gnn_training_epochs', type=int, help='Epochs per GNN training session.')
     parser.add_argument('--gnn_learning_rate', type=float, help='Learning rate for GNN optimizer.')
     # --- Fin Nuevos ---
+    # --- Nuevos args para BridgingAgent ---
+    parser.add_argument('--num_bridging_agents', type=int, help='Number of BridgingAgents.')
+    parser.add_argument('--bridging_agent_cost', type=float, help='Omega cost for BridgingAgent action.')
+    parser.add_argument('--bridging_similarity_threshold', type=float, help='Embedding similarity threshold [0,1] for bridging.')
+    # --- Fin Nuevos Args ---
 
     args = parser.parse_args()
     final_config = load_config(args)
