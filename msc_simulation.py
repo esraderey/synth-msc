@@ -838,6 +838,20 @@ class BridgingAgent(Synthesizer):
                      best_node_id = node_id
         return best_node_id  # Devuelve el ID entero o -1 si no se encontró
 
+    def _get_random_node_in_component_with_embedding(self, component_node_ids_str):
+        """Encuentra un nodo ALEATORIO con embedding dentro de un conjunto de IDs."""
+        candidate_node_ids = []
+        for node_id_str in component_node_ids_str:
+            try:
+                node_id = int(node_id_str)
+                if node_id in self.graph.nodes and self.graph.get_embedding(node_id) is not None:
+                    candidate_node_ids.append(node_id)
+            except ValueError:
+                continue  # Ignorar IDs no enteros
+        if not candidate_node_ids:
+            return -1  # No se encontraron candidatos válidos
+        return random.choice(candidate_node_ids)
+
     def calculate_cosine_similarity(self, emb1, emb2):
         """Calcula similitud coseno normalizada [0, 1]."""
         if emb1 is None or emb2 is None:
@@ -849,7 +863,7 @@ class BridgingAgent(Synthesizer):
         if len(self.graph.nodes) < 2 or not self.graph.node_embeddings:
             return  # Necesita nodos y embeddings
 
-        # 1. Construir grafo NetworkX temporal (usar IDs como string)
+        # 1. Construir grafo NetworkX temporal
         G = nx.DiGraph()
         valid_node_ids_str = {str(nid) for nid in self.graph.nodes.keys()}
         for node_id_str in valid_node_ids_str:
@@ -861,23 +875,22 @@ class BridgingAgent(Synthesizer):
                 if source_id_str in G and target_id_str in G:
                     G.add_edge(source_id_str, target_id_str)
 
-        # 2. Encontrar componentes conectados (grafo no dirigido)
+        # 2. Encontrar componentes conectados
         components = list(nx.connected_components(G.to_undirected()))
         num_components = len(components)
-
         if num_components <= 1:
-            return  # El grafo ya es conexo
+            return  # No necesita puentes
 
         logging.info(f"BridgingAgent {self.id}: Found {num_components} components. Attempting to bridge.")
 
-        # 3. Seleccionar dos componentes distintos al azar
+        # 3. Seleccionar dos componentes distintos
         comp_indices = random.sample(range(num_components), 2)
         component_a_ids_str = components[comp_indices[0]]
         component_b_ids_str = components[comp_indices[1]]
 
-        # 4. Encontrar nodo representante en cada componente
-        node_a_id = self._get_highest_state_node_in_component(component_a_ids_str)
-        node_b_id = self._get_highest_state_node_in_component(component_b_ids_str)
+        # 4. Obtener un nodo ALEATORIO con embedding en cada componente
+        node_a_id = self._get_random_node_in_component_with_embedding(component_a_ids_str)
+        node_b_id = self._get_random_node_in_component_with_embedding(component_b_ids_str)
 
         if node_a_id == -1 or node_b_id == -1:
             logging.debug(f"BridgingAgent {self.id}: Could not find suitable nodes with embeddings in selected components.")
@@ -886,16 +899,18 @@ class BridgingAgent(Synthesizer):
         # 5. Calcular similitud de embeddings
         emb_a = self.graph.get_embedding(node_a_id)
         emb_b = self.graph.get_embedding(node_b_id)
-        similarity = self.calculate_cosine_similarity(emb_a, emb_b)
-        logging.info(f"BridgingAgent {self.id}: Checking bridge between node {node_a_id} (Comp {comp_indices[0]}) and {node_b_id} (Comp {comp_indices[1]}). Similarity: {similarity:.3f}")
+        similarity = self.calculate_cosine_similarity(emb_a, emb_b)  # Normalizada [0, 1]
+        logging.info(f"BridgingAgent {self.id}: Checking bridge between node {node_a_id} (Comp {comp_indices[0]}) and {node_b_id} (Comp {comp_indices[1]}). Similarity Norm: {similarity:.3f}")
 
         # 6. Crear enlace si la similitud es alta
         if similarity >= self.similarity_threshold:
-            bridge_utility = self.config.get('bridging_utility', 0.6)
+            # Utilizar similitud normalizada [0, 1] como utilidad
+            bridge_utility = similarity
+            # Añadir aristas en ambas direcciones para conectar componentes
             added1 = self.graph.add_edge(node_a_id, node_b_id, bridge_utility)
             added2 = self.graph.add_edge(node_b_id, node_a_id, bridge_utility)
             if added1 or added2:
-                 logging.info(f"BridgingAgent {self.id}: **** Bridge CREATED between node {node_a_id} and {node_b_id} (Similarity: {similarity:.3f}) ****")
+                logging.info(f"BridgingAgent {self.id}: **** Bridge CREATED between node {node_a_id} and {node_b_id} (Similarity Norm: {similarity:.3f}, Utility: {bridge_utility:.3f}) ****")
 # --- Fin BridgingAgent ---
 
 def generate_code(prompt):
