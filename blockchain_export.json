@@ -1,0 +1,18 @@
+[
+  {
+    "index": 0,
+    "timestamp": 1744847174.7167673,
+    "data": {
+      "message": "Genesis Block for MSCNet",
+      "details": {}
+    },
+    "synth_proof": {
+      "\u03a8": 1.0,
+      "\u03a6": 0.0,
+      "\u03a9": 0.0
+    },
+    "previous_hash": "0",
+    "agent_signature": null,
+    "hash": "59effe01e4068934760ab61434ae66b8431dcf6bf65757ac6ebac7631c52155d"
+  }
+]

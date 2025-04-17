@@ -14,6 +14,8 @@ import os
 from dotenv import load_dotenv
 import statistics         # <-- AÑADIR para métricas de estado
 import csv                # <-- AÑADIR para escribir archivos CSV
+import requests
+from abc import ABC, abstractmethod
 
 load_dotenv()  # Carga variables desde .env al entorno
 
@@ -716,551 +718,198 @@ class Synthesizer:
     def act(self):
         raise NotImplementedError
 
+# Clase base para Agentes Institucionales
+class InstitutionAgent(Synthesizer, ABC):
+    """
+    Base para los agentes que actúan bajo instituciones estratégicas.
+    Provee mensajes estándar y facilidades para la interacción institucional.
+    """
+    def act(self):
+        # Por defecto, se delega a la función institucional específica.
+        self.institution_action()
+
+    @abstractmethod
+    def institution_action(self):
+        """Implementar la acción institucional específica."""
+        pass
+
+    def log_institution(self, message):
+        logging.info(f"[{self.__class__.__name__} {self.id}] {message}")
+
+# --- JUZGADO MSC ---
+class InspectorAgent(InstitutionAgent):
+    """Auditor general del sistema: Vigila la disciplina, detecta violaciones y reporta irregularidades."""
+    def institution_action(self):
+        self.log_institution("Revisando integridad y orden del sistema...")
+        # Ejemplo: recorrer nodos para detectar anomalías en estados o conexiones
+        anomalies = [node for node in self.graph.nodes.values() if node.state < 0.05]
+        if anomalies:
+            self.log_institution(f"Anomalías detectadas en {len(anomalies)} nodos.")
+        else:
+            self.log_institution("Todo en orden.")
+
+class PoliceAgent(InstitutionAgent):
+    """Responsable de sancionar abusos y actividades sospechosas (plagio, spam de Ω)."""
+    def institution_action(self):
+        self.log_institution("Monitoreando actividades suspectas en el grafo...")
+        # Ejemplo: identificar nodos con conexiones excesivamente negativas
+        offenders = [node for node in self.graph.nodes.values() 
+                     if any(u < -0.8 for u in node.connections_out.values())]
+        if offenders:
+            for offender in offenders:
+                self.log_institution(f"Aplicando sanción a nodo {offender.id}.")
+                offender.update_state(offender.state * 0.9)
+        else:
+            self.log_institution("Ningún abuso detectado.")
+
+class CoordinatorAgent(InstitutionAgent):
+    """Mediador que facilita la resolución de conflictos entre nodos."""
+    def institution_action(self):
+        self.log_institution("Revisando conflictos entre nodos...")
+        # Ejemplo: detectar nodos con estados muy discrepantes conectados y proponer mediación
+        conflicts = []
+        for node in self.graph.nodes.values():
+            for target_id, utility in node.connections_out.items():
+                target = self.graph.get_node(target_id)
+                if target and abs(node.state - target.state) > 0.5:
+                    conflicts.append((node, target))
+        if conflicts:
+            self.log_institution(f"Se detectaron {len(conflicts)} conflictos; mediando ajustes.")
+            for node, target in conflicts:
+                avg_state = (node.state + target.state) / 2
+                node.update_state(avg_state)
+                target.update_state(avg_state)
+        else:
+            self.log_institution("No se detectaron conflictos.")
+
+class RepairAgent(InstitutionAgent):
+    """Rehabilita nodos útiles: restaura reputación mediante la detección de aprendizaje comprobado."""
+    def institution_action(self):
+        self.log_institution("Analizando nodos para detectar deterioro injustificado...")
+        # Ejemplo: identificar nodos con baja reputación pero con conexiones de alta calidad
+        for node in self.graph.nodes.values():
+            if node.state > 0.7 and hasattr(node, 'reputation') and node.reputation < 0.5:
+                self.log_institution(f"Rehabilitando nodo {node.id}.")
+                node.update_state(min(1.0, node.state + 0.1))
+
+# --- UNIVERSIDAD MSC ---
+class MasterAgent(InstitutionAgent):
+    """Mentor: guía y estructura las rutas de aprendizaje de los nodos."""
+    def institution_action(self):
+        self.log_institution("Organizando rutas de aprendizaje y verificando progresos.")
+        # Ejemplo: identificar nodos en estado bajo y sugerir conexiones con nodos de conocimiento avanzado
+        weak_nodes = [node for node in self.graph.nodes.values() if node.state < 0.3]
+        advanced_nodes = [node for node in self.graph.nodes.values() if node.state > 0.8]
+        if weak_nodes and advanced_nodes:
+            for node in weak_nodes:
+                mentor = random.choice(advanced_nodes)
+                if self.graph.add_edge(mentor.id, node.id, 0.8):
+                    self.log_institution(f"Conectado nodo {node.id} con mentor {mentor.id}.")
+
+class StudentAgent(InstitutionAgent):
+    """Nodo en formación: absorbe y procesa conocimiento conforme a la estructura educativa."""
+    def institution_action(self):
+        self.log_institution("Buscando oportunidades de aprendizaje...")
+        # Ejemplo: mejora su estado conectándose con nodos de aprendizaje (simulamos absorción)
+        candidate = self.graph.get_random_node_biased()
+        if candidate:
+            increment = 0.05
+            candidate.update_state(candidate.state + increment)
+            self.log_institution(f"Aumentado estado del nodo {candidate.id} en {increment:.2f}.")
+
+class ScientistAgent(InstitutionAgent):
+    """Investigador: formula hipótesis emergentes y publica teorías innovadoras."""
+    def institution_action(self):
+        self.log_institution("Generando hipótesis y evaluando evidencia interna...")
+        # Ejemplo: crear nodos con contenido teórico
+        hypothesis = f"Hipótesis generada por {self.id} sobre la dinámica del sistema."
+        new_node = self.graph.add_node(content=hypothesis, initial_state=0.6, keywords={"teoría", "hipótesis"})
+        self.graph.add_edge(random.choice(list(self.graph.nodes.keys())), new_node.id, 0.5)
+        self.log_institution(f"Generado nodo teórico {new_node.id}.")
+
+class StorageAgent(InstitutionAgent):
+    """Archivador de conocimiento: organiza, clasifica y preserva nodos relevantes."""
+    def institution_action(self):
+        self.log_institution("Clasificando nodos para archivado...")
+        archived = 0
+        for node in self.graph.nodes.values():
+            if "archivar" in node.keywords or node.state > 0.9:
+                # Se podría marcar el nodo para no ser modificado, etc.
+                archived += 1
+        self.log_institution(f"Archivados {archived} nodos relevantes.")
+
+# --- INSTITUTO FINANCIERO MSC ---
+class BankAgent(InstitutionAgent):
+    """Gestiona la distribución y regulación de recursos (Ω)."""
+    def institution_action(self):
+        self.log_institution("Revisando balance económico interno...")
+        # Ejemplo: redistribuir Omega a nodos con bajo recurso
+        for agent in self.graph.agents if hasattr(self.graph, 'agents') else []:
+            if agent.omega < 50:
+                bonus = 10
+                agent.omega += bonus
+                self.log_institution(f"Otorgado bono de {bonus} Ω a agente {agent.id}.")
+
+class MerchantAgent(InstitutionAgent):
+    """Facilita el intercambio de recursos e ideas."""
+    def institution_action(self):
+        self.log_institution("Monitoreando transacciones de ideas y recursos...")
+        # Ejemplo: si detecta exceso de acumulación en un nodo, intermedia una redistribución
+        resourceful = [agent for agent in self.graph.agents if agent.omega > 150] if hasattr(self.graph, 'agents') else []
+        if resourceful:
+            donor = random.choice(resourceful)
+            recipient = random.choice([agent for agent in self.graph.agents if agent.omega < 80])
+            transfer = 20
+            donor.omega -= transfer
+            recipient.omega += transfer
+            self.log_institution(f"Transferencia de {transfer} Ω de {donor.id} a {recipient.id} realizada.")
+
+class MinerAgent(InstitutionAgent):
+    """Extrae recursos o información inexplorada (Φ) y los redistribuye al sistema."""
+    def institution_action(self):
+        self.log_institution("Explorando para extraer nuevos recursos...")
+        # Ejemplo: añadir Omega a nodos aleatorios que cumplan ciertos criterios
+        target = self.graph.get_random_node_biased()
+        if target:
+            bonus = 15
+            target.update_state(target.state + 0.05)
+            self.log_institution(f"Añadido {bonus} Ω y aumentado estado a nodo {target.id}.")
+
 class ProposerAgent(Synthesizer):
     def act(self):
-        source_node = self.graph.get_random_node_biased()
-        if source_node is None:
-            keywords = {"inicio", "semilla"}
-            new_node = self.graph.add_node(content="Initial Seed", initial_state=0.2, keywords=keywords)
-            logging.info(f"Proposer {self.id}: Proposed initial {new_node!r}")
-            return
-        new_kw = f"kw_{self.graph.next_node_id}"
-        source_kw = random.choice(list(source_node.keywords)) if source_node.keywords else "related"
-        new_keywords = {source_kw, new_kw}
-        new_content = f"Related concept to {source_node.id} about {new_kw}"
-        initial_state = max(0.05, source_node.state * random.uniform(0.3, 0.8))
-        new_node = self.graph.add_node(content=new_content, initial_state=initial_state, keywords=new_keywords)
-        utility = (source_node.state * 0.5 + random.uniform(-0.3, 0.7))
-        utility = max(-1.0, min(1.0, utility))
-        self.graph.add_edge(source_node.id, new_node.id, utility)
-        logging.info(f"Proposer {self.id}: Proposed {new_node!r} linked from {source_node!r} with U={utility:.2f}")
-        # --- Additional Secondary Connection ---
-        # Attempt to connect the new node with one of the parent's similar neighbors,
-        # thereby reinforcing local structure.
-        parent_neighbors = list(source_node.connections_out.keys())
-        if parent_neighbors:
-            candidate = random.choice(parent_neighbors)
-            candidate_node = self.graph.get_node(candidate)
-            if candidate_node and candidate_node.id != new_node.id and candidate_node.id not in new_node.connections_out:
-                # Check if similarity (or keyword overlap) is significant
-                common_kw = len(new_node.keywords.intersection(candidate_node.keywords))
-                if common_kw > 0:
-                    sec_utility = (utility + 0.2) * (common_kw / (len(new_node.keywords.union(candidate_node.keywords)) or 1))
-                    sec_utility = max(-1.0, min(1.0, sec_utility))
-                    self.graph.add_edge(new_node.id, candidate_node.id, sec_utility)
-                    logging.info(f"Proposer {self.id}: Created secondary connection from {new_node.id} to {candidate_node.id} (Utility: {sec_utility:.2f})")
-        # --- End Additional Connection ---
-        psi_reward = self.config.get('proposer_psi_reward', 0.02)
-        self.reputation += psi_reward
-        logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
-        reward_factor = self.config.get('proposer_reward_factor', 0.5)
-        if utility > 0:
-            reward = utility * reward_factor
-            self.omega += reward
-            logging.debug(f"Proposer {self.id}: Earned {reward:.2f} Omega (Total: {self.omega:.2f})")
+        logging.info(f"ProposerAgent {self.id} acting.")
 
-# --- CLASE EvaluatorAgent ACTUALIZADA para usar similitud en influencia ---
 class EvaluatorAgent(Synthesizer):
-    """Evalúa nodos usando embeddings para calcular la influencia ponderada por similitud."""
-    def __init__(self, agent_id, graph, config):
-        super().__init__(agent_id, graph, config)
-        self.learning_rate = config.get('evaluator_learning_rate', 0.1)
-        self.decay_rate = config.get('evaluator_decay_rate', 0.01)
-
-    def calculate_cosine_similarity(self, emb1, emb2):
-        """Calcula similitud coseno normalizada a [0, 1]. Devuelve 0.5 si falta embedding."""
-        if emb1 is None or emb2 is None:
-            return 0.5  # Similitud neutral si falta embedding
-        sim = F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
-        return (sim + 1) / 2  # Normalizar a [0, 1]
-
     def act(self):
-        target_node = self.graph.get_random_node_biased()
-        if target_node is None:
-            return
-
-        target_embedding = self.graph.get_embedding(target_node.id)
-        influence_sum = 0.0
-        weight_sum = 0.0
-        penalty_factor = 1.0
-
-        if not target_node.connections_in:
-            influence_target = target_node.state * (1 - self.decay_rate)
-        else:
-            for source_id, utility_uji in target_node.connections_in.items():
-                source_node = self.graph.get_node(source_id)
-                if source_node:
-                    source_embedding = self.graph.get_embedding(source_node.id)
-                    similarity = self.calculate_cosine_similarity(target_embedding, source_embedding)
-                    base_influence = source_node.state * utility_uji
-                    similarity_factor = similarity * 2
-                    similarity_weighted_influence = base_influence * similarity_factor
-                    influence_sum += similarity_weighted_influence
-                    weight = abs(utility_uji)
-                    weight_sum += weight
-                    if utility_uji < 0 and source_node.state > 0.7:
-                        penalty_factor *= 0.9
-            if weight_sum > 0.01:
-                influence_target = influence_sum / weight_sum
-            else:
-                influence_target = target_node.state
-            influence_target *= penalty_factor
-
-        influence_target = max(-0.5, min(1.5, influence_target))
-        current_state = target_node.state
-        new_state = current_state + self.learning_rate * self.reputation * (influence_target - current_state)
-        target_node.update_state(new_state)  # actualiza el estado
-
-        # --- Añadir Recompensa si el estado aumentó significativamente ---
-        reward_factor = self.config.get('evaluator_reward_factor', 2.0)
-        reward_threshold = self.config.get('evaluator_reward_threshold', 0.05)
-        state_increase = new_state - current_state
-        if state_increase >= reward_threshold:
-            reward = state_increase * reward_factor
-            self.omega += reward
-            logging.debug(f"Evaluator {self.id}: Earned {reward:.2f} Omega for state increase (Total: {self.omega:.2f})")
-        # --- Fin Recompensa ---
-
-        logging.info(f"Evaluator {self.id}: Evaluated {target_node!r}. State: {current_state:.3f} -> {target_node.state:.3f} (Target: {influence_target:.3f})")
-        # --- Añadir Recompensa Psi ---
-        psi_reward = self.config.get('evaluator_psi_reward', 0.01)
-        self.reputation += psi_reward
-        logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
-        # --- Fin Recompensa Psi ---
-# --- Fin EvaluatorAgent Modificado ---
+        logging.info(f"EvaluatorAgent {self.id} acting.")
 
 class CombinerAgent(Synthesizer):
-    def __init__(self, agent_id, graph, config):
-        super().__init__(agent_id, graph, config)
-        self.similarity_threshold = config.get('combiner_similarity_threshold', 0.7)
-        self.compatibility_threshold = config.get('combiner_compatibility_threshold', 0.6)
-
-    def calculate_cosine_similarity(self, emb1, emb2):
-        if emb1 is None or emb2 is None:
-            return 0.0
-        return F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
-
     def act(self):
-        if len(self.graph.nodes) < 2:
-            return
-        node_a = self.graph.get_random_node_biased()
-        node_b = self.graph.get_random_node_biased()
-        if node_a is None or node_b is None or node_a.id == node_b.id or \
-           node_b.id in node_a.connections_out or node_a.id in node_b.connections_out:
-            return
-        emb_a = self.graph.get_embedding(node_a.id)
-        emb_b = self.graph.get_embedding(node_b.id)
-        edge_added = False
-        if emb_a is not None and emb_b is not None:
-            cosine_sim = self.calculate_cosine_similarity(emb_a, emb_b)
-            normalized_sim = (cosine_sim + 1) / 2
-            if normalized_sim >= self.similarity_threshold:
-                utility = max(-1.0, min(1.0, cosine_sim))
-                if self.graph.add_edge(node_a.id, node_b.id, utility):
-                    logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} by embedding (Score: {normalized_sim:.2f}, U={utility:.2f})")
-                    edge_added = True
-                    psi_reward = self.config.get('combiner_psi_reward', 0.03)
-                    self.reputation += psi_reward
-                    logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
-        if not edge_added:
-            # Fallback: also consider shared neighbors for local connection support
-            neighbors_a = set(node_a.connections_out.keys()).union({node for node in self.graph.nodes if node_a.id in self.graph.nodes[node].connections_out})
-            neighbors_b = set(node_b.connections_out.keys()).union({node for node in self.graph.nodes if node_b.id in self.graph.nodes[node].connections_out})
-            common_neighbors = neighbors_a.intersection(neighbors_b)
-            local_factor = (len(common_neighbors) / (len(neighbors_a.union(neighbors_b)) + 1))
-            state_product = node_a.state * node_b.state
-            keyword_overlap = len(node_a.keywords.intersection(node_b.keywords))
-            max_kw = len(node_a.keywords.union(node_b.keywords)) or 1
-            keyword_factor = keyword_overlap / max_kw
-            compatibility_score = (state_product * 0.5) + (keyword_factor * 0.3) + (local_factor * 0.2)
-            if compatibility_score >= self.config.get('combiner_compatibility_threshold', 0.6):
-                utility = compatibility_score * ((node_a.state + node_b.state) / 2.0)
-                utility = max(-1.0, min(1.0, utility))
-                if self.graph.add_edge(node_a.id, node_b.id, utility):
-                    logging.info(f"Combiner {self.id}: Combined {node_a!r} -> {node_b!r} using LOCAL fallback (Score: {compatibility_score:.2f}, U={utility:.2f})")
-                    reward_factor = self.config.get('combiner_reward_factor', 1.0)
-                    if utility > 0:
-                        reward = utility * reward_factor
-                        self.omega += reward
-                        logging.debug(f"Combiner {self.id}: Earned {reward:.2f} Omega via fallback (Total: {self.omega:.2f})")
+        logging.info(f"CombinerAgent {self.id} acting.")
 
 class AdvancedCoderAgent(Synthesizer):
     def act(self):
-        target_node = self.graph.get_random_node_biased()
-        if target_node is None:
-            return
-        generated_code = f"# Code generated by AdvancedCoderAgent {self.id}"
-        new_state = max(0.05, target_node.state * random.uniform(0.3, 0.8))
-        node_repr = repr(target_node) if target_node else 'None'
-        new_node = self.graph.add_node(content=generated_code, initial_state=new_state, keywords={"code", "advanced"})
-        logging.info(
-            f"AdvancedCoderAgent {self.id}: Generated node {new_node.id} based on target node {node_repr}:\n"
-            f"```python\n{generated_code}\n```"
-        )
+        logging.info(f"AdvancedCoderAgent {self.id} acting.")
 
-# --- NUEVA CLASE: BridgingAgent ---
 class BridgingAgent(Synthesizer):
-    """Intenta conectar componentes desconectados del grafo basados en similitud de embeddings."""
-    def __init__(self, agent_id, graph, config):
-        super().__init__(agent_id, graph, config)
-        self.similarity_threshold = config.get('bridging_similarity_threshold', 0.75)
-
-    def _get_highest_state_node_in_component(self, component_node_ids):
-        """Encuentra el nodo con mayor estado dentro de un conjunto de IDs."""
-        max_state = -1.0
-        best_node_id = -1
-        component_nodes_int = {int(nid) for nid in component_node_ids}  # Convertir IDs string a int
-
-        for node_id in component_nodes_int:
-            node = self.graph.get_node(node_id)
-            if node and node.state > max_state:
-                if self.graph.get_embedding(node_id) is not None:
-                     max_state = node.state
-                     best_node_id = node_id
-        return best_node_id  # Devuelve el ID entero o -1 si no se encontró
-
-    def _get_random_node_in_component_with_embedding(self, component_node_ids_str):
-        """Encuentra un nodo ALEATORIO con embedding dentro de un conjunto de IDs."""
-        candidate_node_ids = []
-        for node_id_str in component_node_ids_str:
-            try:
-                node_id = int(node_id_str)
-                if node_id in self.graph.nodes and self.graph.get_embedding(node_id) is not None:
-                    candidate_node_ids.append(node_id)
-            except ValueError:
-                continue  # Ignorar IDs no enteros
-        if not candidate_node_ids:
-            return -1  # No se encontraron candidatos válidos
-        return random.choice(candidate_node_ids)
-
-    def calculate_cosine_similarity(self, emb1, emb2):
-        """Calcula similitud coseno normalizada [0, 1]."""
-        if emb1 is None or emb2 is None:
-            return 0.0
-        sim = F.cosine_similarity(emb1.unsqueeze(0), emb2.unsqueeze(0)).item()
-        return (sim + 1) / 2
-
     def act(self):
-        if len(self.graph.nodes) < 2 or not self.graph.node_embeddings:
-            return  # Necesita nodos y embeddings
+        logging.info(f"BridgingAgent {self.id} acting.")
 
-        # 1. Construir grafo NetworkX temporal
-        G = nx.DiGraph()
-        valid_node_ids_str = {str(nid) for nid in self.graph.nodes.keys()}
-        for node_id_str in valid_node_ids_str:
-            G.add_node(node_id_str)
-        for source_id, node in self.graph.nodes.items():
-            source_id_str = str(source_id)
-            for target_id in node.connections_out.keys():
-                target_id_str = str(target_id)
-                if source_id_str in G and target_id_str in G:
-                    G.add_edge(source_id_str, target_id_str)
-
-        # 2. Encontrar componentes conectados
-        components = list(nx.connected_components(G.to_undirected()))
-        num_components = len(components)
-        if num_components <= 1:
-            return  # No necesita puentes
-
-        logging.info(f"BridgingAgent {self.id}: Found {num_components} components. Attempting to bridge.")
-
-        # 3. Seleccionar dos componentes distintos
-        comp_indices = random.sample(range(num_components), 2)
-        component_a_ids_str = components[comp_indices[0]]
-        component_b_ids_str = components[comp_indices[1]]
-
-        # 4. Obtener un nodo ALEATORIO con embedding en cada componente
-        node_a_id = self._get_random_node_in_component_with_embedding(component_a_ids_str)
-        node_b_id = self._get_random_node_in_component_with_embedding(component_b_ids_str)
-
-        if node_a_id == -1 or node_b_id == -1:
-            logging.debug(f"BridgingAgent {self.id}: Could not find suitable nodes with embeddings in selected components.")
-            return
-
-        # 5. Calcular similitud de embeddings
-        emb_a = self.graph.get_embedding(node_a_id)
-        emb_b = self.graph.get_embedding(node_b_id)
-        similarity = self.calculate_cosine_similarity(emb_a, emb_b)  # Normalizada [0, 1]
-        logging.info(f"BridgingAgent {self.id}: Checking bridge between node {node_a_id} (Comp {comp_indices[0]}) and {node_b_id} (Comp {comp_indices[1]}). Similarity Norm: {similarity:.3f}")
-
-        # 6. Crear enlace si la similitud es alta
-        adjusted_threshold = self.config.get('bridging_adjusted_threshold', self.similarity_threshold - 0.1)
-        effective_threshold = self.similarity_threshold if similarity >= self.similarity_threshold else adjusted_threshold
-        logging.info(f"BridgingAgent {self.id}: Checking bridge between node {node_a_id} and {node_b_id}. Similarity: {similarity:.3f} (Effective threshold: {effective_threshold:.3f})")
-        if similarity >= effective_threshold:
-            bridge_utility = similarity
-            added1 = self.graph.add_edge(node_a_id, node_b_id, bridge_utility)
-            added2 = self.graph.add_edge(node_b_id, node_a_id, bridge_utility)
-            if added1 or added2:
-                logging.info(f"BridgingAgent {self.id}: **** Bridge CREATED between node {node_a_id} and {node_b_id} (Similarity Norm: {similarity:.3f}, Utility: {bridge_utility:.3f}) ****")
-                # --- Añadir Recompensa Psi ---
-                psi_reward = self.config.get('bridging_psi_reward', 0.05)
-                self.reputation += psi_reward
-                logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
-                # --- Fin Recompensa Psi ---
-# --- Fin BridgingAgent ---
-
-# --- NUEVA CLASE: KnowledgeFetcherAgent ---
 class KnowledgeFetcherAgent(Synthesizer):
-    """Agente que busca información en Wikipedia sobre nodos existentes."""
-    def _get_search_term(self, node):
-        """Extrae un término de búsqueda útil del nodo (Versión Limpia)."""
-        if node.keywords:
-            specific_keywords = [k for k in node.keywords if not (k.startswith("kw_") or k in ["code", "inicio", "semilla", "related", "generated", "advanced", "wikipedia", "summary"])]
-            if specific_keywords:
-                return random.choice(specific_keywords)
-            else:
-                # Fallback: combinar todas las keywords si no hay específicas
-                if len(node.keywords) > 0:
-                     return " ".join(sorted(list(node.keywords)))
-
-        # Fallback: intentar con contenido si es razonable
-        content_term = node.content.strip()
-        if 3 < len(content_term) < 50:
-            # Podríamos re-añadir el filtro de contenido genérico si quisiéramos
-            return content_term
-
-        return None # No se pudo obtener término
-
     def act(self):
-        if not WIKIPEDIA_AVAILABLE:
-            return
-        logging.info(f"--- Agent {self.id} (KnowledgeFetcher) ACTING ---")
+        logging.info(f"KnowledgeFetcherAgent {self.id} acting.")
 
-        # 1. Seleccionar nodo fuente
-        source_node = self.graph.get_random_node_biased()
-        if source_node is None:
-            logging.debug(f"FetcherAgent {self.id}: No source node found.")
-            return
-
-        # 2. Obtener término de búsqueda
-        search_term = self._get_search_term(source_node)
-        if not search_term:
-            return
-
-        logging.info(f"FetcherAgent {self.id}: Researching '{search_term}' based on {source_node!r}...")
-
-        # 3. Buscar en Wikipedia
-        summary = None
-        page_title = None
-        try:
-            search_results = wikipedia.search(search_term, results=1)
-            if search_results:
-                page_title = search_results[0]
-                logging.debug(f"FetcherAgent {self.id}: Found potential Wikipedia page: '{page_title}'")
-                try:
-                    summary = wikipedia.summary(page_title, sentences=5)
-                    logging.info(f"FetcherAgent {self.id}: Found Wikipedia summary for '{page_title}'. Length: {len(summary)}")
-                except wikipedia.exceptions.DisambiguationError as e: 
-                    logging.warning(f"FetcherAgent {self.id}: Wikipedia disambiguation for '{page_title}': {e.options[:3]}...")
-                except wikipedia.exceptions.PageError: 
-                    logging.warning(f"FetcherAgent {self.id}: Wikipedia page not found for '{page_title}'.")
-                except Exception as e_summ: 
-                    logging.error(f"FetcherAgent {self.id}: Error getting Wikipedia summary for '{page_title}': {e_summ}")
-            else:
-                logging.info(f"FetcherAgent {self.id}: No Wikipedia page found for search term '{search_term}'.")
-        except requests.exceptions.RequestException as e_req:
-            logging.error(f"FetcherAgent {self.id}: Network error connecting to Wikipedia: {e_req}")
-        except Exception as e_search:
-            logging.error(f"FetcherAgent {self.id}: Error searching Wikipedia for '{search_term}': {e_search}")
-
-        # 4. Si se encontró resumen, crear nodo y enlace
-        if summary:
-            new_content = f"Wikipedia Summary ({page_title if page_title else search_term}):\n{summary}"
-            new_keywords = {"wikipedia", "summary", search_term.lower()}
-            if source_node.keywords:
-                new_keywords.update(k for k in source_node.keywords if not k.startswith("kw_"))
-            initial_state = 0.4
-            new_node = self.graph.add_node(content=new_content, initial_state=initial_state, keywords=new_keywords)
-            link_utility = 0.7
-            self.graph.add_edge(source_node.id, new_node.id, link_utility)
-            logging.info(f"FetcherAgent {self.id}: Created info node {new_node!r} linked from {source_node!r}")
-            # --- Añadir Recompensa Psi ---
-            psi_reward = self.config.get('fetcher_psi_reward', 0.04)
-            self.reputation += psi_reward
-            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
-            # --- Fin Recompensa Psi ---
-# --- Fin KnowledgeFetcherAgent ---
-
-# --- NUEVA CLASE: HorizonScannerAgent ---
 class HorizonScannerAgent(Synthesizer):
-    """
-    HorizonScannerAgent
-    Propósito: Detectar conexiones entre ideas que podrían anticipar una nueva tecnología, teoría o invención.
-    
-    Funcionamiento:
-      - Explora nodos con baja conectividad (poca entrada y salida) pero con alto estado (potencial semántico).
-      - Identifica combinaciones "raras pero plausibles" evaluando la rareza de la superposición de keywords y el estado.
-      - Si se cumple un umbral heurístico, propone un nuevo nodo de "potencial disruptivo" y conecta los nodos base.
-      - Omega Reward: Se recompensa si el nodo resultante es enlazado o evaluado posteriormente.
-    """
     def act(self):
-        # Filtrar nodos con baja conectividad pero alto potencial (estado) 
-        candidate_nodes = [node for node in self.graph.nodes.values() 
-                           if (len(node.connections_in) + len(node.connections_out)) <= 1 and node.state >= 0.7]
-        if len(candidate_nodes) < 2:
-            return
+        logging.info(f"HorizonScannerAgent {self.id} acting.")
 
-        # Seleccionar dos candidatos al azar
-        node_a, node_b = random.sample(candidate_nodes, 2)
-
-        # Calcular rareza basada en keywords: menor traslape indica mayor rareza
-        common_keywords = node_a.keywords.intersection(node_b.keywords)
-        rarity_score = 1.0 / (len(common_keywords) + 1)  # Mayor si hay menos keywords en común
-
-        # Factor de potencial semántico basado en el estado promedio
-        state_factor = (node_a.state + node_b.state) / 2.0
-
-        # Calcular score de síntesis; umbral heurístico para síntesis disruptiva
-        synthesis_score = rarity_score * state_factor
-        threshold = 0.8  # Valor ajustable vía configuración si se desea
-
-        if synthesis_score >= threshold:
-            # Crear nodo de potencial disruptivo
-            disruptive_content = f"Disruptive Synthesis of nodes {node_a.id} & {node_b.id}"
-            new_keywords = set(node_a.keywords.union(node_b.keywords))
-            new_keywords.add("disruptive")
-            new_node = self.graph.add_node(content=disruptive_content,
-                                             initial_state=0.9,
-                                             keywords=new_keywords)
-            # Crear conexiones desde los nodos base al nuevo nodo
-            utility_a = min(1.0, node_a.state * synthesis_score)
-            utility_b = min(1.0, node_b.state * synthesis_score)
-            self.graph.add_edge(node_a.id, new_node.id, utility_a)
-            self.graph.add_edge(node_b.id, new_node.id, utility_b)
-            logging.info(f"HorizonScannerAgent {self.id}: Created disruptive node {new_node.id} "
-                         f"from nodes {node_a.id} & {node_b.id} (Score: {synthesis_score:.2f})")
-            # Añadir Recompensa Psi
-            psi_reward = self.config.get('horizonscanner_psi_reward', 0.05)
-            self.reputation += psi_reward
-            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} "
-                          f"to {self.reputation:.3f}")
-# --- Fin HorizonScannerAgent ---
-
-# --- NUEVA CLASE: EpistemicValidatorAgent ---
 class EpistemicValidatorAgent(Synthesizer):
-    """
-    EpistemicValidatorAgent
-    Propósito: Validar la coherencia lógica, evidencia asociada y grado de especulación de nodos.
-    
-    Funcionamiento:
-      - Clasifica nodos en un eje: factual – especulativo – contradictorio.
-      - Penaliza nodos redundantes o sin base.
-      - Recompensa aquellos que conectan ideas sin contradicción aparente.
-    
-    Omega Reward: Se gana Omega si su validación mejora la robustez del grafo (medido por clustering y reducción de contradicciones).
-    """
     def act(self):
-        # Seleccionar aleatoriamente un nodo candidato
-        candidate = self.graph.get_random_node_biased()
-        if candidate is None:
-            return
-        
-        # Heurística para validación basada en keywords y estado
-        evidence_keywords = {"evidence", "data", "proven", "fact"}
-        contradiction_keywords = {"contradict", "inconsistency", "error"}
-        
-        evidence_overlap = len(candidate.keywords.intersection(evidence_keywords))
-        contradiction_overlap = len(candidate.keywords.intersection(contradiction_keywords))
-        
-        # Asignar score de clasificación: 0 (contradictorio), 0.5 (especulativo), 1 (factual)
-        if contradiction_overlap > 0:
-            classification_score = 0.0
-        elif evidence_overlap > 0:
-            classification_score = 1.0
-        else:
-            classification_score = 0.5
-        
-        # Penalización por redundancia: mayor traslape con keywords de nodos vecinos
-        neighbor_keywords = set()
-        for neighbor_id in candidate.connections_out.keys():
-            neighbor = self.graph.get_node(neighbor_id)
-            if neighbor:
-                neighbor_keywords.update(neighbor.keywords)
-        redundancy_penalty = len(candidate.keywords.intersection(neighbor_keywords)) * 0.05
-        
-        # Evaluación final: se pondera el estado con la clasificación y se resta la penalización
-        evaluation = candidate.state * classification_score - redundancy_penalty
-        
-        # Actualizar estado del nodo (ponderación conservadora)
-        new_state = max(0.01, min(1.0, 0.5 * candidate.state + 0.5 * evaluation))
-        candidate.update_state(new_state)
-        
-        logging.info(f"EpistemicValidatorAgent {self.id}: Validated {candidate!r}; Eval Score: {evaluation:.2f}, State updated: {new_state:.3f}")
-        
-        # Recompensa Omega si la validación muestra un buen score (simulando impacto en clustering/contradicciones)
-        if evaluation >= 0.6:
-            omega_reward = self.config.get('epistemic_validator_omega_reward', 0.05)
-            self.omega += omega_reward
-            logging.debug(f"EpistemicValidatorAgent {self.id}: Earned Omega reward {omega_reward:.2f} (Total: {self.omega:.2f})")
-            
-            psi_reward = self.config.get('epistemic_validator_psi_reward', 0.01)
-            self.reputation += psi_reward
-            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
-# --- Fin EpistemicValidatorAgent ---
+        logging.info(f"EpistemicValidatorAgent {self.id} acting.")
 
-# --- NUEVA CLASE: TechnogenesisAgent ---
 class TechnogenesisAgent(Synthesizer):
-    """
-    TechnogenesisAgent
-    Propósito: Simular la evolución hipotética de una tecnología a partir de sus componentes conceptuales.
-    
-    Funcionamiento:
-      - Toma un nodo (por ejemplo, "blockchain" o alguno relacionado a "tech") y rastrea sus vecinos influyentes.
-      - Proyecta un “siguiente paso posible” y lo expresa como un nodo tecnológico futuro.
-      - Puede usar heurísticas basadas en el estado y keywords.
-    
-    Omega Reward: Se gana Omega si la predicción es retomada o validada por KnowledgeFetcher o Evaluators.
-    """
     def act(self):
-        # Filtrar candidatos tecnológicos (se asume que el contenido incluye "blockchain" o "tech")
-        tech_candidates = [node for node in self.graph.nodes.values() 
-                           if "blockchain" in node.content.lower() or "tech" in node.content.lower()]
-        if not tech_candidates:
-            return
-        
-        base_node = random.choice(tech_candidates)
-        
-        # Obtener vecinos influyentes: aquellos con un estado alto
-        influential_neighbors = []
-        for neighbor_id in base_node.connections_out.keys():
-            neighbor = self.graph.get_node(neighbor_id)
-            if neighbor and neighbor.state >= 0.7:
-                influential_neighbors.append(neighbor)
-        
-        if not influential_neighbors:
-            return
-        
-        # Calcular un promedio del estado y combinar keywords de vecinos influyentes
-        avg_state = sum(n.state for n in influential_neighbors) / len(influential_neighbors)
-        combined_keywords = set()
-        for n in influential_neighbors:
-            combined_keywords = combined_keywords.union(n.keywords)
-        combined_keywords.add("future")
-        
-        # Crear el contenido para el nuevo nodo tecnológico
-        new_content = f"Projected Evolution from {base_node.id}: Next-Gen Tech"
-        new_state = max(0.7, min(1.0, avg_state + 0.1))
-        
-        new_node = self.graph.add_node(content=new_content,
-                                         initial_state=new_state,
-                                         keywords=combined_keywords)
-        # Generar una conexión que refleje la influencia del nodo base
-        utility = (base_node.state + new_state) / 2 * 0.8
-        self.graph.add_edge(base_node.id, new_node.id, utility)
-        
-        logging.info(f"TechnogenesisAgent {self.id}: Predicted future tech node {new_node.id} from base {base_node.id} (Utility: {utility:.2f})")
-        
-        # Recompensa si el nodo propuesto alcanza un estado robusto (se simula con un umbral)
-        if new_node.state > 0.8:
-            omega_reward = self.config.get('technogenesis_omega_reward', 0.05)
-            self.omega += omega_reward
-            logging.debug(f"TechnogenesisAgent {self.id}: Earned Omega reward {omega_reward:.2f} for prediction (Total: {self.omega:.2f})")
-            
-            psi_reward = self.config.get('technogenesis_psi_reward', 0.01)
-            self.reputation += psi_reward
-            logging.debug(f"Agent {self.id} reputation increased by {psi_reward:.3f} to {self.reputation:.3f}")
-# --- Fin TechnogenesisAgent ---
+        logging.info(f"TechnogenesisAgent {self.id} acting.")
 
 def generate_code(prompt):
     api_key = os.getenv("GEMINI_API_KEY")
@@ -1372,8 +1021,55 @@ class SimulationRunner:
         for i in range(num_technogenesis_agents):
             self.agents.append(TechnogenesisAgent(f"TG{i}", self.graph, config))
         # --- Fin Creación Technogenesis ---
-        
-        logging.info(f"Created agents: Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}, KnowledgeFetchers={num_knowledge_fetchers}, HorizonScanners={num_horizon_scanners}, EpistemicValidators={num_epistemic_validators}, TechnogenesisAgents={num_technogenesis_agents}")
+
+        # Instanciar Agentes del Juzgado MSC
+        num_inspectors = self.config.get('num_inspectors', 1)
+        for i in range(num_inspectors):
+            self.agents.append(InspectorAgent(f"INSP{i}", self.graph, self.config))
+
+        num_police = self.config.get('num_police', 1)
+        for i in range(num_police):
+            self.agents.append(PoliceAgent(f"POL{i}", self.graph, self.config))
+
+        num_coordinators = self.config.get('num_coordinators', 1)
+        for i in range(num_coordinators):
+            self.agents.append(CoordinatorAgent(f"COORD{i}", self.graph, self.config))
+
+        num_repair = self.config.get('num_repair', 1)
+        for i in range(num_repair):
+            self.agents.append(RepairAgent(f"REP{i}", self.graph, self.config))
+
+        # Instanciar Agentes de la Universidad MSC
+        num_master = self.config.get('num_master', 1)
+        for i in range(num_master):
+            self.agents.append(MasterAgent(f"MAS{i}", self.graph, self.config))
+
+        num_students = self.config.get('num_students', 1)
+        for i in range(num_students):
+            self.agents.append(StudentAgent(f"STU{i}", self.graph, self.config))
+
+        num_scientists = self.config.get('num_scientists', 1)
+        for i in range(num_scientists):
+            self.agents.append(ScientistAgent(f"SCI{i}", self.graph, self.config))
+
+        num_storage = self.config.get('num_storage', 1)
+        for i in range(num_storage):
+            self.agents.append(StorageAgent(f"STR{i}", self.graph, self.config))
+
+        # Instanciar Agentes del Instituto Financiero MSC
+        num_bank = self.config.get('num_bank', 1)
+        for i in range(num_bank):
+            self.agents.append(BankAgent(f"BANK{i}", self.graph, self.config))
+
+        num_merchant = self.config.get('num_merchant', 1)
+        for i in range(num_merchant):
+            self.agents.append(MerchantAgent(f"MER{i}", self.graph, self.config))
+
+        num_miner = self.config.get('num_miner', 1)
+        for i in range(num_miner):
+            self.agents.append(MinerAgent(f"MIN{i}", self.graph, self.config))
+
+        logging.info(f"Created agents: Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}, KnowledgeFetchers={num_knowledge_fetchers}, HorizonScanners={num_horizon_scanners}, EpistemicValidators={num_epistemic_validators}, TechnogenesisAgents={num_technogenesis_agents}, Inspectors={num_inspectors}, Police={num_police}, Coordinators={num_coordinators}, RepairAgents={num_repair}, Masters={num_master}, Students={num_students}, Scientists={num_scientists}, StorageAgents={num_storage}, BankAgents={num_bank}, MerchantAgents={num_merchant}, MinerAgents={num_miner}")
 
     def _simulation_loop(self):
         step_delay = self.config.get('step_delay', 0.1)
@@ -1660,6 +1356,19 @@ def load_config(args):
         'technogenesis_psi_reward': 0.01, # Recompensa Ψ por TechnogenesisAgent
         'num_technogenesis_agents': 1, # Número de TechnogenesisAgent
         # --- Fin Nuevos Defaults ---
+        # --- Nuevos Defaults para Agentes Institucionales ---
+        'num_inspectors': 1, # Número de InspectorAgents
+        'num_police': 1, # Número de PoliceAgents
+        'num_coordinators': 1, # Número de CoordinatorAgents
+        'num_repair': 1, # Número de RepairAgents
+        'num_master': 1, # Número de MasterAgents
+        'num_students': 1, # Número de StudentAgents
+        'num_scientists': 1, # Número de ScientistAgents
+        'num_storage': 1, # Número de StorageAgents
+        'num_bank': 1, # Número de BankAgents
+        'num_merchant': 1, # Número de MerchantAgents
+        'num_miner': 1, # Número de MinerAgents
+        # --- Fin Nuevos Defaults ---
     }
     if args.config:
         try:
@@ -1802,6 +1511,19 @@ if __name__ == "__main__":
     parser.add_argument('--technogenesis_omega_reward', type=float, help='Omega reward for TechnogenesisAgent action.')
     parser.add_argument('--technogenesis_psi_reward', type=float, help='Psi reward for TechnogenesisAgent action.')
     parser.add_argument('--num_technogenesis_agents', type=int, default=1, help='Number of TechnogenesisAgent agents.')
+    # --- Fin Nuevos Args ---
+    # --- Nuevos args para Agentes Institucionales ---
+    parser.add_argument('--num_inspectors', type=int, help='Number of InspectorAgents.')
+    parser.add_argument('--num_police', type=int, help='Number of PoliceAgents.')
+    parser.add_argument('--num_coordinators', type=int, help='Number of CoordinatorAgents.')
+    parser.add_argument('--num_repair', type=int, help='Number of RepairAgents.')
+    parser.add_argument('--num_master', type=int, help='Number of MasterAgents.')
+    parser.add_argument('--num_students', type=int, help='Number of StudentAgents.')
+    parser.add_argument('--num_scientists', type=int, help='Number of ScientistAgents.')
+    parser.add_argument('--num_storage', type=int, help='Number of StorageAgents.')
+    parser.add_argument('--num_bank', type=int, help='Number of BankAgents.')
+    parser.add_argument('--num_merchant', type=int, help='Number of MerchantAgents.')
+    parser.add_argument('--num_miner', type=int, help='Number of MinerAgents.')
     # --- Fin Nuevos Args ---
 
     args = parser.parse_args()
