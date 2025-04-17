@@ -16,6 +16,9 @@ import statistics         # Métricas de estado
 import csv                # Para escribir archivos CSV
 import requests
 from abc import ABC, abstractmethod
+import concurrent.futures
+from flask_socketio import SocketIO
+from tqdm import tqdm
 
 load_dotenv()  # Carga variables desde .env al entorno
 
@@ -123,8 +126,16 @@ class CollectiveSynthesisGraph:
 
         self.gnn_optimizer = torch.optim.Adam(self.gnn_model.parameters(), lr=config.get('gnn_learning_rate', 0.01))
         self.gnn_loss_fn = torch.nn.BCEWithLogitsLoss()
+        self._last_modified = time.time()
 
+    # Performance optimization for GNN processing
     def _prepare_pyg_data(self):
+        # Cache results for unchanged graph structure
+        if hasattr(self, '_cached_node_features') and hasattr(self, '_cached_edge_index') and \
+           len(self.nodes) == self._cached_graph_size and self._cached_last_modified == self._last_modified:
+            return self._cached_node_features, self._cached_edge_index
+
+        # Original implementation continues...
         if not self.nodes:
             return None, None
         self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
@@ -187,6 +198,12 @@ class CollectiveSynthesisGraph:
                     source_indices.append(source_idx)
                     target_indices.append(target_idx)
         edge_index = torch.tensor([source_indices, target_indices], dtype=torch.long)
+
+        # Cache the results
+        self._cached_node_features = node_features
+        self._cached_edge_index = edge_index
+        self._cached_graph_size = len(self.nodes)
+        self._cached_last_modified = self._last_modified
         return node_features, edge_index
 
     def update_embeddings(self):
@@ -271,6 +288,7 @@ class CollectiveSynthesisGraph:
         new_node = KnowledgeComponent(node_id, content, initial_state, set(keywords) if keywords else set())
         self.nodes[node_id] = new_node
         self.next_node_id += 1
+        self._last_modified = time.time()
         return new_node
 
     def add_edge(self, source_id, target_id, utility):
@@ -279,6 +297,7 @@ class CollectiveSynthesisGraph:
             target_node = self.nodes[target_id]
             if target_id not in source_node.connections_out:
                 source_node.add_connection(target_node, utility)
+                self._last_modified = time.time()
                 return True
         return False
 
@@ -344,6 +363,7 @@ class CollectiveSynthesisGraph:
             logging.log(log_level, f"  Node State Stats: Mean={mean_state:.4f}, Median={median_state:.4f}, StdDev={stdev_state:.4f}, Min={min_state:.4f}, Max={max_state:.4f}")
         else:
             logging.log(log_level, "  Node State Stats: N/A")
+
     def get_global_metrics(self):
         metrics = {field: None for field in ["Nodes", "Edges", "Density", "AvgClustering",
                                                "Components", "MeanState", "MedianState", "StdDevState", "MinState", "MaxState"]}
@@ -387,6 +407,7 @@ class CollectiveSynthesisGraph:
             if isinstance(value, float):
                 metrics[key] = round(value, 4)
         return metrics
+
     def save_state(self, base_file_path):
         graphml_path = base_file_path + ".graphml"
         gnn_model_path = base_file_path + ".gnn.pth"
@@ -417,6 +438,7 @@ class CollectiveSynthesisGraph:
             logging.info(f"Embeddings saved to {embeddings_path}")
         except Exception as e:
             logging.error(f"Embeddings save error: {e}")
+
     def load_state(self, base_file_path):
         graphml_path = base_file_path + ".graphml"
         gnn_model_path = base_file_path + ".gnn.pth"
@@ -534,6 +556,44 @@ class CollectiveSynthesisGraph:
                 app.logger.error("Unexpected error in get_graph_elements_for_cytoscape: %s", e)
                 raise e
         return elements
+
+    def trim_stale_nodes(self, threshold=0.05, max_retain=1000):
+        """Remove nodes with very low state to manage memory if graph grows too large"""
+        if len(self.nodes) <= max_retain:
+            return 0
+            
+        # Find stale nodes (low state, few connections)
+        candidates = sorted(
+            [(node_id, node) for node_id, node in self.nodes.items()],
+            key=lambda x: (x[1].state, len(x[1].connections_in) + len(x[1].connections_out))
+        )
+        
+        # Keep nodes until we're under the limit or hit important nodes
+        removed = 0
+        for node_id, node in candidates:
+            if len(self.nodes) <= max_retain:
+                break
+            if node.state <= threshold and "important" not in node.keywords:
+                # Remove all connections to this node
+                for other_id, other_node in self.nodes.items():
+                    if node_id in other_node.connections_out:
+                        other_node.connections_out.pop(node_id)
+                    if node_id in other_node.connections_in:
+                        other_node.connections_in.pop(node_id)
+                # Remove the node
+                self.nodes.pop(node_id)
+                removed += 1
+                
+        if removed > 0:
+            logging.info(f"Memory management: Removed {removed} stale nodes")
+            # Invalidate caches after structure change
+            if hasattr(self, '_cached_node_features'):
+                delattr(self, '_cached_node_features')
+            if hasattr(self, '_cached_edge_index'):
+                delattr(self, '_cached_edge_index')
+            self._last_modified = time.time()
+            
+        return removed
 
 def generate_code(prompt):
     api_key = os.getenv("GEMINI_API_KEY")
@@ -1409,8 +1469,36 @@ class SimulationRunner:
         run_continuously = is_api_mode or (max_steps is None)
         gnn_training_frequency = self.config.get('gnn_training_frequency', 50)
         gnn_training_epochs = self.config.get('gnn_training_epochs', 5)
+
+        # Use progress bar for fixed-step simulations
+        if not run_continuously and max_steps is not None:
+            progress_bar = tqdm(total=max_steps, desc="Simulation Progress")
+        else:
+            progress_bar = None
+
+        # Use parallel processing for agent actions when appropriate
+        def _process_agent_batch(agent_batch):
+            results = []
+            for agent_data in agent_batch:
+                agent = agent_data['agent']
+                cost = agent_data['cost']
+                agent.omega -= cost
+                try:
+                    agent.act()
+                except Exception as e:
+                    agent_type = type(agent).__name__
+                    logging.error(f"Error in {agent_type} {agent.id}: {e}")
+                    # Optional recovery of agent state
+                    if self.config.get('auto_recover_agents', True):
+                        agent.omega = max(agent.omega, self.config.get('min_omega_recovery', 10.0))
+                        logging.info(f"Auto-recovered agent {agent.id} with omega={agent.omega}")
+                results.append((agent.id, cost, agent.omega))
+            return results
+
         while self.is_running:
             self.step_count += 1
+            if progress_bar:
+                progress_bar.update(1)
             log_level = logging.DEBUG if self.step_count % summary_frequency != 0 else logging.INFO
             logging.log(log_level, f"--- Step {self.step_count} ---")
             if not run_continuously and max_steps is not None and self.step_count > max_steps:
@@ -1442,16 +1530,34 @@ class SimulationRunner:
                     cost = agent_costs.get(type(agent).__name__, 1.0)
                     if agent.omega >= cost:
                         runnable_agents.append({'agent': agent, 'cost': cost})
-                if runnable_agents:
-                    chosen = random.choice(runnable_agents)
-                    agent = chosen['agent']
-                    cost = chosen['cost']
-                    omega_before = agent.omega
-                    agent.omega -= cost
-                    agent.act()
-                    logging.debug(f"Agent {agent.id} acted (Cost: {cost:.2f}, Omega: {omega_before:.2f} -> {agent.omega:.2f})")
+                if len(runnable_agents) >= self.config.get('parallel_batch_threshold', 5):
+                    # Parallel processing for larger agent groups
+                    batch_size = min(len(runnable_agents), self.config.get('max_parallel_batch', 10))
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.get('max_workers', 4)) as executor:
+                        batches = [runnable_agents[i:i+batch_size] for i in range(0, len(runnable_agents), batch_size)]
+                        for results in executor.map(_process_agent_batch, batches):
+                            for agent_id, cost, omega in results:
+                                logging.debug(f"Agent {agent_id} acted (Cost: {cost:.2f}, Omega: {omega:.2f})")
                 else:
-                    logging.warning("No agents have sufficient Omega to act.")
+                    # Original sequential processing for small numbers of agents
+                    if runnable_agents:
+                        chosen = random.choice(runnable_agents)
+                        agent = chosen['agent']
+                        cost = chosen['cost']
+                        omega_before = agent.omega
+                        agent.omega -= cost
+                        try:
+                            agent.act()
+                        except Exception as e:
+                            agent_type = type(agent).__name__
+                            logging.error(f"Error in {agent_type} {agent.id}: {e}")
+                            # Optional recovery of agent state
+                            if self.config.get('auto_recover_agents', True):
+                                agent.omega = max(agent.omega, self.config.get('min_omega_recovery', 10.0))
+                                logging.info(f"Auto-recovered agent {agent.id} with omega={agent.omega}")
+                        logging.debug(f"Agent {agent.id} acted (Cost: {cost:.2f}, Omega: {omega_before:.2f} -> {agent.omega:.2f})")
+                    else:
+                        logging.warning("No agents have sufficient Omega to act.")
                 regen_rate = self.config.get('omega_regeneration_rate', 0.05)
                 if regen_rate > 0:
                     for a in self.agents:
@@ -1467,7 +1573,43 @@ class SimulationRunner:
                             self.metrics_file.flush()
                         except Exception as e:
                             logging.error(f"CSV write error at step {self.step_count}: {e}")
+                if self.config.get('run_api', False) and self.step_count % self.config.get('websocket_update_frequency', 5) == 0:
+                    try:
+                        status = self.get_status()
+                        socketio.emit('simulation_update', status)
+                    except Exception as e:
+                        logging.error(f"Error emitting websocket update: {e}")
+
+                # Automatic checkpointing
+                checkpoint_frequency = self.config.get('checkpoint_frequency', 1000)
+                checkpoint_base_path = self.config.get('checkpoint_base_path')
+                
+                if checkpoint_base_path and checkpoint_frequency > 0 and self.step_count % checkpoint_frequency == 0:
+                    checkpoint_path = f"{checkpoint_base_path}_step{self.step_count}"
+                    logging.info(f"Creating checkpoint at step {self.step_count}: {checkpoint_path}")
+                    try:
+                        self.graph.save_state(checkpoint_path)
+                        
+                        # Optionally, clean up old checkpoints
+                        max_checkpoints = self.config.get('max_checkpoints', 5)
+                        if max_checkpoints > 0:
+                            checkpoint_dir = os.path.dirname(checkpoint_base_path)
+                            checkpoint_prefix = os.path.basename(checkpoint_base_path)
+                            if os.path.exists(checkpoint_dir):
+                                checkpoints = [f for f in os.listdir(checkpoint_dir) 
+                                              if f.startswith(checkpoint_prefix) and f.endswith(".graphml")]
+                                if len(checkpoints) > max_checkpoints:
+                                    checkpoints.sort()
+                                    for old_checkpoint in checkpoints[:-max_checkpoints]:
+                                        old_path = os.path.join(checkpoint_dir, old_checkpoint)
+                                        os.remove(old_path)
+                                        logging.debug(f"Removed old checkpoint: {old_path}")
+                    except Exception as e:
+                        logging.error(f"Error creating checkpoint: {e}")
+
             time.sleep(step_delay)
+        if progress_bar:
+            progress_bar.close()
         logging.info("--- Simulation loop finished ---")
 
     def start(self):
@@ -1677,6 +1819,16 @@ def load_config(args):
         'num_autolabel_agents': 1,
         'num_realvsfiction_agents': 1,
         'num_sourceverifier_agents': 1,
+        'parallel_batch_threshold': 5,
+        'max_workers': 4,
+        'max_parallel_batch': 10,
+        'checkpoint_frequency': 1000,
+        'checkpoint_base_path': None,
+        'max_checkpoints': 5,
+        'max_nodes': 5000,
+        'auto_recover_agents': False,
+        'min_omega_recovery': 10.0,
+        'websocket_update_frequency': 5,
     }
     if args.config:
         try:
@@ -1700,10 +1852,29 @@ def load_config(args):
         if value is not None:
             config[key] = value
     config['gnn_input_dim'] = 4 + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
+    
+    # Add config version tracking
+    config['version'] = '1.1.0'
+    
+    # Add runtime timestamp 
+    config['runtime_timestamp'] = time.strftime("%Y%m%d-%H%M%S")
+    
+    # Auto-create output directories if needed
+    for path_key in ['save_state', 'visualization_output_path', 'metrics_log_path']:
+        if config.get(path_key):
+            try:
+                dir_path = os.path.dirname(config[path_key])
+                if dir_path and not os.path.exists(dir_path):
+                    os.makedirs(dir_path)
+                    logging.info(f"Created directory: {dir_path}")
+            except Exception as e:
+                logging.warning(f"Could not create directory for {path_key}: {e}")
+    
     return config
 
 simulation_runner = None
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 @app.route('/status')
 def get_simulation_status():
@@ -1737,6 +1908,16 @@ def start_simulation():
         simulation_runner.start()
         return jsonify({"status": "started"})
     return jsonify({"error": "Simulation already running or not initialized"}), 500
+
+@socketio.on('connect')
+def handle_connect():
+    logging.info('Client connected to websocket')
+    if simulation_runner:
+        socketio.emit('simulation_update', simulation_runner.get_status())
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    logging.info('Client disconnected from websocket')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run MSC Simulation with GNN and optional API.")
@@ -1826,6 +2007,26 @@ if __name__ == "__main__":
     parser.add_argument('--num_autolabel_agents', type=int, help='Number of AutoLabelAgents.')
     parser.add_argument('--num_realvsfiction_agents', type=int, help='Number of RealVsFictionAgents.')
     parser.add_argument('--num_sourceverifier_agents', type=int, help='Number of SourceVerifierAgents.')
+    parser.add_argument('--parallel_batch_threshold', type=int, default=5,
+                        help='Minimum number of agents to process in parallel')
+    parser.add_argument('--max_workers', type=int, default=4,
+                        help='Maximum number of worker threads for parallel processing')
+    parser.add_argument('--max_parallel_batch', type=int, default=10,
+                        help='Maximum batch size for parallel agent processing')
+    parser.add_argument('--checkpoint_frequency', type=int, default=1000,
+                        help='Steps between automatic checkpoints (0 to disable)')
+    parser.add_argument('--checkpoint_base_path', type=str, 
+                        help='Base path for automatic checkpoints')
+    parser.add_argument('--max_checkpoints', type=int, default=5,
+                        help='Maximum number of checkpoints to keep')
+    parser.add_argument('--max_nodes', type=int, default=5000,
+                        help='Maximum number of nodes before pruning low-state nodes')
+    parser.add_argument('--auto_recover_agents', action='store_true',
+                        help='Automatically recover agents after errors')
+    parser.add_argument('--min_omega_recovery', type=float, default=10.0,
+                        help='Minimum omega to restore for recovered agents')
+    parser.add_argument('--websocket_update_frequency', type=int, default=5,
+                        help='Steps between websocket status updates')
     args = parser.parse_args()
     final_config = load_config(args)
     final_config['run_api'] = args.run_api
@@ -1833,11 +2034,11 @@ if __name__ == "__main__":
     simulation_runner.start()
     time.sleep(2)
     if final_config.get('run_api', False):
-        logging.info("Starting Flask API server on http://127.0.0.1:5000")
+        logging.info("Starting Flask+SocketIO server on http://127.0.0.1:5000")
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.ERROR)
         try:
-            app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
+            socketio.run(app, host='127.0.0.1', port=5000, debug=False)
         except KeyboardInterrupt:
             logging.info("Ctrl+C detected. Stopping Flask API and simulation...")
         finally:
