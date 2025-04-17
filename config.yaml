@@ -1,12 +1,84 @@
-# Archivo de configuración de ejemplo para MSC Simulation
+# Archivo de configuración actualizado para MSC Simulation
 
-simulation_steps: 50          # Ejecutar solo 50 pasos
-num_proposers: 2            # Usar 2 Proposers
-num_evaluators: 4           # Usar 4 Evaluators
-num_combiners: 1            # Usar 1 Combiner
-step_delay: 0.05            # Retraso más corto entre pasos
-evaluator_learning_rate: 0.15 # Tasa de aprendizaje ligeramente mayor
-combiner_compatibility_threshold: 0.7 # Umbral más alto para combinar
-
-# Nota: Cualquier parámetro no listado aquí usará el valor por defecto del script.
-# Por ejemplo, 'evaluator_keyword_boost' usará el default (0.05)
+simulation_steps: 50           # Ejecutar 50 pasos (o indefinido si se omite)
+num_proposers: 2               # Número de Proposers
+num_evaluators: 4              # Número de Evaluators
+num_combiners: 1               # Número de Combiners
+step_delay: 0.05               # Retraso entre pasos (segundos)
+evaluator_learning_rate: 0.15  # Tasa de aprendizaje para evaluadores
+evaluator_decay_rate: 0.01     # Tasa de decaimiento para evaluadores
+combiner_compatibility_threshold: 0.7   # Umbral para la compatibilidad en combinadores
+combiner_similarity_threshold: 0.7        # Umbral de similitud adicional para combinadores
+gnn_hidden_dim: 16             # Dimensión oculta para la GNN
+gnn_embedding_dim: 8           # Dimensión del embedding final
+gnn_update_frequency: 10       # Frecuencia (pasos) para actualizar embeddings de la GNN
+summary_frequency: 50          # Frecuencia (pasos) para resumir métricas
+run_api: false                 # Ejecutar o no el servidor Flask API
+gnn_training_frequency: 50     # Frecuencia (pasos) para entrenar la GNN
+gnn_training_epochs: 5         # Épocas por iteración de entrenamiento de la GNN
+gnn_learning_rate: 0.01        # Tasa de aprendizaje para entrenamiento de la GNN
+initial_omega: 100.0           # Recurso inicial Ω para los agentes
+proposer_cost: 1.0             # Costo de acción para ProposerAgent
+evaluator_cost: 0.5            # Costo para EvaluatorAgent
+combiner_cost: 1.5             # Costo para CombinerAgent
+omega_regeneration_rate: 0.1   # Tasa de regeneración de Ω por agente cada paso
+evaluator_reward_factor: 2.0   # Factor de recompensa Ω para evaluadores
+evaluator_reward_threshold: 0.05  # Incremento mínimo en estado para recompensa en evaluadores
+proposer_reward_factor: 0.5    # Factor de recompensa Ω para proposers
+combiner_reward_factor: 1.0    # Factor de recompensa Ω para combinadores
+visualization_output_path: null      # Si se desea guardar visualización del grafo al finalizar
+metrics_log_path: null               # Ruta para guardar métricas globales en CSV
+num_bridging_agents: 1
+bridging_agent_cost: 2.0
+bridging_similarity_threshold: 0.75
+bridging_adjusted_threshold: 0.65
+knowledge_fetcher_cost: 2.5
+num_knowledge_fetchers: 1
+horizonscanner_cost: 3.0
+horizonscanner_psi_reward: 0.05
+num_horizon_scanners: 1
+epistemic_validator_cost: 2.0
+epistemic_validator_omega_reward: 0.05
+epistemic_validator_psi_reward: 0.01
+num_epistemic_validators: 1
+technogenesis_cost: 2.5
+technogenesis_omega_reward: 0.05
+technogenesis_psi_reward: 0.01
+num_technogenesis_agents: 1
+num_inspectors: 1
+num_police: 1
+num_coordinators: 1
+num_repair: 1
+num_master: 1
+num_students: 1
+num_scientists: 1
+num_storage: 1
+num_bank: 1
+num_merchant: 1
+num_miner: 1
+num_population_regulators: 1
+num_seeders: 1
+num_cluster_balancers: 1
+num_mediators: 1
+num_migration_agents: 1
+num_node_balancers: 1
+num_cluster_formers: 1
+num_perspective_agents: 1
+num_cultural_mirrors: 1
+num_synthesizer_agents: 1
+num_pattern_miner_agents: 1
+num_trend_detector_agents: 1
+num_chrono_agents: 1
+num_feedback_loop_agents: 1
+num_memory_adjuster_agents: 1
+num_global_metrics_agents: 1
+num_log_evaluator_agents: 1
+num_webcrawler_agents: 1
+num_rsslistener_agents: 1
+num_apicollector_agents: 1
+num_interface_agents: 1
+num_translator_agents: 1
+num_dataset_agents: 1
+num_autolabel_agents: 1
+num_realvsfiction_agents: 1
+num_sourceverifier_agents: 1

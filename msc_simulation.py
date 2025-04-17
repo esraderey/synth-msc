@@ -722,20 +722,20 @@ class SeederAgent(InstitutionAgent):
     """
     def institution_action(self):
         self.log_institution("Seeding new nodes in sparse areas...")
-        # Ejemplo: agregar un nodo nuevo si se detecta baja conectividad
         if len(self.graph.nodes) < 10:
             new_node = self.graph.add_node(content="Seeded Node", initial_state=0.2)
             self.log_institution(f"Seeded new node {new_node.id} due to low overall density.")
         else:
-            # Buscar regiones con nodos poco conectados
-            sparse_nodes = [n for n in self.graph.nodes.values() if len(n.connections_in) + len(n.connections_out) < 2]
+            sparse_nodes = [n for n in self.graph.nodes.values() if (len(n.connections_in) + len(n.connections_out)) < 2]
             if sparse_nodes:
-                new_node = self.graph.add_node(content="Additional Seed", initial_state=0.3)
+                # Inyecta contenido estratégico para vincular clusters aislados
+                new_content = "Strategic Seed: Bridge Node"
+                new_node = self.graph.add_node(content=new_content, initial_state=0.35, keywords={"bridge", "seed"})
                 target = random.choice(sparse_nodes)
-                self.graph.add_edge(target.id, new_node.id, utility=0.5)
-                self.log_institution(f"Seeded new node {new_node.id} attached to sparse node {target.id}.")
+                if self.graph.add_edge(target.id, new_node.id, utility=0.5):
+                    self.log_institution(f"Seeded strategic node {new_node.id} attached to sparse node {target.id}.")
             else:
-                self.log_institution("No significantly sparse regions detected.")
+                self.log_institution("No significantly sparse regions detected for seeding.")
 
 class ClusterBalancerAgent(InstitutionAgent):
     """
@@ -743,19 +743,19 @@ class ClusterBalancerAgent(InstitutionAgent):
     """
     def institution_action(self):
         self.log_institution("Balancing clusters in the graph...")
-        # Ejemplo: ajustar conexiones de nodos aislados o sobreconectados para elevar la cohesión
         for node in self.graph.nodes.values():
-            if len(node.connections_out) > 8:
-                # Reducir conexiones excesivas: por ejemplo, eliminar la de menor utilidad
+            if len(node.connections_out) > 10:
                 min_conn = min(node.connections_out.items(), key=lambda item: item[1])
                 node.connections_out.pop(min_conn[0])
-                self.log_institution(f"Removed low-utility connection from node {node.id}.")
-            elif len(node.connections_out) < 1:
-                # Fomentar nuevas conexiones conectándolo con un nodo aleatorio
-                candidate = self.graph.get_random_node_biased()
+                self.log_institution(f"Removed low-utility connection from node {node.id} (over-connected).")
+            elif len(node.connections_out) < 2:
+                # Seleccionar candidato preferentemente de un cluster diferente (mínima intersección de keywords)
+                candidates = [candidate for candidate in self.graph.nodes.values()
+                              if candidate.id != node.id and len(node.keywords.intersection(candidate.keywords)) < 1]
+                candidate = random.choice(candidates) if candidates else self.graph.get_random_node_biased()
                 if candidate and candidate.id != node.id:
-                    self.graph.add_edge(node.id, candidate.id, utility=0.7)
-                    self.log_institution(f"Added connection from node {node.id} to {candidate.id} for better balance.")
+                    if self.graph.add_edge(node.id, candidate.id, utility=0.5):
+                        self.log_institution(f"Added strategic connection from node {node.id} to candidate {candidate.id}.")
 
 class MediatorAgent(InstitutionAgent):
     """
@@ -785,22 +785,23 @@ class MigrationAgent(InstitutionAgent):
     para fomentar la colaboración y reequilibrar la conectividad.
     """
     def institution_action(self):
-        self.log_institution("Evaluating clusters for adaptive migration...")
-        # Identificar nodos saturados y nodos en zonas poco conectadas (escasas conexiones)
+        self.log_institution("Evaluating clusters for adaptive migration with aggressive strategy...")
         saturated_nodes = [node for node in self.graph.nodes.values() if len(node.connections_out) > 8]
         sparse_nodes = [node for node in self.graph.nodes.values() if (len(node.connections_in) + len(node.connections_out)) < 2]
-        
         if saturated_nodes and sparse_nodes:
             for node in saturated_nodes:
-                target = random.choice(sparse_nodes)
-                # Si el nodo saturado tiene conexiones, quitar la de menor utilidad
-                if node.connections_out:
-                    min_conn = min(node.connections_out.items(), key=lambda item: item[1])
-                    removed_util = node.connections_out.pop(min_conn[0])
-                    self.log_institution(f"Removed low-utility connection from node {node.id} to {min_conn[0]} (Utility: {removed_util:.2f}).")
-                    # Agregar nueva conexión que favorezca migración hacia cluster menos saturado
-                    if self.graph.add_edge(node.id, target.id, utility=0.6):
-                        self.log_institution(f"Migrated node {node.id} by connecting to sparse node {target.id}.")
+                migration_attempts = 0
+                while len(node.connections_out) > 8 and migration_attempts < 3:
+                    # Seleccionar target de sparse_nodes que comparta pocas keywords con el nodo actual
+                    filtered_targets = [t for t in sparse_nodes if len(node.keywords.intersection(t.keywords)) < 1]
+                    target = random.choice(filtered_targets) if filtered_targets else random.choice(sparse_nodes)
+                    if node.connections_out:
+                        min_conn = min(node.connections_out.items(), key=lambda item: item[1])
+                        removed_util = node.connections_out.pop(min_conn[0])
+                        self.log_institution(f"Removed low-utility connection from node {node.id} to {min_conn[0]} (Utility: {removed_util:.2f}).")
+                        if self.graph.add_edge(node.id, target.id, utility=0.6):
+                            self.log_institution(f"Migrated node {node.id} by connecting to sparse node {target.id}.")
+                    migration_attempts += 1
         else:
             self.log_institution("No migration required at this step.")
 
@@ -877,19 +878,22 @@ class SynthesizerAgent(InstitutionAgent):
     Fusiona nodos para crear hipótesis emergentes a partir del conocimiento existente.
     """
     def institution_action(self):
-        self.log_institution("Synthesizing new hypotheses by merging nodes...")
+        self.log_institution("Synthesizing new hypotheses by merging nodes (bridging synthesis)...")
+        # Seleccionar node1 y buscar node2 que comparta pocas keywords
         node1 = self.graph.get_random_node_biased()
-        node2 = self.graph.get_random_node_biased()
+        candidates = [n for n in self.graph.nodes.values() if n.id != node1.id and len(node1.keywords.intersection(n.keywords)) < 1]
+        node2 = random.choice(candidates) if candidates else self.graph.get_random_node_biased()
         if node1 and node2 and node1.id != node2.id:
-            new_content = f"Synthesized: {node1.content} + {node2.content}"
-            new_keywords = node1.keywords.union(node2.keywords).union({"synthesized"})
-            new_state = (node1.state + node2.state) / 2
+            new_content = f"Synthesized Bridge: {node1.content} + {node2.content}"
+            new_keywords = node1.keywords.union(node2.keywords).union({"synthesized", "bridge"})
+            base_state = (node1.state + node2.state) / 2
+            new_state = min(1.0, base_state + 0.05)
             new_node = self.graph.add_node(content=new_content, initial_state=new_state, keywords=new_keywords)
             self.graph.add_edge(new_node.id, node1.id, utility=0.7)
             self.graph.add_edge(new_node.id, node2.id, utility=0.7)
-            self.log_institution(f"Created synthesized node {new_node.id} merging nodes {node1.id} and {node2.id}.")
+            self.log_institution(f"Created synthesized bridge node {new_node.id} merging nodes {node1.id} and {node2.id}. New state: {new_state:.2f}")
         else:
-            self.log_institution("Not enough nodes available for synthesis.")
+            self.log_institution("Not enough suitable nodes available for bridging synthesis.")
 
 class PatternMinerAgent(InstitutionAgent):
     """
@@ -1306,9 +1310,13 @@ class SimulationRunner:
             self.agents.append(CulturalMirrorAgent(f"CM{i}", self.graph, self.config))
 
         # Agregar la instanciación de agentes del Ministerio de Síntesis e Inferencia:
-        num_synthesizer = self.config.get('num_synthesizer_agents', 1)
+        num_synthesizer = self.config.get('num_synthesizer_agents', 3)  # Aumentado de 1 a 3 por defecto
         for i in range(num_synthesizer):
             self.agents.append(SynthesizerAgent(f"SYN{i}", self.graph, self.config))
+        # También se pueden agregar agentes extras si se desea:
+        extra_synthesizers = self.config.get('num_extra_synthesizer_agents', 1)
+        for i in range(extra_synthesizers):
+            self.agents.append(SynthesizerAgent(f"EXSYN{i}", self.graph, self.config))
 
         num_pattern_miner = self.config.get('num_pattern_miner_agents', 1)
         for i in range(num_pattern_miner):
