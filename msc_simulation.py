@@ -19,15 +19,19 @@ from abc import ABC, abstractmethod
 import concurrent.futures
 from flask_socketio import SocketIO
 from tqdm import tqdm
+import json
+import re
+import importlib.util
+import sys  # Para la carga dinámica de módulos
 
 load_dotenv()  # Carga variables desde .env al entorno
 
+SENTENCE_TRANSFORMERS_AVAILABLE = False
 try:
     from sentence_transformers import SentenceTransformer
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     print("WARNING: 'sentence-transformers' not found. Text embeddings disabled.")
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
     SentenceTransformer = None
 
 try:
@@ -625,58 +629,33 @@ class Synthesizer:
         self.graph = graph
         self.config = config
         self.omega = config.get('initial_omega', 100.0)
-        self.reputation = config.get('initial_reputation', 1.0)
+        self.reputation = 1.0
+
     def act(self):
-        raise NotImplementedError
+        logging.info(f"{type(self).__name__} {self.id} acting (base implementation).")
 
 # --- Clase Base para Agentes Institucionales ---
-class InstitutionAgent(Synthesizer, ABC):
+class InstitutionAgent(ABC):
+    def __init__(self, agent_id, graph, config):
+        self.id = agent_id
+        self.graph = graph
+        self.config = config
+        self.omega = config.get('initial_omega', 100.0)
+        self.reputation = 1.0
+        
     def act(self):
+        """Implementa la acción institucional principal"""
+        logging.info(f"InstitutionAgent {self.id} acting...")
         self.institution_action()
+        
     @abstractmethod
     def institution_action(self):
+        """Método abstracto a implementar por cada agente institucional"""
         pass
+        
     def log_institution(self, message):
-        logging.info(f"[{self.__class__.__name__} {self.id}] {message}")
-
-# --- JUZGADO MSC ---
-class InspectorAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Checking system integrity...")
-        anomalies = [node for node in self.graph.nodes.values() if node.state < 0.05]
-        if anomalies:
-            self.log_institution(f"Detected {len(anomalies)} anomalies.")
-        else:
-            self.log_institution("All systems normal.")
-
-class PoliceAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Monitoring suspicious activity...")
-        offenders = [node for node in self.graph.nodes.values() if any(u < -0.8 for u in node.connections_out.values())]
-        if offenders:
-            for offender in offenders:
-                self.log_institution(f"Sanctioning node {offender.id}.")
-                offender.update_state(offender.state * 0.9)
-        else:
-            self.log_institution("No abuse detected.")
-
-class CoordinatorAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Resolving conflicts among nodes...")
-        conflicts = []
-        for node in self.graph.nodes.values():
-            for target_id, utility in node.connections_out.items():
-                target = self.graph.get_node(target_id)
-                if target and abs(node.state - target.state) > 0.5:
-                    conflicts.append((node, target))
-        if conflicts:
-            self.log_institution(f"{len(conflicts)} conflicts detected; mediating...")
-            for node, target in conflicts:
-                avg_state = (node.state + target.state) / 2
-                node.update_state(avg_state)
-                target.update_state(avg_state)
-        else:
-            self.log_institution("No conflicts found.")
+        """Registra mensajes de acción institucional"""
+        logging.info(f"[Institution {self.id}] {message}")
 
 class RepairAgent(InstitutionAgent):
     def institution_action(self):
@@ -685,6 +664,37 @@ class RepairAgent(InstitutionAgent):
             if node.state > 0.7 and hasattr(node, 'reputation') and node.reputation < 0.5:
                 self.log_institution(f"Rehabilitating node {node.id}.")
                 node.update_state(min(1.0, node.state + 0.1))
+
+class InspectorAgent(InstitutionAgent):
+    def institution_action(self):
+        self.log_institution("Inspecting node states and connections...")
+        for node in self.graph.nodes.values():
+            if node.state < 0.1:
+                node.update_state(node.state + 0.05)
+                self.log_institution(f"Improved low-state node {node.id}")
+
+class PoliceAgent(InstitutionAgent):
+    def institution_action(self):
+        self.log_institution("Enforcing rules and pruning invalid connections...")
+        for node in self.graph.nodes.values():
+            if len(node.connections_out) > 15:  # Demasiadas conexiones
+                # Quitar algunas conexiones
+                self.log_institution(f"Node {node.id} has too many connections. Pruning.")
+                connections = list(node.connections_out.keys())
+                for i in range(5):  # Quitar 5 conexiones
+                    if connections:
+                        del node.connections_out[connections.pop()]
+
+class CoordinatorAgent(InstitutionAgent):
+    def institution_action(self):
+        self.log_institution("Coordinating agent activities...")
+        # Ejemplo: redistribuir omega entre agentes
+        if hasattr(self.graph, 'agents'):
+            agents_low_omega = [a for a in self.graph.agents if a.omega < 50]
+            if agents_low_omega:
+                for agent in agents_low_omega:
+                    agent.omega += 5
+                    self.log_institution(f"Boosted omega for agent {agent.id}")
 
 # --- UNIVERSIDAD MSC ---
 class MasterAgent(InstitutionAgent):
@@ -2027,6 +2037,8 @@ if __name__ == "__main__":
                         help='Minimum omega to restore for recovered agents')
     parser.add_argument('--websocket_update_frequency', type=int, default=5,
                         help='Steps between websocket status updates')
+    parser.add_argument('--taec_runtime_path', type=str, default='taec_runtime',
+                        help='Path where dynamically generated TAEC code modules will be stored')
     args = parser.parse_args()
     final_config = load_config(args)
     final_config['run_api'] = args.run_api
