@@ -117,6 +117,7 @@ class CollectiveSynthesisGraph:
         self.nodes = {}
         self.next_node_id = 0
         self.config = config
+        self.lock = threading.Lock()  # Añadir esta línea
         self.num_base_features = 5  # Se añade una feature extra para PageRank
         self.num_node_features = self.num_base_features + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
         config['gnn_input_dim'] = self.num_node_features
@@ -518,47 +519,45 @@ class CollectiveSynthesisGraph:
 
     def get_graph_elements_for_cytoscape(self):
         elements = []
-        with self.lock:
-            try:
-                cmap = plt.cm.viridis
-                norm = plt.Normalize(vmin=0, vmax=1)
-                for node_id, node in self.nodes.items():
-                    try:
-                        node_color = cmap(norm(node.state))
-                        hex_color = '#%02x%02x%02x' % tuple(int(c * 255) for c in node_color[:3])
-                    except Exception as ex:
-                        app.logger.error("Error processing node %s: %s", node_id, ex)
-                        hex_color = "#cccccc"
-                    elements.append({
-                        'data': {
-                            'id': str(node_id),
-                            'label': f'Node {node_id}\nS={node.state:.2f}',
-                            'state': node.state,
-                            'keywords': ", ".join(sorted(list(node.keywords))) if node.keywords else ""
-                        },
-                        'style': {
-                            'background-color': hex_color,
-                            'width': f"{20 + node.state * 40}px",
-                            'height': f"{20 + node.state * 40}px"
-                        }
-                    })
-                for source_id, node in self.graph.nodes.items():
-                    for target_id, utility in node.connections_out.items():
-                        if source_id in self.graph.nodes and target_id in self.graph.nodes:
-                            elements.append({
-                                'data': {
-                                    'source': str(source_id),
-                                    'target': str(target_id),
-                                    'utility': utility
-                                },
-                                'style': {
-                                    'width': 1 + abs(utility) * 2,
-                                    'line-color': 'red' if utility < 0 else ('blue' if utility > 0 else 'grey')
-                                }
-                            })
-            except Exception as e:
-                app.logger.error("Unexpected error in get_graph_elements_for_cytoscape: %s", e)
-                raise e
+        try:
+            cmap = plt.cm.viridis
+            norm = plt.Normalize(vmin=0, vmax=1)
+            for node_id, node in self.nodes.items():
+                try:
+                    node_color = cmap(norm(node.state))
+                    hex_color = '#%02x%02x%02x' % tuple(int(c * 255) for c in node_color[:3])
+                except Exception as ex:
+                    logging.error(f"Error processing node {node_id}: {ex}")
+                    hex_color = "#cccccc"
+                elements.append({
+                    'data': {
+                        'id': str(node_id),
+                        'label': f'Node {node_id}\nS={node.state:.2f}',
+                        'state': node.state,
+                        'keywords': ", ".join(sorted(list(node.keywords))) if node.keywords else ""
+                    },
+                    'style': {
+                        'background-color': hex_color,
+                        'width': f"{20 + node.state * 40}px",
+                        'height': f"{20 + node.state * 40}px"
+                    }
+                })
+            for source_id, node in self.nodes.items():
+                for target_id, utility in node.connections_out.items():
+                    if target_id in self.nodes:
+                        elements.append({
+                            'data': {
+                                'source': str(source_id),
+                                'target': str(target_id),
+                                'utility': utility
+                            },
+                            'style': {
+                                'width': 1 + abs(utility) * 2,
+                                'line-color': 'red' if utility < 0 else ('blue' if utility > 0 else 'grey')
+                            }
+                        })
+        except Exception as e:
+            logging.error(f"Unexpected error in get_graph_elements_for_cytoscape: {e}")
         return elements
 
     def trim_stale_nodes(self, threshold=0.05, max_retain=1000):
@@ -1680,23 +1679,34 @@ class SimulationRunner:
         logging.info("--- Simulation Runner Stopped ---")
 
     def get_status(self):
+        """Devuelve el estado actual de la simulación para TAECViz"""
         with self.lock:
-            num_nodes = len(self.graph.nodes)
-            num_edges = sum(len(n.connections_out) for n in self.graph.nodes.values())
-            avg_state = (sum(n.state for n in self.graph.nodes.values()) / num_nodes) if num_nodes > 0 else 0
-            num_agents = len(self.agents)
-            avg_reputation = (sum(a.reputation for a in self.agents) / num_agents) if num_agents > 0 else 0.0
-            avg_omega = (sum(a.omega for a in self.agents) / num_agents) if num_agents > 0 else 0.0
-            return {
-                "is_running": self.is_running,
-                "current_step": self.step_count,
-                "node_count": num_nodes,
-                "edge_count": num_edges,
-                "average_state": round(avg_state, 3),
-                "embeddings_count": len(self.graph.node_embeddings),
-                "average_reputation": round(avg_reputation, 3),
-                "average_omega": round(avg_omega, 2)
-            }
+            try:
+                # Calcular estado promedio de los nodos
+                if hasattr(self, 'graph') and hasattr(self.graph, 'nodes') and self.graph.nodes:
+                    avg_state = sum(node.state for node in self.graph.nodes.values()) / len(self.graph.nodes)
+                else:
+                    avg_state = 0
+                    
+                # Calcular omega promedio de los agentes
+                if hasattr(self, 'agents') and self.agents:
+                    avg_omega = sum(agent.omega for agent in self.agents if hasattr(agent, 'omega')) / len(self.agents)
+                else:
+                    avg_omega = 0
+                    
+                return {
+                    "is_running": self.is_running,
+                    "current_step": self.step_count,
+                    "node_count": len(self.graph.nodes) if hasattr(self, 'graph') and hasattr(self.graph, 'nodes') else 0,
+                    "edge_count": sum(len(node.connections_out) for node in self.graph.nodes.values()) if hasattr(self, 'graph') and hasattr(self.graph, 'nodes') else 0,
+                    "agent_count": len(self.agents) if hasattr(self, 'agents') else 0,
+                    "average_state": round(avg_state, 3),
+                    "average_omega": round(avg_omega, 3),
+                    "simulation_time": round(time.time() - self.start_time, 1) if hasattr(self, 'start_time') else 0
+                }
+            except Exception as e:
+                logging.error(f"Error al generar estado de simulación: {e}")
+                return {"error": str(e)}
 
     def get_graph_elements_for_cytoscape(self):
         elements = []
@@ -1709,7 +1719,7 @@ class SimulationRunner:
                         node_color = cmap(norm(node.state))
                         hex_color = '#%02x%02x%02x' % tuple(int(c * 255) for c in node_color[:3])
                     except Exception as ex:
-                        app.logger.error("Error processing node %s: %s", node_id, ex)
+                        logging.error(f"Error processing node {node_id}: {ex}")
                         hex_color = "#cccccc"
                     elements.append({
                         'data': {
@@ -1739,7 +1749,7 @@ class SimulationRunner:
                                 }
                             })
             except Exception as e:
-                app.logger.error("Unexpected error in get_graph_elements_for_cytoscape: %s", e)
+                logging.error(f"Unexpected error in get_graph_elements_for_cytoscape: {e}")
                 raise e
         return elements
 
@@ -2043,7 +2053,27 @@ if __name__ == "__main__":
     final_config = load_config(args)
     final_config['run_api'] = args.run_api
     simulation_runner = SimulationRunner(final_config)
+
+    # Después de crear simulation_runner y antes de cualquier otra cosa
+    logging.info(f"Creado simulation_runner: {simulation_runner}")
+
+    # Iniciar la simulación
+    logging.info("Iniciando simulación...")
     simulation_runner.start()
+
+    # Integrar TAECViz
+    try:
+        logging.info("Integrando TAECViz...")
+        from taecviz import integrate_taecviz_with_simulation
+        viz_server = integrate_taecviz_with_simulation(simulation_runner)
+        logging.info(f"TAECViz integrado correctamente: {viz_server}")
+    except ImportError as e:
+        logging.error(f"Error al importar TAECViz: {e}")
+        viz_server = None
+    except Exception as e:
+        logging.error(f"Error al integrar TAECViz: {e}")
+        viz_server = None
+
     time.sleep(2)
     if final_config.get('run_api', False):
         logging.info("Starting Flask+SocketIO server on http://127.0.0.1:5000")
@@ -2064,3 +2094,9 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             logging.info("KeyboardInterrupt detected. Stopping simulation...")
             simulation_runner.stop()
+
+try:
+    response = requests.get("http://127.0.0.1:8080/graph_data", timeout=2)
+except requests.exceptions.RequestException:
+    # Ignorar el error o manejarlo adecuadamente
+    pass
