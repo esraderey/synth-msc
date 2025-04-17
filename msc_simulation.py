@@ -804,6 +804,209 @@ class MigrationAgent(InstitutionAgent):
         else:
             self.log_institution("No migration required at this step.")
 
+# --- MINISTERIO DE SÍNTESIS E INFERENCIA - Ministerio de Síntesis e Inferencia ---
+
+# Instituto de Síntesis Predictiva
+class SynthesizerAgent(InstitutionAgent):
+    """
+    Fusiona nodos para crear hipótesis emergentes a partir del conocimiento existente.
+    """
+    def institution_action(self):
+        self.log_institution("Synthesizing new hypotheses by merging nodes...")
+        node1 = self.graph.get_random_node_biased()
+        node2 = self.graph.get_random_node_biased()
+        if node1 and node2 and node1.id != node2.id:
+            new_content = f"Synthesized: {node1.content} + {node2.content}"
+            new_keywords = node1.keywords.union(node2.keywords).union({"synthesized"})
+            new_state = (node1.state + node2.state) / 2
+            new_node = self.graph.add_node(content=new_content, initial_state=new_state, keywords=new_keywords)
+            self.graph.add_edge(new_node.id, node1.id, utility=0.7)
+            self.graph.add_edge(new_node.id, node2.id, utility=0.7)
+            self.log_institution(f"Created synthesized node {new_node.id} merging nodes {node1.id} and {node2.id}.")
+        else:
+            self.log_institution("Not enough nodes available for synthesis.")
+
+class PatternMinerAgent(InstitutionAgent):
+    """
+    Encuentra patrones y correlaciones inesperadas dentro del grafo.
+    """
+    def institution_action(self):
+        self.log_institution("Mining patterns and unexpected correlations...")
+        patterns_found = 0
+        for node in self.graph.nodes.values():
+            if "pattern" in node.keywords:
+                continue
+            similar_nodes = [n for n in self.graph.nodes.values() if n != node and node.keywords.intersection(n.keywords)]
+            if len(similar_nodes) >= 2:
+                avg_state = (node.state + sum(n.state for n in similar_nodes)) / (len(similar_nodes) + 1)
+                node.keywords.add("pattern")
+                for n in similar_nodes:
+                    n.keywords.add("pattern")
+                self.log_institution(f"Pattern detected in node {node.id} and {len(similar_nodes)} similar nodes. Avg state: {avg_state:.2f}")
+                patterns_found += 1
+        if patterns_found == 0:
+            self.log_institution("No significant patterns detected this cycle.")
+
+# Instituto de Tendencias y Prospección
+class TrendDetectorAgent(InstitutionAgent):
+    """
+    Detecta temas crecientes o tendencias globales a partir de la evolución del grafo.
+    """
+    def institution_action(self):
+        self.log_institution("Detecting emerging trends across the graph...")
+        trend_count = {}
+        for node in self.graph.nodes.values():
+            for keyword in node.keywords:
+                trend_count[keyword] = trend_count.get(keyword, 0) + node.state
+        if trend_count:
+            trending_keyword = max(trend_count, key=trend_count.get)
+            self.log_institution(f"Detected trending topic: {trending_keyword} with score {trend_count[trending_keyword]:.2f}")
+        else:
+            self.log_institution("No trends detected.")
+
+class ChronoAgent(InstitutionAgent):
+    """
+    Analiza la evolución de conceptos en el tiempo, creando líneas temporales de nodos relacionados.
+    """
+    def institution_action(self):
+        self.log_institution("Analyzing temporal evolution of concepts...")
+        if self.graph.nodes:
+            sorted_nodes = sorted(self.graph.nodes.values(), key=lambda n: n.id)
+            timeline = [(node.id, node.state) for node in sorted_nodes]
+            self.log_institution(f"Chronological data collected: {timeline}")
+        else:
+            self.log_institution("Graph empty, no temporal data available.")
+
+# --- GOBIERNO COGNITIVO DEL MSC - Ministerio de Conectividad Global ---
+
+# Instituto de Infraestructura Informativa
+class WebCrawlerAgent(InstitutionAgent):
+    """
+    Rastrea páginas web y repositorios para incorporar nuevos datos al grafo.
+    """
+    def institution_action(self):
+        self.log_institution("Crawling web pages for new data...")
+        # Implementación de ejemplo: simula la creación de un nodo con contenido extraído web.
+        new_content = f"Web data fetched by {self.id}"
+        new_node = self.graph.add_node(content=new_content, initial_state=0.5, keywords={"web", "data"})
+        self.log_institution(f"Created node {new_node.id} with web-fetched content.")
+
+class RSSListenerAgent(InstitutionAgent):
+    """
+    Escucha fuentes RSS para incorporar noticias o actualizaciones al grafo.
+    """
+    def institution_action(self):
+        self.log_institution("Listening to RSS feeds for news updates...")
+        # Simulación: si se detecta una 'noticia', se agrega un nodo.
+        news = f"News item captured by {self.id}"
+        new_node = self.graph.add_node(content=news, initial_state=0.4, keywords={"news"})
+        self.log_institution(f"Added news node {new_node.id} from RSS feed.")
+
+class APICollectorAgent(InstitutionAgent):
+    """
+    Accede a datos vivos de APIs reales y los integra en el grafo.
+    """
+    def institution_action(self):
+        self.log_institution("Collecting live data from external APIs...")
+        # Simulación: se crea un nodo representativo de datos externos.
+        api_data = f"API data collected by {self.id}"
+        new_node = self.graph.add_node(content=api_data, initial_state=0.6, keywords={"api", "external"})
+        self.log_institution(f"Inserted API data node {new_node.id}.")
+
+# Instituto de Enlace Humano-Máquina
+class InterfaceAgent(InstitutionAgent):
+    """
+    Recoge preguntas e inputs humanos y los inserta en el grafo para ser procesados.
+    """
+    def institution_action(self):
+        self.log_institution("Gathering human interface inputs...")
+        # Simulación: se añade un nodo que representa una consulta o input humano.
+        human_input = f"Human query received by {self.id}"
+        new_node = self.graph.add_node(content=human_input, initial_state=0.4, keywords={"human", "query"})
+        self.log_institution(f"Created interface node {new_node.id} with human input.")
+
+class TranslatorAgent(InstitutionAgent):
+    """
+    Convierte lenguaje natural a un formato compatible con el MSC, integrando la información.
+    """
+    def institution_action(self):
+        self.log_institution("Translating natural language to MSC format...")
+        # Simulación: se toma un nodo de entrada y se crea uno traducido.
+        original_node = self.graph.get_random_node_biased()
+        if original_node:
+            translated_content = f"Translated content of node {original_node.id} by {self.id}"
+            new_node = self.graph.add_node(content=translated_content, initial_state=original_node.state, keywords={"translated"})
+            self.log_institution(f"Created translated node {new_node.id} from node {original_node.id}.")
+
+# --- MINISTERIO DEL ENTRENAMIENTO Y DATOS ---
+
+# Instituto de Datos Reales y Sintéticos
+class DatasetAgent(InstitutionAgent):
+    """
+    Introduce datasets reales o sintéticos (por ejemplo, de Kaggle, OpenAI, etc.)
+    al grafo para enriquecer el conocimiento.
+    """
+    def institution_action(self):
+        self.log_institution("Injecting dataset into the graph...")
+        # Simulación: crear un nodo con datos identificados como datasets.
+        dataset_info = f"Dataset provided by {self.id}"
+        new_node = self.graph.add_node(content=dataset_info, initial_state=0.7, keywords={"dataset", "real", "synthetic"})
+        self.log_institution(f"Dataset node {new_node.id} created with content: {dataset_info}")
+
+class AutoLabelAgent(InstitutionAgent):
+    """
+    Etiqueta o anota información en el grafo utilizando LLMs (o lógica simulada).
+    """
+    def institution_action(self):
+        self.log_institution("Auto-labeling information using LLM assistance...")
+        # Simulación: seleccionar un nodo y "etiquetar" su contenido.
+        target_node = self.graph.get_random_node_biased()
+        if target_node:
+            # Ejemplo: se agregan etiquetas adicionales a los keywords del nodo.
+            target_node.keywords.update({"auto-labeled", "LLM"})
+            self.log_institution(f"Node {target_node.id} auto-labeled with tags: auto-labeled, LLM")
+        else:
+            self.log_institution("No node found for auto-labeling.")
+
+# Instituto de Validación y Contraste
+class RealVsFictionAgent(InstitutionAgent):
+    """
+    Distingue fuentes verificadas versus especulativas, para marcar la confiabilidad de la fuente.
+    """
+    def institution_action(self):
+        self.log_institution("Evaluating source authenticity (Real vs Fiction)...")
+        # Simulación: elegir un nodo y asignar una bandera de confiabilidad.
+        candidate = self.graph.get_random_node_biased()
+        if candidate:
+            # Se podría asignar un campo o ajustar el estado para reflejar mayor confiabilidad.
+            if "verified" in candidate.keywords:
+                self.log_institution(f"Node {candidate.id} already verified as real.")
+            else:
+                # Supongamos que un incremento en el estado indica mayor confiabilidad.
+                candidate.update_state(candidate.state + 0.1)
+                candidate.keywords.add("verified")
+                self.log_institution(f"Node {candidate.id} marked as real (verified) and state increased.")
+        else:
+            self.log_institution("No candidate node found for source evaluation.")
+
+class SourceVerifierAgent(InstitutionAgent):
+    """
+    Asigna reputación y confiabilidad a nodos de acuerdo a la fiabilidad de su fuente.
+    """
+    def institution_action(self):
+        self.log_institution("Verifying source reliability for nodes...")
+        # Simulación: recorrer nodos y ajustar reputación según ciertas palabras clave.
+        for node in self.graph.nodes.values():
+            # Si un nodo tiene la etiqueta "verified", aumentar reputación.
+            if "verified" in node.keywords:
+                # Incremento en la reputación para nodos verificados.
+                self.log_institution(f"Node {node.id} verified. Increasing reputation.")
+                node.update_state(min(1.0, node.state + 0.05))
+            else:
+                # Reducir reputación (simulado, por ejemplo) para nodos sin verificación.
+                node.update_state(max(0.1, node.state - 0.03))
+                self.log_institution(f"Node {node.id} not verified. Decreasing state slightly for caution.")
+
 # --- Agentes Operativos ---
 class ProposerAgent(Synthesizer):
     def act(self):
@@ -961,6 +1164,61 @@ class SimulationRunner:
         for i in range(num_migration_agents):
             self.agents.append(MigrationAgent(f"MIG{i}", self.graph, self.config))
 
+        # Agregar la instanciación de agentes del Ministerio de Síntesis e Inferencia:
+        num_synthesizer = self.config.get('num_synthesizer_agents', 1)
+        for i in range(num_synthesizer):
+            self.agents.append(SynthesizerAgent(f"SYN{i}", self.graph, self.config))
+
+        num_pattern_miner = self.config.get('num_pattern_miner_agents', 1)
+        for i in range(num_pattern_miner):
+            self.agents.append(PatternMinerAgent(f"PM{i}", self.graph, self.config))
+
+        num_trend_detector = self.config.get('num_trend_detector_agents', 1)
+        for i in range(num_trend_detector):
+            self.agents.append(TrendDetectorAgent(f"TD{i}", self.graph, self.config))
+
+        num_chrono = self.config.get('num_chrono_agents', 1)
+        for i in range(num_chrono):
+            self.agents.append(ChronoAgent(f"CHRO{i}", self.graph, self.config))
+
+        # Agregar la instanciación de agentes del Ministerio de Conectividad Global:
+        num_webcrawler = self.config.get('num_webcrawler_agents', 1)
+        for i in range(num_webcrawler):
+            self.agents.append(WebCrawlerAgent(f"WC{i}", self.graph, self.config))
+
+        num_rsslistener = self.config.get('num_rsslistener_agents', 1)
+        for i in range(num_rsslistener):
+            self.agents.append(RSSListenerAgent(f"RSS{i}", self.graph, self.config))
+
+        num_apicollector = self.config.get('num_apicollector_agents', 1)
+        for i in range(num_apicollector):
+            self.agents.append(APICollectorAgent(f"API{i}", self.graph, self.config))
+
+        num_interface = self.config.get('num_interface_agents', 1)
+        for i in range(num_interface):
+            self.agents.append(InterfaceAgent(f"INT{i}", self.graph, self.config))
+
+        num_translator = self.config.get('num_translator_agents', 1)
+        for i in range(num_translator):
+            self.agents.append(TranslatorAgent(f"TR{i}", self.graph, self.config))
+
+        # Agregar la instanciación de agentes del Ministerio del Entrenamiento y Datos:
+        num_dataset = self.config.get('num_dataset_agents', 1)
+        for i in range(num_dataset):
+            self.agents.append(DatasetAgent(f"DATA{i}", self.graph, self.config))
+
+        num_autolabel = self.config.get('num_autolabel_agents', 1)
+        for i in range(num_autolabel):
+            self.agents.append(AutoLabelAgent(f"AUTOLABEL{i}", self.graph, self.config))
+
+        num_realvsfiction = self.config.get('num_realvsfiction_agents', 1)
+        for i in range(num_realvsfiction):
+            self.agents.append(RealVsFictionAgent(f"RVF{i}", self.graph, self.config))
+
+        num_sourceverifier = self.config.get('num_sourceverifier_agents', 1)
+        for i in range(num_sourceverifier):
+            self.agents.append(SourceVerifierAgent(f"SV{i}", self.graph, self.config))
+
         logging.info(f"Created agents: "
                      f"Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, "
                      f"Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}, "
@@ -969,7 +1227,10 @@ class SimulationRunner:
                      f"Inspectors={num_inspectors}, Police={num_police}, Coordinators={num_coordinators}, "
                      f"RepairAgents={num_repair}, Masters={num_master}, Students={num_students}, Scientists={num_scientists}, "
                      f"StorageAgents={num_storage}, BankAgents={num_bank}, MerchantAgents={num_merchant}, MinerAgents={num_miner}, "
-                     f"PopulationRegulators={num_population_regulators}, Seeders={num_seeders}, ClusterBalancers={num_cluster_balancers}, Mediators={num_mediators}, MigrationAgents={num_migration_agents}")
+                     f"PopulationRegulators={num_population_regulators}, Seeders={num_seeders}, ClusterBalancers={num_cluster_balancers}, Mediators={num_mediators}, MigrationAgents={num_migration_agents}, "
+                     f"Synthesizers={num_synthesizer}, PatternMiners={num_pattern_miner}, TrendDetectors={num_trend_detector}, ChronoAgents={num_chrono}, "
+                     f"WebCrawlers={num_webcrawler}, RSSListeners={num_rsslistener}, APICollectors={num_apicollector}, Interfaces={num_interface}, Translators={num_translator}, "
+                     f"DatasetAgents={num_dataset}, AutoLabelAgents={num_autolabel}, RealVsFictionAgents={num_realvsfiction}, SourceVerifierAgents={num_sourceverifier}")
 
     def _simulation_loop(self):
         step_delay = self.config.get('step_delay', 0.1)
@@ -1227,6 +1488,19 @@ def load_config(args):
         'num_cluster_balancers': 1,
         'num_mediators': 1,
         'num_migration_agents': 1,
+        'num_synthesizer_agents': 1,
+        'num_pattern_miner_agents': 1,
+        'num_trend_detector_agents': 1,
+        'num_chrono_agents': 1,
+        'num_webcrawler_agents': 1,
+        'num_rsslistener_agents': 1,
+        'num_apicollector_agents': 1,
+        'num_interface_agents': 1,
+        'num_translator_agents': 1,
+        'num_dataset_agents': 1,
+        'num_autolabel_agents': 1,
+        'num_realvsfiction_agents': 1,
+        'num_sourceverifier_agents': 1,
     }
     if args.config:
         try:
@@ -1355,6 +1629,19 @@ if __name__ == "__main__":
     parser.add_argument('--num_cluster_balancers', type=int, help='Number of ClusterBalancerAgents.')
     parser.add_argument('--num_mediators', type=int, help='Number of MediatorAgents.')
     parser.add_argument('--num_migration_agents', type=int, help='Number of MigrationAgents.')
+    parser.add_argument('--num_synthesizer_agents', type=int, help='Number of SynthesizerAgents.')
+    parser.add_argument('--num_pattern_miner_agents', type=int, help='Number of PatternMinerAgents.')
+    parser.add_argument('--num_trend_detector_agents', type=int, help='Number of TrendDetectorAgents.')
+    parser.add_argument('--num_chrono_agents', type=int, help='Number of ChronoAgents.')
+    parser.add_argument('--num_webcrawler_agents', type=int, help='Number of WebCrawlerAgents.')
+    parser.add_argument('--num_rsslistener_agents', type=int, help='Number of RSSListenerAgents.')
+    parser.add_argument('--num_apicollector_agents', type=int, help='Number of APICollectorAgents.')
+    parser.add_argument('--num_interface_agents', type=int, help='Number of InterfaceAgents.')
+    parser.add_argument('--num_translator_agents', type=int, help='Number of TranslatorAgents.')
+    parser.add_argument('--num_dataset_agents', type=int, help='Number of DatasetAgents.')
+    parser.add_argument('--num_autolabel_agents', type=int, help='Number of AutoLabelAgents.')
+    parser.add_argument('--num_realvsfiction_agents', type=int, help='Number of RealVsFictionAgents.')
+    parser.add_argument('--num_sourceverifier_agents', type=int, help='Number of SourceVerifierAgents.')
     args = parser.parse_args()
     final_config = load_config(args)
     final_config['run_api'] = args.run_api
