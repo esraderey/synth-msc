@@ -804,6 +804,71 @@ class MigrationAgent(InstitutionAgent):
         else:
             self.log_institution("No migration required at this step.")
 
+# --- MINISTERIO DE DESARROLLO SOSTENIBLE COGNITIVO ---
+
+# Instituto de Ecología de Red
+class NodeBalancerAgent(InstitutionAgent):
+    """
+    Ajusta la población, densidad y conexiones para mantener el equilibrio de la red MSC.
+    """
+    def institution_action(self):
+        self.log_institution("Balancing node population and connections...")
+        # Si un nodo está sobredimensionado (muchas conexiones), se elimina la de menor utilidad.
+        for node in self.graph.nodes.values():
+            if len(node.connections_out) > 10:
+                min_conn = min(node.connections_out.items(), key=lambda item: item[1])
+                node.connections_out.pop(min_conn[0])
+                self.log_institution(f"Removed low-utility connection from node {node.id} (over-connected).")
+            # Si un nodo tiene pocas conexiones, se le añade una nueva conexión.
+            elif len(node.connections_out) < 2:
+                candidate = self.graph.get_random_node_biased()
+                if candidate and candidate.id != node.id:
+                    if self.graph.add_edge(node.id, candidate.id, utility=0.5):
+                        self.log_institution(f"Added connection from node {node.id} to {candidate.id} (under-connected).")
+
+class ClusterFormationAgent(InstitutionAgent):
+    """
+    Fomenta la creación de comunidades naturales conectando nodos con similitudes.
+    """
+    def institution_action(self):
+        self.log_institution("Encouraging natural cluster formation...")
+        for node in self.graph.nodes.values():
+            # Encuentra nodos con keywords comunes.
+            similar_nodes = [other for other in self.graph.nodes.values()
+                             if other.id != node.id and node.keywords.intersection(other.keywords)]
+            if similar_nodes:
+                target = random.choice(similar_nodes)
+                # Se agrega la conexión si aún no existe.
+                if target.id not in node.connections_out:
+                    if self.graph.add_edge(node.id, target.id, utility=0.6):
+                        self.log_institution(f"Formed cluster link between node {node.id} and {target.id}.")
+
+# Instituto de Diversidad Epistémica
+class PerspectiveAgent(InstitutionAgent):
+    """
+    Introduce puntos de vista divergentes en la red para enriquecer el conocimiento.
+    """
+    def institution_action(self):
+        self.log_institution("Injecting divergent perspectives...")
+        node = self.graph.get_random_node_biased()
+        if node:
+            perspective = f"perspective_{random.randint(1,100)}"
+            node.keywords.add(perspective)
+            # Ajuste opcional: modificar ligeramente el estado para reflejar diversidad.
+            node.update_state(max(0, node.state - 0.05))
+            self.log_institution(f"Node {node.id} enriched with perspective: {perspective}.")
+
+class CulturalMirrorAgent(InstitutionAgent):
+    """
+    Representa voces de distintas regiones o idiomas en la red MSC.
+    """
+    def institution_action(self):
+        self.log_institution("Reflecting cultural diversity in the network...")
+        culture = random.choice(["es", "en", "fr", "de", "zh"])
+        content = f"Cultural input from region {culture} provided by {self.id}"
+        new_node = self.graph.add_node(content=content, initial_state=0.5, keywords={culture, "culture"})
+        self.log_institution(f"Created cultural mirror node {new_node.id} with culture {culture}.")
+
 # --- MINISTERIO DE SÍNTESIS E INFERENCIA - Ministerio de Síntesis e Inferencia ---
 
 # Instituto de Síntesis Predictiva
@@ -876,6 +941,65 @@ class ChronoAgent(InstitutionAgent):
             self.log_institution(f"Chronological data collected: {timeline}")
         else:
             self.log_institution("Graph empty, no temporal data available.")
+
+# --- MINISTERIO DE EVALUACIÓN Y APRENDIZAJE ---
+
+# Instituto de Retroalimentación
+class FeedbackLoopAgent(InstitutionAgent):
+    """
+    Compara las predicciones del sistema MSC con eventos reales
+    y ajusta estrategias basándose en la diferencia.
+    """
+    def institution_action(self):
+        self.log_institution("Running feedback loop: comparing predictions with real outcomes...")
+        predicted = self.graph.get_random_node_biased()
+        actual = self.graph.get_random_node_biased()
+        if predicted and actual:
+            diff = abs(predicted.state - actual.state)
+            if diff > 0.2:
+                self.log_institution(f"Significant deviation detected (diff = {diff:.2f}) between node {predicted.id} and {actual.id}.")
+            else:
+                self.log_institution(f"Feedback: predictions align (diff = {diff:.2f}).")
+        else:
+            self.log_institution("Insufficient nodes for feedback comparison.")
+
+class MemoryAdjusterAgent(InstitutionAgent):
+    """
+    Reajusta estados y conexiones en el grafo en base a la retroalimentación evaluativa.
+    """
+    def institution_action(self):
+        self.log_institution("Adjusting memory based on evaluative feedback...")
+        for node in self.graph.nodes.values():
+            if node.state > 0.8 and "verified" not in node.keywords:
+                old_state = node.state
+                node.update_state(node.state * 0.95)
+                self.log_institution(f"Node {node.id} state adjusted from {old_state:.2f} to {node.state:.2f} (lacking verification).")
+            elif node.state < 0.3:
+                old_state = node.state
+                node.update_state(node.state + 0.05)
+                self.log_institution(f"Node {node.id} state increased from {old_state:.2f} to {node.state:.2f} for recovery.")
+
+# Instituto de Medición Global
+class GlobalMetricsAgent(InstitutionAgent):
+    """
+    Evalúa métricas agregadas del sistema (estado, densidad, clusters)
+    y reporta los hallazgos globales.
+    """
+    def institution_action(self):
+        self.log_institution("Evaluating global graph metrics...")
+        metrics = self.graph.get_global_metrics()
+        self.log_institution(f"Global Metrics: {metrics}")
+
+class LogEvaluatorAgent(InstitutionAgent):
+    """
+    Analiza logs previos y eventos del sistema para generar reportes
+    de evaluación longitudinal y aprendizaje a largo plazo.
+    """
+    def institution_action(self):
+        self.log_institution("Analyzing system logs to generate longitudinal evaluation reports...")
+        # Simulación: generar un reporte a partir del conteo de pasos (o cualquier otro indicador)
+        report = f"Report generated at simulation step {self.graph.config.get('current_step', 'N/A')}."
+        self.log_institution(f"Longitudinal Evaluation Report: {report}")
 
 # --- GOBIERNO COGNITIVO DEL MSC - Ministerio de Conectividad Global ---
 
@@ -1164,6 +1288,23 @@ class SimulationRunner:
         for i in range(num_migration_agents):
             self.agents.append(MigrationAgent(f"MIG{i}", self.graph, self.config))
 
+        # Agregar la instanciación de agentes del Ministerio de Desarrollo Sostenible Cognitivo:
+        num_node_balancer = self.config.get('num_node_balancer_agents', 1)
+        for i in range(num_node_balancer):
+            self.agents.append(NodeBalancerAgent(f"NB{i}", self.graph, self.config))
+
+        num_cluster_formation = self.config.get('num_cluster_formation_agents', 1)
+        for i in range(num_cluster_formation):
+            self.agents.append(ClusterFormationAgent(f"CF{i}", self.graph, self.config))
+
+        num_perspective = self.config.get('num_perspective_agents', 1)
+        for i in range(num_perspective):
+            self.agents.append(PerspectiveAgent(f"PA{i}", self.graph, self.config))
+
+        num_cultural_mirror = self.config.get('num_cultural_mirror_agents', 1)
+        for i in range(num_cultural_mirror):
+            self.agents.append(CulturalMirrorAgent(f"CM{i}", self.graph, self.config))
+
         # Agregar la instanciación de agentes del Ministerio de Síntesis e Inferencia:
         num_synthesizer = self.config.get('num_synthesizer_agents', 1)
         for i in range(num_synthesizer):
@@ -1180,6 +1321,23 @@ class SimulationRunner:
         num_chrono = self.config.get('num_chrono_agents', 1)
         for i in range(num_chrono):
             self.agents.append(ChronoAgent(f"CHRO{i}", self.graph, self.config))
+
+        # Agregar la instanciación de agentes del Ministerio de Evaluación y Aprendizaje:
+        num_feedback = self.config.get('num_feedback_agents', 1)
+        for i in range(num_feedback):
+            self.agents.append(FeedbackLoopAgent(f"FB{i}", self.graph, self.config))
+
+        num_memory_adjuster = self.config.get('num_memory_adjuster_agents', 1)
+        for i in range(num_memory_adjuster):
+            self.agents.append(MemoryAdjusterAgent(f"MA{i}", self.graph, self.config))
+
+        num_global_metrics = self.config.get('num_global_metrics_agents', 1)
+        for i in range(num_global_metrics):
+            self.agents.append(GlobalMetricsAgent(f"GM{i}", self.graph, self.config))
+
+        num_log_evaluator = self.config.get('num_log_evaluator_agents', 1)
+        for i in range(num_log_evaluator):
+            self.agents.append(LogEvaluatorAgent(f"LE{i}", self.graph, self.config))
 
         # Agregar la instanciación de agentes del Ministerio de Conectividad Global:
         num_webcrawler = self.config.get('num_webcrawler_agents', 1)
@@ -1228,7 +1386,9 @@ class SimulationRunner:
                      f"RepairAgents={num_repair}, Masters={num_master}, Students={num_students}, Scientists={num_scientists}, "
                      f"StorageAgents={num_storage}, BankAgents={num_bank}, MerchantAgents={num_merchant}, MinerAgents={num_miner}, "
                      f"PopulationRegulators={num_population_regulators}, Seeders={num_seeders}, ClusterBalancers={num_cluster_balancers}, Mediators={num_mediators}, MigrationAgents={num_migration_agents}, "
+                     f"NodeBalancers={num_node_balancer}, ClusterFormers={num_cluster_formation}, Perspectives={num_perspective}, CulturalMirrors={num_cultural_mirror}, "
                      f"Synthesizers={num_synthesizer}, PatternMiners={num_pattern_miner}, TrendDetectors={num_trend_detector}, ChronoAgents={num_chrono}, "
+                     f"FeedbackLoops={num_feedback}, MemoryAdjusters={num_memory_adjuster}, GlobalMetrics={num_global_metrics}, LogEvaluators={num_log_evaluator}, "
                      f"WebCrawlers={num_webcrawler}, RSSListeners={num_rsslistener}, APICollectors={num_apicollector}, Interfaces={num_interface}, Translators={num_translator}, "
                      f"DatasetAgents={num_dataset}, AutoLabelAgents={num_autolabel}, RealVsFictionAgents={num_realvsfiction}, SourceVerifierAgents={num_sourceverifier}")
 
@@ -1488,10 +1648,18 @@ def load_config(args):
         'num_cluster_balancers': 1,
         'num_mediators': 1,
         'num_migration_agents': 1,
+        'num_node_balancers': 1,
+        'num_cluster_formers': 1,
+        'num_perspective_agents': 1,
+        'num_cultural_mirrors': 1,
         'num_synthesizer_agents': 1,
         'num_pattern_miner_agents': 1,
         'num_trend_detector_agents': 1,
         'num_chrono_agents': 1,
+        'num_feedback_loop_agents': 1,
+        'num_memory_adjuster_agents': 1,
+        'num_global_metrics_agents': 1,
+        'num_log_evaluator_agents': 1,
         'num_webcrawler_agents': 1,
         'num_rsslistener_agents': 1,
         'num_apicollector_agents': 1,
@@ -1629,10 +1797,18 @@ if __name__ == "__main__":
     parser.add_argument('--num_cluster_balancers', type=int, help='Number of ClusterBalancerAgents.')
     parser.add_argument('--num_mediators', type=int, help='Number of MediatorAgents.')
     parser.add_argument('--num_migration_agents', type=int, help='Number of MigrationAgents.')
+    parser.add_argument('--num_node_balancers', type=int, help='Number of NodeBalancerAgents.')
+    parser.add_argument('--num_cluster_formers', type=int, help='Number of ClusterFormationAgents.')
+    parser.add_argument('--num_perspective_agents', type=int, help='Number of PerspectiveAgents.')
+    parser.add_argument('--num_cultural_mirrors', type=int, help='Number of CulturalMirrorAgents.')
     parser.add_argument('--num_synthesizer_agents', type=int, help='Number of SynthesizerAgents.')
     parser.add_argument('--num_pattern_miner_agents', type=int, help='Number of PatternMinerAgents.')
     parser.add_argument('--num_trend_detector_agents', type=int, help='Number of TrendDetectorAgents.')
     parser.add_argument('--num_chrono_agents', type=int, help='Number of ChronoAgents.')
+    parser.add_argument('--num_feedback_agents', type=int, help='Number of FeedbackLoopAgents.')
+    parser.add_argument('--num_memory_adjuster_agents', type=int, help='Number of MemoryAdjusterAgents.')
+    parser.add_argument('--num_global_metrics_agents', type=int, help='Number of GlobalMetricsAgents.')
+    parser.add_argument('--num_log_evaluator_agents', type=int, help='Number of LogEvaluatorAgents.')
     parser.add_argument('--num_webcrawler_agents', type=int, help='Number of WebCrawlerAgents.')
     parser.add_argument('--num_rsslistener_agents', type=int, help='Number of RSSListenerAgents.')
     parser.add_argument('--num_apicollector_agents', type=int, help='Number of APICollectorAgents.')
