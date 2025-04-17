@@ -1,106 +1,98 @@
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, State
 import dash_cytoscape as cyto
-import plotly.graph_objs as go
 import requests
-import pandas as pd
-import os
+from dash.exceptions import PreventUpdate
 
-# Base URL where msc_simulation's Flask server is running
-BASE_URL = "http://127.0.0.1:5000"
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app.title = "MSC Simulation Dashboard"
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
-server = app.server  # Expose Flask server if needed by deployment
-
+# Layout del dashboard con un componente Cytoscape, un área de status y controles de filtro
 app.layout = html.Div([
     html.H1("MSC Simulation Dashboard"),
-    html.Div(id='simulation-status'),
-    html.Button("Refresh Data", id='refresh-button', n_clicks=0),
-    html.H2("Graph Visualization"),
+    
+    # Área de status actual de la simulación
+    html.Div(id='status-div', children="Status will be updated...", style={'marginBottom': '20px'}),
+    
+    # Componente Cytoscape para visualizar el grafo
     cyto.Cytoscape(
         id='cytoscape-graph',
         layout={'name': 'cose'},
-        style={'width': '100%', 'height': '500px'},
+        style={'width': '100%', 'height': '600px'},
         elements=[]
     ),
-    html.H2("Metrics Evolution"),
-    dcc.Graph(id='metrics-graph'),
-    html.H2("Controls"),
-    html.Button("Stop Simulation", id='stop-button', n_clicks=0),
-    html.Button("Start Simulation", id='start-button', n_clicks=0)
+    
+    # Control de actualización automática
+    dcc.Interval(
+        id='interval-component',
+        interval=2000,  # Actualiza cada 2 segundos
+        n_intervals=0
+    ),
+    
+    # Filtros para explorar nodos
+    html.Div([
+        html.Label("Node Filter:"),
+        dcc.Input(id='node-filter', type='text', placeholder='Tipo de identificador o contenido'),
+        html.Button("Apply Filter", id='btn-filter')
+    ], style={'marginTop': '20px'})
 ])
 
-@app.callback(
-    Output('simulation-status', 'children'),
-    Input('refresh-button', 'n_clicks')
-)
-def update_status(n_clicks):
+def fetch_status():
     try:
-        res = requests.get(f"{BASE_URL}/status")
-        status = res.json()
-        return html.Div([
-            html.P(f"Simulation Running: {status.get('is_running')}"),
-            html.P(f"Current Step: {status.get('current_step')}"),
-            html.P(f"Node Count: {status.get('node_count')}"),
-            html.P(f"Edge Count: {status.get('edge_count')}"),
-            html.P(f"Average State: {status.get('average_state')}"),
-            html.P(f"Average Reputation: {status.get('average_reputation')}"),
-            html.P(f"Average Omega: {status.get('average_omega')}")
-        ])
+        response = requests.get("http://127.0.0.1:5000/status")
+        if response.status_code == 200:
+            return response.json()
+        return {}
     except Exception as e:
-        return f"Error fetching status: {e}"
+        return {}
 
-@app.callback(
-    Output('cytoscape-graph', 'elements'),
-    Input('refresh-button', 'n_clicks')
-)
-def update_graph(n_clicks):
+def fetch_graph_data():
     try:
-        res = requests.get(f"{BASE_URL}/graph_data")
-        elements = res.json()
-        return elements
+        response = requests.get("http://127.0.0.1:5000/graph_data")
+        if response.status_code == 200:
+            return response.json()
+        return []
     except Exception as e:
         return []
 
+# Callback para actualizar el área de status
 @app.callback(
-    Output('metrics-graph', 'figure'),
-    Input('refresh-button', 'n_clicks')
+    Output('status-div', 'children'),
+    Input('interval-component', 'n_intervals')
 )
-def update_metrics(n_clicks):
-    # CSV metrics file path can be configured via an environment variable
-    metrics_path = os.getenv("METRICS_CSV_PATH", "metrics.csv")
-    if not os.path.exists(metrics_path):
-        return {'data': [], 'layout': go.Layout(title="Metrics Evolution (CSV not found)")}
-    try:
-        df = pd.read_csv(metrics_path)
-        if df.empty:
-            return {'data': [], 'layout': go.Layout(title="Metrics Evolution (No Data)")}
-        figure = go.Figure()
-        if "Step" in df.columns and "Nodes" in df.columns:
-            figure.add_trace(go.Scatter(x=df["Step"], y=df["Nodes"],
-                                        mode='lines+markers', name='Nodes'))
-        if "Step" in df.columns and "Edges" in df.columns:
-            figure.add_trace(go.Scatter(x=df["Step"], y=df["Edges"],
-                                        mode='lines+markers', name='Edges'))
-        if "Step" in df.columns and "MeanState" in df.columns:
-            figure.add_trace(go.Scatter(x=df["Step"], y=df["MeanState"],
-                                        mode='lines+markers', name='MeanState'))
-        figure.update_layout(title="Global Metrics Evolution",
-                             xaxis_title="Step", yaxis_title="Value")
-        return figure
-    except Exception as e:
-        return {'data': [], 'layout': go.Layout(title=f"Error reading CSV: {e}")}
+def update_status(n):
+    status = fetch_status()
+    if not status:
+        raise PreventUpdate
+    return html.Div([
+        html.P(f"Step: {status.get('current_step', 'N/A')}"),
+        html.P(f"Nodes: {status.get('node_count', 'N/A')}"),
+        html.P(f"Edges: {status.get('edge_count', 'N/A')}"),
+        html.P(f"Avg State: {status.get('average_state', 'N/A')}"),
+        html.P(f"Avg Omega: {status.get('average_omega', 'N/A')}")
+    ])
 
+# Callback para actualizar los elementos del grafo en Cytoscape, con capacidad de filtro
 @app.callback(
-    Output('stop-button', 'children'),
-    Output('start-button', 'children'),
-    Input('stop-button', 'n_clicks'),
-    Input('start-button', 'n_clicks')
+    Output('cytoscape-graph', 'elements'),
+    [Input('interval-component', 'n_intervals'),
+     Input('btn-filter', 'n_clicks')],
+    State('node-filter', 'value')
 )
-def control_simulation(stop_n, start_n):
-    # These are placeholders; integration with simulation control endpoints is expected.
-    # For example, POST requests to /control/stop or /control/start could be invoked here.
-    return "Stop Simulation", "Start Simulation"
+def update_cytoscape(n_intervals, n_clicks, filter_value):
+    elements = fetch_graph_data()
+    # Si hay filtro, se realiza una selección simple de nodos cuyo ID contenga el valor de filtro
+    if filter_value:
+        filtered = []
+        for ele in elements:
+            if 'data' in ele and 'id' in ele['data']:
+                if filter_value.lower() in ele['data']['id'].lower():
+                    filtered.append(ele)
+            else:
+                filtered.append(ele)
+        return filtered
+    return elements
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8050)
+    app.run_server(debug=True)

@@ -516,9 +516,9 @@ class CollectiveSynthesisGraph:
                             'height': f"{20 + node.state * 40}px"
                         }
                     })
-                for source_id, node in self.nodes.items():
+                for source_id, node in self.graph.nodes.items():
                     for target_id, utility in node.connections_out.items():
-                        if source_id in self.nodes and target_id in self.nodes:
+                        if source_id in self.graph.nodes and target_id in self.graph.nodes:
                             elements.append({
                                 'data': {
                                     'source': str(source_id),
@@ -692,6 +692,118 @@ class MinerAgent(InstitutionAgent):
             target.update_state(target.state + 0.05)
             self.log_institution(f"Added {bonus} Ω bonus and increased state of node {target.id}.")
 
+# --- INSTITUTO DE DENSIDAD Y POBLACIÓN ---
+
+class PopulationRegulatorAgent(InstitutionAgent):
+    """
+    Reduce nodos redundantes y controla la explosión poblacional en el grafo.
+    """
+    def institution_action(self):
+        self.log_institution("Regulating population: analyzing redundancy and density...")
+        # Ejemplo: identificar nodos con estados muy similares en grupos muy densos
+        redundant_nodes = []
+        for node in self.graph.nodes.values():
+            # Criterio: si un nodo tiene muchas conexiones y muy poca variación con sus vecinos
+            if len(node.connections_out) > 5:
+                neighbors = [self.graph.get_node(nid) for nid in node.connections_out.keys()]
+                if all(abs(node.state - n.state) < 0.05 for n in neighbors if n):
+                    redundant_nodes.append(node)
+        if redundant_nodes:
+            self.log_institution(f"Identified {len(redundant_nodes)} redundant nodes for regulation.")
+            # Ejemplo: reducir estado o marcar nodos para eventual eliminación
+            for rn in redundant_nodes:
+                rn.update_state(rn.state * 0.95)
+        else:
+            self.log_institution("No redundant nodes detected.")
+
+class SeederAgent(InstitutionAgent):
+    """
+    Siembra nuevos nodos en regiones del grafo con baja densidad o actividad.
+    """
+    def institution_action(self):
+        self.log_institution("Seeding new nodes in sparse areas...")
+        # Ejemplo: agregar un nodo nuevo si se detecta baja conectividad
+        if len(self.graph.nodes) < 10:
+            new_node = self.graph.add_node(content="Seeded Node", initial_state=0.2)
+            self.log_institution(f"Seeded new node {new_node.id} due to low overall density.")
+        else:
+            # Buscar regiones con nodos poco conectados
+            sparse_nodes = [n for n in self.graph.nodes.values() if len(n.connections_in) + len(n.connections_out) < 2]
+            if sparse_nodes:
+                new_node = self.graph.add_node(content="Additional Seed", initial_state=0.3)
+                target = random.choice(sparse_nodes)
+                self.graph.add_edge(target.id, new_node.id, utility=0.5)
+                self.log_institution(f"Seeded new node {new_node.id} attached to sparse node {target.id}.")
+            else:
+                self.log_institution("No significantly sparse regions detected.")
+
+class ClusterBalancerAgent(InstitutionAgent):
+    """
+    Redistribuye conexiones entre grupos de nodos para evitar desequilibrios topológicos.
+    """
+    def institution_action(self):
+        self.log_institution("Balancing clusters in the graph...")
+        # Ejemplo: ajustar conexiones de nodos aislados o sobreconectados para elevar la cohesión
+        for node in self.graph.nodes.values():
+            if len(node.connections_out) > 8:
+                # Reducir conexiones excesivas: por ejemplo, eliminar la de menor utilidad
+                min_conn = min(node.connections_out.items(), key=lambda item: item[1])
+                node.connections_out.pop(min_conn[0])
+                self.log_institution(f"Removed low-utility connection from node {node.id}.")
+            elif len(node.connections_out) < 1:
+                # Fomentar nuevas conexiones conectándolo con un nodo aleatorio
+                candidate = self.graph.get_random_node_biased()
+                if candidate and candidate.id != node.id:
+                    self.graph.add_edge(node.id, candidate.id, utility=0.7)
+                    self.log_institution(f"Added connection from node {node.id} to {candidate.id} for better balance.")
+
+class MediatorAgent(InstitutionAgent):
+    """
+    Agente de mediación dinámica para resolver conflictos o coordinar acciones entre clusters.
+    """
+    def institution_action(self):
+        self.log_institution("Mediating between clusters...")
+        # Ejemplo: buscar pares de nodos con estados muy discrepantes conectados y ajustar su estado
+        conflicts = []
+        for node in self.graph.nodes.values():
+            for target_id, utility in node.connections_out.items():
+                target = self.graph.get_node(target_id)
+                if target and abs(node.state - target.state) > 0.3:
+                    conflicts.append((node, target))
+        if conflicts:
+            self.log_institution(f"Mediating {len(conflicts)} conflict pairs.")
+            for n1, n2 in conflicts:
+                average_state = (n1.state + n2.state) / 2
+                n1.update_state(average_state)
+                n2.update_state(average_state)
+        else:
+            self.log_institution("No conflicts require mediation.")
+
+class MigrationAgent(InstitutionAgent):
+    """
+    Evalúa los clústeres del grafo y migra nodos desde áreas saturadas hacia regiones menos pobladas
+    para fomentar la colaboración y reequilibrar la conectividad.
+    """
+    def institution_action(self):
+        self.log_institution("Evaluating clusters for adaptive migration...")
+        # Identificar nodos saturados y nodos en zonas poco conectadas (escasas conexiones)
+        saturated_nodes = [node for node in self.graph.nodes.values() if len(node.connections_out) > 8]
+        sparse_nodes = [node for node in self.graph.nodes.values() if (len(node.connections_in) + len(node.connections_out)) < 2]
+        
+        if saturated_nodes and sparse_nodes:
+            for node in saturated_nodes:
+                target = random.choice(sparse_nodes)
+                # Si el nodo saturado tiene conexiones, quitar la de menor utilidad
+                if node.connections_out:
+                    min_conn = min(node.connections_out.items(), key=lambda item: item[1])
+                    removed_util = node.connections_out.pop(min_conn[0])
+                    self.log_institution(f"Removed low-utility connection from node {node.id} to {min_conn[0]} (Utility: {removed_util:.2f}).")
+                    # Agregar nueva conexión que favorezca migración hacia cluster menos saturado
+                    if self.graph.add_edge(node.id, target.id, utility=0.6):
+                        self.log_institution(f"Migrated node {node.id} by connecting to sparse node {target.id}.")
+        else:
+            self.log_institution("No migration required at this step.")
+
 # --- Agentes Operativos ---
 class ProposerAgent(Synthesizer):
     def act(self):
@@ -833,6 +945,21 @@ class SimulationRunner:
         num_miner = self.config.get('num_miner', 1)
         for i in range(num_miner):
             self.agents.append(MinerAgent(f"MIN{i}", self.graph, self.config))
+        num_population_regulators = self.config.get('num_population_regulators', 1)
+        for i in range(num_population_regulators):
+            self.agents.append(PopulationRegulatorAgent(f"POP{i}", self.graph, self.config))
+        num_seeders = self.config.get('num_seeders', 1)
+        for i in range(num_seeders):
+            self.agents.append(SeederAgent(f"SEED{i}", self.graph, self.config))
+        num_cluster_balancers = self.config.get('num_cluster_balancers', 1)
+        for i in range(num_cluster_balancers):
+            self.agents.append(ClusterBalancerAgent(f"CLB{i}", self.graph, self.config))
+        num_mediators = self.config.get('num_mediators', 1)
+        for i in range(num_mediators):
+            self.agents.append(MediatorAgent(f"MED{i}", self.graph, self.config))
+        num_migration_agents = self.config.get('num_migration_agents', 1)
+        for i in range(num_migration_agents):
+            self.agents.append(MigrationAgent(f"MIG{i}", self.graph, self.config))
 
         logging.info(f"Created agents: "
                      f"Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, "
@@ -841,7 +968,8 @@ class SimulationRunner:
                      f"EpistemicValidators={num_epistemic_validators}, TechnogenesisAgents={num_technogenesis_agents}, "
                      f"Inspectors={num_inspectors}, Police={num_police}, Coordinators={num_coordinators}, "
                      f"RepairAgents={num_repair}, Masters={num_master}, Students={num_students}, Scientists={num_scientists}, "
-                     f"StorageAgents={num_storage}, BankAgents={num_bank}, MerchantAgents={num_merchant}, MinerAgents={num_miner}")
+                     f"StorageAgents={num_storage}, BankAgents={num_bank}, MerchantAgents={num_merchant}, MinerAgents={num_miner}, "
+                     f"PopulationRegulators={num_population_regulators}, Seeders={num_seeders}, ClusterBalancers={num_cluster_balancers}, Mediators={num_mediators}, MigrationAgents={num_migration_agents}")
 
     def _simulation_loop(self):
         step_delay = self.config.get('step_delay', 0.1)
@@ -1015,9 +1143,9 @@ class SimulationRunner:
                             'height': f"{20 + node.state * 40}px"
                         }
                     })
-                for source_id, node in self.nodes.items():
+                for source_id, node in self.graph.nodes.items():
                     for target_id, utility in node.connections_out.items():
-                        if source_id in self.nodes and target_id in self.nodes:
+                        if source_id in self.graph.nodes and target_id in self.graph.nodes:
                             elements.append({
                                 'data': {
                                     'source': str(source_id),
@@ -1094,6 +1222,11 @@ def load_config(args):
         'num_bank': 1,
         'num_merchant': 1,
         'num_miner': 1,
+        'num_population_regulators': 1,
+        'num_seeders': 1,
+        'num_cluster_balancers': 1,
+        'num_mediators': 1,
+        'num_migration_agents': 1,
     }
     if args.config:
         try:
@@ -1217,6 +1350,11 @@ if __name__ == "__main__":
     parser.add_argument('--num_bank', type=int, help='Number of BankAgents.')
     parser.add_argument('--num_merchant', type=int, help='Number of MerchantAgents.')
     parser.add_argument('--num_miner', type=int, help='Number of MinerAgents.')
+    parser.add_argument('--num_population_regulators', type=int, help='Number of PopulationRegulatorAgents.')
+    parser.add_argument('--num_seeders', type=int, help='Number of SeederAgents.')
+    parser.add_argument('--num_cluster_balancers', type=int, help='Number of ClusterBalancerAgents.')
+    parser.add_argument('--num_mediators', type=int, help='Number of MediatorAgents.')
+    parser.add_argument('--num_migration_agents', type=int, help='Number of MigrationAgents.')
     args = parser.parse_args()
     final_config = load_config(args)
     final_config['run_api'] = args.run_api
