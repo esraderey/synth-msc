@@ -17,9 +17,22 @@ __pycache__/
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
+
 # Simulation Outputs & Analysis Scripts
 *.csv
 *.png
 *.pth
 *.graphml
 analyze_metrics.py
+
+# Archivos de pruebas y entornos temporales
+test_results/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+.benchmarks/
+test_env_*/
+tests/__pycache__/

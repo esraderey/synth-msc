@@ -1,0 +1,23 @@
+{
+  "basic": {
+    "name": "basic",
+    "description": "Pruebas básicas de funcionalidad del framework",
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "success_rate": 0.0,
+    "duration": 11.88,
+    "timestamp": "2025-04-17T18:54:09.617885",
+    "tests": [
+      {
+        "name": "init_simulation",
+        "description": "Verifica que la simulación se inicializa correctamente",
+        "passed": false,
+        "duration": 11.884,
+        "error": "cannot import name 'Configuration' from 'msc_simulation' (E:\\msc_framework\\msc_simulation.py)",
+        "results": {},
+        "artifacts": {}
+      }
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "basic": {
+    "name": "basic",
+    "description": "Pruebas básicas de funcionalidad del framework",
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "success_rate": 0.0,
+    "duration": 11.13,
+    "timestamp": "2025-04-17T18:56:40.249364",
+    "tests": [
+      {
+        "name": "init_simulation",
+        "description": "Verifica que la simulación se inicializa correctamente",
+        "passed": false,
+        "duration": 11.132,
+        "error": null,
+        "results": {
+          "config": {
+            "test_mode": true,
+            "max_steps": 5,
+            "node_count": 10,
+            "agent_count": 2,
+            "edge_probability": 0.3,
+            "gnn_input_dim": 389
+          },
+          "status": {
+            "is_running": false,
+            "current_step": 0,
+            "node_count": 0,
+            "edge_count": 0,
+            "agent_count": 57,
+            "average_state": 0,
+            "average_omega": 100.0,
+            "simulation_time": 0
+          },
+          "value_mismatch": {
+            "key": "node_count",
+            "expected": 10,
+            "actual": 0
+          }
+        },
+        "artifacts": {}
+      }
+    ]
+  }
+}
