@@ -50,40 +50,54 @@ El **MSC Framework** es un sistema de vanguardia que implementa inteligencia col
 - **Optimización Compleja**: Solución de problemas NP-hard mediante evolución
 - **Generación de Código**: Sistema que mejora su propia implementación
 🏗️ Arquitectura
-graph TB
-    subgraph MSC["MSC Core Framework"]
-        A[Knowledge Graph<br/>100k nodes] --> B[GNN Processing<br/>GAT Multi-head]
-        B --> C[Agent System<br/>Claude-TAEC]
-        C --> D[Event Bus<br/>Async Priority Queue]
+flowchart TB
+    subgraph Core
+        KG[Knowledge Graph]
+        GNN[GNN Processing]
+        AS[Agent System]
+        EB[Event Bus]
+        
+        KG --> GNN
+        GNN --> AS
+        AS --> EB
     end
     
-    subgraph TAEC["TAEC Evolution Module"]
-        E[Code Evolution<br/>Genetic Algorithms] --> F[Claude API<br/>Code Generation]
-        F --> G[Quantum Memory<br/>Hybrid Processing]
-        G --> H[MSC-Lang 3.0<br/>JIT Compiler]
+    subgraph Evolution
+        CE[Code Evolution]
+        CI[Claude Integration]
+        QM[Quantum Memory]
+        MC[MSC-Lang Compiler]
+        
+        CE --> CI
+        CI --> QM
+        QM --> MC
     end
     
-    subgraph SCED["SCED Consensus Layer"]
-        I[Consensus Engine<br/>BFT Protocol] --> J[Smart Contracts<br/>Epistemic Validation]
-        J --> K[ZK Proofs<br/>Privacy Preserving]
-        K --> L[Post-Quantum<br/>Cryptography]
+    subgraph Blockchain
+        CO[Consensus]
+        SC[Smart Contracts]
+        ZK[ZK Proofs]
+        PQ[Post-Quantum Crypto]
+        
+        CO --> SC
+        SC --> ZK
+        ZK --> PQ
     end
     
-    subgraph VIZ["TAECViz Dashboard"]
-        M[3D Graph Viz<br/>Three.js] --> N[Analytics<br/>ML Predictions]
-        N --> O[WebSocket<br/>Real-time Updates]
-        O --> P[Web Dashboard<br/>Interactive UI]
+    subgraph Visualization
+        V3[3D Visualization]
+        RA[Real-time Analytics]
+        WS[WebSocket Server]
+        DA[Dashboard]
+        
+        V3 --> RA
+        RA --> WS
+        WS --> DA
     end
     
-    C -.->|evolve| E
-    C -.->|validate| I
-    D -.->|stream| O
-    
-    style MSC fill:#3B82F6,stroke:#1E40AF,stroke-width:2px,color:#fff
-    style TAEC fill:#10B981,stroke:#059669,stroke-width:2px,color:#fff
-    style SCED fill:#8B5CF6,stroke:#6D28D9,stroke-width:2px,color:#fff
-    style VIZ fill:#F59E0B,stroke:#D97706,stroke-width:2px,color:#fff
-✨ Características Principales
+    AS --> CE
+    AS --> CO
+    EB --> WS
 🧠 Núcleo MSC
 
 Grafo de Conocimiento Dinámico: Hasta 100k nodos con embeddings de 768D
