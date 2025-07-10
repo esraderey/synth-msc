@@ -1,4 +1,4 @@
-markdown<div align="center">
+<div align="center">
 
 # 🧠 MSC Framework v4.0
 
