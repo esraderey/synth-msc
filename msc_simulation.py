@@ -1,2457 +1,4383 @@
-# Modificación en la parte de importaciones - Agregar nuestra clase del nuevo visualizador
+#!/usr/bin/env python3
+"""
+MSC Framework Unificado Enhanced v4.0 - Sistema de Síntesis Colectiva Meta-cognitiva
+Mejoras principales v4.0:
+- Integración con Claude API para generación de código
+- Sistema de seguridad reforzado con OAuth2
+- Nuevos agentes: Analítico, Creativo, Optimizador
+- Sistema de consenso mejorado con votación ponderada
+- Análisis predictivo con modelos ML avanzados
+- Dashboard web con visualización 3D del grafo
+- Sistema de recuperación ante fallos mejorado
+- Soporte para clustering y ejecución distribuida
+- Integración con bases de datos (Redis, PostgreSQL)
+- Sistema de notificaciones y alertas
+"""
+
+# === IMPORTACIONES CORE ===
+import asyncio
+import aiohttp
+import numpy as np
+import hashlib
+import json
+import time
+import logging
 import random
 import math
-import time
 import argparse
 import yaml
-from collections import Counter
+import statistics
+import csv
+import os
+import re
+import sys
+import threading
+import concurrent.futures
+import ast
+import inspect
+import weakref
+import pickle
+import zlib
+import base64
+import signal
+import traceback
+from abc import ABC, abstractmethod
+from collections import Counter, defaultdict, OrderedDict, deque
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Any, Union, Callable, Set, Type, TypeVar
+from dataclasses import dataclass, field, asdict
+from enum import Enum, auto
+from functools import wraps, lru_cache, partial
+from contextlib import contextmanager, asynccontextmanager
+import queue
+import heapq
+import uuid
+import secrets
+
+# === IMPORTACIONES ASYNC ===
+import aiofiles
+import aiodns
+from aiohttp import web
+import aioredis
+import asyncpg
+
+# === IMPORTACIONES PARA DATOS ===
+import pandas as pd
+import numpy as np
+from scipy import stats, spatial
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import DBSCAN
+from sklearn.ensemble import RandomForestClassifier
+
+# === IMPORTACIONES PARA SEGURIDAD ===
+import jwt
+import bcrypt
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import anthropic  # Claude API
+
+# === IMPORTACIONES PARA VISUALIZACIÓN ===
 import networkx as nx
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from matplotlib.animation import FuncAnimation
+import seaborn as sns
+
+# === IMPORTACIONES PARA ML ===
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
-from torch_geometric.utils import negative_sampling
-import os
-from dotenv import load_dotenv
-import statistics         # Métricas de estado
-import csv                # Para escribir archivos CSV
-import requests
-from abc import ABC, abstractmethod
-import concurrent.futures
-from flask_socketio import SocketIO
-from tqdm import tqdm
-import json
-import re
-import importlib.util
-import sys  # Para la carga dinámica de módulos
-import threading
-import logging
-from flask import Flask, jsonify
+from torch_geometric.nn import GCNConv, GATConv, global_mean_pool, SAGEConv
+from torch_geometric.utils import negative_sampling, to_undirected, add_self_loops
+from torch_geometric.data import Data, Batch
+import transformers  # Para embeddings de texto
 
-# Importar el nuevo visualizador
-try:
-    from msc_viewer import MSCViewerServer, SimulationAdapter
-    MSC_VIEWER_AVAILABLE = True
-    logging.info("MSC Viewer imported successfully")
-except ImportError:
-    MSC_VIEWER_AVAILABLE = False
-    logging.warning("MSC Viewer module not found. Visualization disabled.")
+# === IMPORTACIONES PARA SERVIDOR ===
+from flask import Flask, jsonify, request, send_from_directory, Response
+from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from authlib.integrations.flask_client import OAuth
 
-load_dotenv()  # Carga variables desde .env al entorno
+# === IMPORTACIONES PARA MONITOREO ===
+from prometheus_client import Counter, Gauge, Histogram, Summary, generate_latest, Info
+import sentry_sdk
 
-SENTENCE_TRANSFORMERS_AVAILABLE = False
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    print("WARNING: 'sentence-transformers' not found. Text embeddings disabled.")
-    SentenceTransformer = None
+# === CONFIGURACIÓN MEJORADA ===
+T = TypeVar('T')
 
-try:
-    import wikipedia
-    WIKIPEDIA_AVAILABLE = True
-    wikipedia.set_lang("es")  # O usa "en" si prefieres inglés
-except ImportError:
-    print("WARNING: 'wikipedia' library not found. KnowledgeFetcherAgent disabled.")
-    WIKIPEDIA_AVAILABLE = False
-    wikipedia = None
+class Config:
+    """Configuración centralizada del sistema"""
+    
+    # Claude API
+    CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', '')
+    CLAUDE_MODEL = "claude-3-sonnet-20240229"
+    
+    # Seguridad
+    SECRET_KEY = os.getenv('MSC_SECRET_KEY', secrets.token_hex(32))
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', secrets.token_hex(32))
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
+    OAUTH_PROVIDERS = {
+        'google': {
+            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+            'client_secret': os.getenv('GOOGLE_CLIENT_SECRET')
+        }
+    }
+    
+    # Base de datos
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
+    POSTGRES_URL = os.getenv('DATABASE_URL', 'postgresql://localhost/msc')
+    
+    # Monitoreo
+    SENTRY_DSN = os.getenv('SENTRY_DSN')
+    
+    # Límites
+    MAX_NODES = 100000
+    MAX_EDGES_PER_NODE = 100
+    MAX_AGENTS = 50
+    MAX_CODE_EXECUTION_TIME = 10.0
+    
+    # Paths
+    DATA_DIR = os.getenv('MSC_DATA_DIR', './data')
+    CHECKPOINT_DIR = os.path.join(DATA_DIR, 'checkpoints')
+    LOG_DIR = os.path.join(DATA_DIR, 'logs')
 
-# --- Configuración de Logging ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# === CONFIGURACIÓN DE LOGGING MEJORADA ===
+class ColoredFormatter(logging.Formatter):
+    """Formatter con colores para mejor legibilidad"""
+    
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    green = "\x1b[32;20m"
+    blue = "\x1b[34;20m"
+    cyan = "\x1b[36;20m"
+    reset = "\x1b[0m"
+    
+    COLORS = {
+        logging.DEBUG: grey,
+        logging.INFO: green,
+        logging.WARNING: yellow,
+        logging.ERROR: red,
+        logging.CRITICAL: bold_red
+    }
+    
+    def format(self, record):
+        log_color = self.COLORS.get(record.levelno, self.grey)
+        record.levelname = f"{log_color}{record.levelname}{self.reset}"
+        record.name = f"{self.blue}{record.name}{self.reset}"
+        
+        # Añadir contexto adicional
+        if hasattr(record, 'agent_id'):
+            record.msg = f"[Agent: {record.agent_id}] {record.msg}"
+        if hasattr(record, 'node_id'):
+            record.msg = f"[Node: {record.node_id}] {record.msg}"
+            
+        return super().format(record)
 
-# --- Cargar Modelo de Embeddings ---
-text_embedding_model = None
-TEXT_EMBEDDING_DIM = 0
-if SENTENCE_TRANSFORMERS_AVAILABLE:
-    try:
-        logging.info("Loading Sentence Transformer model ('all-MiniLM-L6-v2')...")
-        embedding_model_name = 'all-MiniLM-L6-v2'
-        text_embedding_model = SentenceTransformer(embedding_model_name)
-        TEXT_EMBEDDING_DIM = text_embedding_model.get_sentence_embedding_dimension()
-        logging.info(f"ST model '{embedding_model_name}' loaded (Dim: {TEXT_EMBEDDING_DIM}).")
-    except Exception as e:
-        logging.error(f"ERROR loading Sentence Transformer model: {e}")
-        logging.warning("Text embeddings disabled.")
-        text_embedding_model = None
-        TEXT_EMBEDDING_DIM = 0
-else:
-    text_embedding_model = None
-    TEXT_EMBEDDING_DIM = 0
+# Configurar logging
+def setup_logging(log_level=logging.INFO):
+    """Configura el sistema de logging"""
+    os.makedirs(Config.LOG_DIR, exist_ok=True)
+    
+    # Handler para consola
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(ColoredFormatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    ))
+    
+    # Handler para archivo
+    file_handler = logging.FileHandler(
+        os.path.join(Config.LOG_DIR, f'msc_{datetime.now():%Y%m%d}.log')
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+    ))
+    
+    # Configurar logger raíz
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+    
+    # Configurar Sentry si está disponible
+    if Config.SENTRY_DSN:
+        sentry_sdk.init(dsn=Config.SENTRY_DSN)
+    
+    return root_logger
 
-# --- Modelo GNN ---
-class GNNModel(torch.nn.Module):
-    def __init__(self, num_node_features, hidden_channels, embedding_dim):
-        super().__init__()
-        torch.manual_seed(42)
-        self.conv1 = GCNConv(num_node_features, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, embedding_dim)
+logger = setup_logging()
 
-    def forward(self, x, edge_index):
-        edge_index = edge_index.long()
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = self.conv2(x, edge_index)
-        return x
+# === UTILIDADES MEJORADAS ===
+class AsyncContextManager:
+    """Context manager asíncrono base"""
+    
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
 
-    def decode(self, z, edge_label_index):
-        emb_src = z[edge_label_index[0]]
-        emb_dst = z[edge_label_index[1]]
-        return (emb_src * emb_dst).sum(dim=-1)
+class RateLimiter:
+    """Rate limiter asíncrono"""
+    
+    def __init__(self, rate: int, per: float):
+        self.rate = rate
+        self.per = per
+        self.allowance = rate
+        self.last_check = time.time()
+        self._lock = asyncio.Lock()
+    
+    async def acquire(self, tokens: int = 1):
+        """Adquiere tokens del rate limiter"""
+        async with self._lock:
+            current = time.time()
+            time_passed = current - self.last_check
+            self.last_check = current
+            self.allowance += time_passed * (self.rate / self.per)
+            
+            if self.allowance > self.rate:
+                self.allowance = self.rate
+            
+            if self.allowance < tokens:
+                sleep_time = (tokens - self.allowance) * (self.per / self.rate)
+                await asyncio.sleep(sleep_time)
+                self.allowance = 0
+            else:
+                self.allowance -= tokens
 
-# --- Grafo y Nodos ---
-class KnowledgeComponent:
-    def __init__(self, node_id, content="Abstract Concept", initial_state=0.1, keywords=None):
+class CircuitBreaker:
+    """Circuit breaker para manejo de fallos"""
+    
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: float = 60.0):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'closed'  # closed, open, half-open
+        self._lock = asyncio.Lock()
+    
+    async def call(self, func: Callable, *args, **kwargs):
+        """Ejecuta función con circuit breaker"""
+        async with self._lock:
+            if self.state == 'open':
+                if time.time() - self.last_failure_time > self.recovery_timeout:
+                    self.state = 'half-open'
+                else:
+                    raise Exception("Circuit breaker is open")
+            
+            try:
+                result = await func(*args, **kwargs)
+                if self.state == 'half-open':
+                    self.state = 'closed'
+                    self.failure_count = 0
+                return result
+            except Exception as e:
+                self.failure_count += 1
+                self.last_failure_time = time.time()
+                
+                if self.failure_count >= self.failure_threshold:
+                    self.state = 'open'
+                
+                raise e
+
+# === SISTEMA DE EVENTOS MEJORADO ===
+class EventType(Enum):
+    """Tipos de eventos del sistema"""
+    # Nodos
+    NODE_CREATED = auto()
+    NODE_UPDATED = auto()
+    NODE_DELETED = auto()
+    NODE_MERGED = auto()
+    
+    # Conexiones
+    EDGE_CREATED = auto()
+    EDGE_DELETED = auto()
+    EDGE_UPDATED = auto()
+    
+    # Agentes
+    AGENT_ACTION = auto()
+    AGENT_CREATED = auto()
+    AGENT_DESTROYED = auto()
+    AGENT_EVOLVED = auto()
+    
+    # Sistema
+    EVOLUTION_CYCLE = auto()
+    CONSENSUS_REACHED = auto()
+    CONSENSUS_FAILED = auto()
+    BLOCK_ADDED = auto()
+    CHECKPOINT_CREATED = auto()
+    
+    # Métricas
+    METRICS_UPDATE = auto()
+    PERFORMANCE_ALERT = auto()
+    
+    # Errores
+    ERROR_OCCURRED = auto()
+    CRITICAL_ERROR = auto()
+    
+    # Claude
+    CLAUDE_GENERATION = auto()
+    CLAUDE_ERROR = auto()
+
+@dataclass
+class Event:
+    """Evento del sistema mejorado"""
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    type: EventType = EventType.METRICS_UPDATE
+    data: Dict[str, Any] = field(default_factory=dict)
+    timestamp: float = field(default_factory=time.time)
+    source: Optional[str] = None
+    target: Optional[str] = None
+    priority: int = 5  # 1-10, donde 1 es máxima prioridad
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'type': self.type.name,
+            'data': self.data,
+            'timestamp': self.timestamp,
+            'source': self.source,
+            'target': self.target,
+            'priority': self.priority,
+            'metadata': self.metadata
+        }
+
+class EnhancedAsyncEventBus:
+    """Bus de eventos asíncrono mejorado con persistencia"""
+    
+    def __init__(self, redis_client: Optional[aioredis.Redis] = None):
+        self._subscribers: Dict[EventType, List[Callable]] = defaultdict(list)
+        self._event_queue: asyncio.PriorityQueue = asyncio.PriorityQueue()
+        self._running = False
+        self._event_history = deque(maxlen=10000)
+        self._redis = redis_client
+        self._metrics = {
+            'events_processed': Counter('msc_events_processed', 'Events processed', ['event_type']),
+            'events_failed': Counter('msc_events_failed', 'Events failed', ['event_type']),
+            'processing_time': Histogram('msc_event_processing_seconds', 'Event processing time', ['event_type'])
+        }
+        self._event_filters: List[Callable[[Event], bool]] = []
+    
+    def add_filter(self, filter_func: Callable[[Event], bool]):
+        """Añade un filtro de eventos"""
+        self._event_filters.append(filter_func)
+    
+    async def start(self):
+        """Inicia el procesamiento de eventos"""
+        self._running = True
+        # Múltiples workers para procesamiento paralelo
+        workers = [
+            asyncio.create_task(self._process_events(f"worker_{i}"))
+            for i in range(3)
+        ]
+    
+    async def publish(self, event: Event):
+        """Publica un evento al bus"""
+        # Aplicar filtros
+        for filter_func in self._event_filters:
+            if not filter_func(event):
+                return
+        
+        # Añadir a cola con prioridad
+        await self._event_queue.put((event.priority, time.time(), event))
+        
+        # Persistir en Redis si está disponible
+        if self._redis:
+            try:
+                await self._redis.lpush(
+                    f"events:{event.type.name}",
+                    json.dumps(event.to_dict())
+                )
+                await self._redis.expire(f"events:{event.type.name}", 86400)  # 24h
+            except:
+                pass
+    
+    async def _process_events(self, worker_id: str):
+        """Procesa eventos de la cola"""
+        while self._running:
+            try:
+                priority, timestamp, event = await asyncio.wait_for(
+                    self._event_queue.get(), 
+                    timeout=1.0
+                )
+                
+                with self._metrics['processing_time'].labels(event.type.name).time():
+                    await self._handle_event(event)
+                
+                self._metrics['events_processed'].labels(event.type.name).inc()
+                
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                logger.error(f"Error in {worker_id}: {e}")
+                self._metrics['events_failed'].labels('unknown').inc()
+    
+    async def _handle_event(self, event: Event):
+        """Maneja un evento específico"""
+        self._event_history.append(event)
+        
+        handlers = self._subscribers.get(event.type, [])
+        
+        # Ejecutar handlers en paralelo
+        tasks = []
+        for handler in handlers:
+            if asyncio.iscoroutinefunction(handler):
+                tasks.append(handler(event))
+            else:
+                tasks.append(
+                    asyncio.get_event_loop().run_in_executor(None, handler, event)
+                )
+        
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Log errores
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    logger.error(f"Handler {handlers[i].__name__} failed: {result}")
+
+# === CLAUDE API INTEGRATION ===
+class ClaudeAPIClient:
+    """Cliente para interactuar con Claude API"""
+    
+    def __init__(self, api_key: str = None):
+        self.api_key = api_key or Config.CLAUDE_API_KEY
+        if not self.api_key:
+            raise ValueError("Claude API key not configured")
+        
+        self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.rate_limiter = RateLimiter(rate=50, per=60.0)  # 50 requests per minute
+        self.circuit_breaker = CircuitBreaker()
+        
+        # Cache de respuestas
+        self._response_cache = {}
+        self._cache_ttl = 3600  # 1 hora
+        
+        # Métricas
+        self.metrics = {
+            'requests': Counter('claude_api_requests', 'Claude API requests', ['status']),
+            'latency': Histogram('claude_api_latency', 'Claude API latency'),
+            'tokens': Counter('claude_api_tokens', 'Claude API tokens used', ['type'])
+        }
+    
+    async def generate_code(self, prompt: str, context: Dict[str, Any] = None) -> Optional[str]:
+        """Genera código usando Claude"""
+        # Check cache
+        cache_key = hashlib.sha256(f"{prompt}{context}".encode()).hexdigest()
+        if cache_key in self._response_cache:
+            cached_time, cached_response = self._response_cache[cache_key]
+            if time.time() - cached_time < self._cache_ttl:
+                return cached_response
+        
+        # Rate limiting
+        await self.rate_limiter.acquire()
+        
+        # Preparar prompt mejorado
+        enhanced_prompt = self._prepare_code_prompt(prompt, context)
+        
+        try:
+            # Llamar a Claude API con circuit breaker
+            result = await self.circuit_breaker.call(
+                self._call_claude_api,
+                enhanced_prompt
+            )
+            
+            # Extraer código de la respuesta
+            code = self._extract_code(result)
+            
+            # Cache response
+            self._response_cache[cache_key] = (time.time(), code)
+            
+            # Métricas
+            self.metrics['requests'].labels('success').inc()
+            
+            return code
+            
+        except Exception as e:
+            logger.error(f"Claude API error: {e}")
+            self.metrics['requests'].labels('error').inc()
+            return None
+    
+    async def _call_claude_api(self, prompt: str) -> str:
+        """Llamada real a Claude API"""
+        start_time = time.time()
+        
+        message = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: self.client.messages.create(
+                model=Config.CLAUDE_MODEL,
+                max_tokens=2000,
+                temperature=0.7,
+                system="You are an expert Python developer specializing in graph algorithms, multi-agent systems, and metaprogramming. Generate clean, efficient, and safe code.",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+        )
+        
+        # Métricas
+        latency = time.time() - start_time
+        self.metrics['latency'].observe(latency)
+        self.metrics['tokens'].labels('input').inc(message.usage.input_tokens)
+        self.metrics['tokens'].labels('output').inc(message.usage.output_tokens)
+        
+        return message.content[0].text
+    
+    def _prepare_code_prompt(self, prompt: str, context: Dict[str, Any]) -> str:
+        """Prepara prompt mejorado con contexto"""
+        enhanced_prompt = f"""
+Please generate Python code for the following task:
+
+{prompt}
+
+Context:
+- System: MSC Framework v4.0 (Meta-cognitive Collective Synthesis)
+- Current graph nodes: {context.get('node_count', 0)}
+- Current graph edges: {context.get('edge_count', 0)}
+- Available imports: math, random, statistics, numpy, networkx
+- Constraints: Code must be safe, efficient, and follow best practices
+
+Requirements:
+1. The code should be a complete, executable function
+2. Include proper error handling
+3. Add docstring with description
+4. Use type hints
+5. Optimize for performance
+6. Do not use any dangerous operations (file I/O, network, exec, eval)
+
+Return only the Python code, wrapped in ```python``` markers.
+"""
+        return enhanced_prompt
+    
+    def _extract_code(self, response: str) -> Optional[str]:
+        """Extrae código de la respuesta de Claude"""
+        # Buscar código entre marcadores
+        code_pattern = r'```python\n(.*?)\n```'
+        matches = re.findall(code_pattern, response, re.DOTALL)
+        
+        if matches:
+            return matches[0]
+        
+        # Si no hay marcadores, intentar extraer función
+        func_pattern = r'def\s+\w+\s*\([^)]*\):\s*\n(.*?)(?=\n\S|\Z)'
+        matches = re.findall(func_pattern, response, re.DOTALL)
+        
+        if matches:
+            return f"def generated_function():\n{matches[0]}"
+        
+        return None
+
+# === SISTEMA DE CACHÉ DISTRIBUIDO ===
+class DistributedCache:
+    """Sistema de caché distribuido con Redis"""
+    
+    def __init__(self, redis_client: aioredis.Redis, local_size: int = 1000):
+        self.redis = redis_client
+        self.local_cache = OrderedDict()
+        self.local_size = local_size
+        self._lock = asyncio.Lock()
+        
+        # Métricas
+        self.metrics = {
+            'hits': Counter('cache_hits', 'Cache hits', ['level']),
+            'misses': Counter('cache_misses', 'Cache misses'),
+            'latency': Histogram('cache_latency', 'Cache operation latency', ['operation'])
+        }
+    
+    async def get(self, key: str) -> Optional[Any]:
+        """Obtiene valor del caché"""
+        # Nivel 1: Cache local
+        async with self._lock:
+            if key in self.local_cache:
+                self.local_cache.move_to_end(key)
+                self.metrics['hits'].labels('local').inc()
+                return self.local_cache[key]
+        
+        # Nivel 2: Redis
+        with self.metrics['latency'].labels('redis_get').time():
+            value = await self.redis.get(key)
+            
+        if value:
+            # Deserializar
+            try:
+                deserialized = pickle.loads(value)
+                # Añadir a cache local
+                await self._add_to_local(key, deserialized)
+                self.metrics['hits'].labels('redis').inc()
+                return deserialized
+            except:
+                pass
+        
+        self.metrics['misses'].inc()
+        return None
+    
+    async def set(self, key: str, value: Any, ttl: int = 3600):
+        """Establece valor en caché"""
+        # Serializar
+        serialized = pickle.dumps(value)
+        
+        # Guardar en Redis
+        with self.metrics['latency'].labels('redis_set').time():
+            await self.redis.setex(key, ttl, serialized)
+        
+        # Añadir a cache local
+        await self._add_to_local(key, value)
+    
+    async def _add_to_local(self, key: str, value: Any):
+        """Añade a cache local con evicción LRU"""
+        async with self._lock:
+            if key in self.local_cache:
+                self.local_cache.move_to_end(key)
+            else:
+                self.local_cache[key] = value
+                if len(self.local_cache) > self.local_size:
+                    self.local_cache.popitem(last=False)
+
+# === MODELOS DE DATOS AVANZADOS ===
+@dataclass
+class NodeMetadata:
+    """Metadatos extendidos para nodos"""
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+    created_by: Optional[str] = None
+    tags: Set[str] = field(default_factory=set)
+    properties: Dict[str, Any] = field(default_factory=dict)
+    access_count: int = 0
+    importance_score: float = 0.5
+    embedding: Optional[np.ndarray] = None
+    cluster_id: Optional[int] = None
+    version: int = 1
+    locked: bool = False
+    locked_by: Optional[str] = None
+
+class AdvancedKnowledgeComponent:
+    """Componente de conocimiento avanzado con ML"""
+    
+    def __init__(self, node_id: int, content: str = "Abstract Concept", 
+                 initial_state: float = 0.1, keywords: Optional[Set[str]] = None):
         self.id = node_id
         self.content = content
         self.state = initial_state
-        self.keywords = keywords if keywords else set()
-        self.connections_out = {}
-        self.connections_in = {}
-
-    def update_state(self, new_state):
-        MIN_STATE = 0.01
-        self.state = max(MIN_STATE, min(1.0, new_state))
-
-    def add_connection(self, target_node, utility):
-        if target_node.id != self.id:
-            self.connections_out[target_node.id] = utility
-            target_node.connections_in[self.id] = utility
-
-    def __repr__(self):
-        kw_str = f", KW={list(self.keywords)}" if self.keywords else ""
-        return f"Node({self.id}, S={self.state:.3f}{kw_str})"
-
-class CollectiveSynthesisGraph:
-    def __init__(self, config):
-        self.nodes = {}
-        self.next_node_id = 0
-        self.config = config
-        self.lock = threading.Lock()  # Añadir esta línea
-        self.num_base_features = 5  # Se añade una feature extra para PageRank
-        self.num_node_features = self.num_base_features + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
-        config['gnn_input_dim'] = self.num_node_features
-        hidden_channels = config.get('gnn_hidden_dim', 16)
-        embedding_dim = config.get('gnn_embedding_dim', 8)
-        self.gnn_model = GNNModel(self.num_node_features, hidden_channels, embedding_dim)
-        self.node_embeddings = {}
-        self.node_id_to_idx = {}
-        self.idx_to_node_id = {}
-        logging.info(f"GNN Initialized: Input={self.num_node_features}, Hidden={hidden_channels}, Embedding={embedding_dim}")
-
-        self.gnn_optimizer = torch.optim.Adam(self.gnn_model.parameters(), lr=config.get('gnn_learning_rate', 0.01))
-        self.gnn_loss_fn = torch.nn.BCEWithLogitsLoss()
-        self._last_modified = time.time()
-
-    # Performance optimization for GNN processing
-    def _prepare_pyg_data(self):
-        # Cache results for unchanged graph structure
-        if hasattr(self, '_cached_node_features') and hasattr(self, '_cached_edge_index') and \
-           len(self.nodes) == self._cached_graph_size and self._cached_last_modified == self._last_modified:
-            return self._cached_node_features, self._cached_edge_index
-
-        # Original implementation continues...
-        if not self.nodes:
-            return None, None
-        self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
-        self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
-        num_nodes = len(self.nodes)
-        node_features = torch.zeros((num_nodes, self.num_node_features), dtype=torch.float)
-
-        temp_G = nx.DiGraph()
-        for node_id in self.nodes.keys():
-            temp_G.add_node(node_id)
-        for node in self.nodes.values():
-            for target_id in node.connections_out.keys():
-                if target_id in self.nodes:
-                    temp_G.add_edge(node.id, target_id)
-        pagerank = nx.pagerank(temp_G) if temp_G.number_of_nodes() > 0 else {nid: 0.0 for nid in self.nodes.keys()}
-
-        text_embeddings = None
-        if text_embedding_model is not None and TEXT_EMBEDDING_DIM > 0:
-            all_node_text = []
-            for i in range(num_nodes):
-                if i not in self.idx_to_node_id:
-                    continue
-                node = self.nodes[self.idx_to_node_id[i]]
-                combined_text = node.content
-                if node.keywords:
-                    combined_text += " " + " ".join(sorted(node.keywords))
-                all_node_text.append(combined_text)
-            if not all_node_text:
-                text_embeddings = torch.zeros((num_nodes, TEXT_EMBEDDING_DIM), dtype=torch.float)
-            else:
-                try:
-                    with torch.no_grad():
-                        text_embeddings_np = text_embedding_model.encode(all_node_text, convert_to_numpy=True, show_progress_bar=False)
-                        text_embeddings = torch.tensor(text_embeddings_np, dtype=torch.float)
-                except Exception as e:
-                    logging.warning(f"GNN Prep Warning: {e}")
-                    text_embeddings = torch.zeros((num_nodes, TEXT_EMBEDDING_DIM), dtype=torch.float)
-
-        for i in range(num_nodes):
-            if i not in self.idx_to_node_id:
-                continue
-            node_id = self.idx_to_node_id[i]
-            node = self.nodes[node_id]
-            node_features[i, 0] = node.state
-            node_features[i, 1] = float(len(node.connections_in))
-            node_features[i, 2] = float(len(node.connections_out))
-            node_features[i, 3] = float(len(node.keywords))
-            node_features[i, 4] = pagerank.get(node_id, 0.0)
-            if text_embeddings is not None and i < text_embeddings.shape[0]:
-                node_features[i, self.num_base_features:] = text_embeddings[i]
-        source_indices = []
-        target_indices = []
-        for source_node_id, node in self.nodes.items():
-            if source_node_id not in self.node_id_to_idx:
-                continue
-            source_idx = self.node_id_to_idx[source_node_id]
-            for target_id in node.connections_out.keys():
-                if target_id in self.node_id_to_idx:
-                    target_idx = self.node_id_to_idx[target_id]
-                    source_indices.append(source_idx)
-                    target_indices.append(target_idx)
-        edge_index = torch.tensor([source_indices, target_indices], dtype=torch.long)
-
-        # Cache the results
-        self._cached_node_features = node_features
-        self._cached_edge_index = edge_index
-        self._cached_graph_size = len(self.nodes)
-        self._cached_last_modified = self._last_modified
-        return node_features, edge_index
-
-    def update_embeddings(self):
-        if not self.nodes:
-            self.node_embeddings = {}
-            return
-        node_features, edge_index = self._prepare_pyg_data()
-        if node_features is None or edge_index is None:
-            return
-        if edge_index.numel() == 0:
-            logging.warning("GNN Warning: No edges found.")
-            self.node_embeddings = {nid: torch.zeros(self.config.get('gnn_embedding_dim', 8)) for nid in self.nodes}
-            return
-        if edge_index.dim() == 1:
-            edge_index = edge_index.unsqueeze(1) if edge_index.shape[0] == 2 else edge_index.unsqueeze(0)
-        if edge_index.shape[0] != 2 and edge_index.shape[1] == 2:
-            edge_index = edge_index.t()
-        if edge_index.shape[0] != 2:
-            logging.error(f"GNN Error: edge_index shape {edge_index.shape} is incorrect.")
-            return
-        self.gnn_model.eval()
-        with torch.no_grad():
-            try:
-                all_embeddings_tensor = self.gnn_model(node_features, edge_index)
-                self.node_embeddings = {self.idx_to_node_id[i]: embedding
-                                        for i, embedding in enumerate(all_embeddings_tensor)
-                                        if i in self.idx_to_node_id}
-            except Exception as e:
-                logging.error(f"GNN forward pass error: {e}")
-
-    def train_gnn(self, num_epochs=10):
-        if not self.nodes or len(self.nodes) < 2:
-            logging.warning("GNN Training: Not enough nodes to train.")
-            return
-        node_features, edge_index = self._prepare_pyg_data()
-        if node_features is None or edge_index is None or edge_index.numel() == 0:
-            logging.warning("GNN Training: Insufficient data for training.")
-            return
-        num_nodes = node_features.shape[0]
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.gnn_model.to(device)
-        node_features = node_features.to(device)
-        edge_index = edge_index.to(device)
-        self.gnn_model.train()
-        total_loss = 0.0
-        try:
-            for epoch in range(num_epochs):
-                self.gnn_optimizer.zero_grad()
-                z = self.gnn_model(node_features, edge_index)
-                pos_edge_label_index = edge_index
-                neg_edge_label_index = negative_sampling(
-                    edge_index=edge_index,
-                    num_nodes=num_nodes,
-                    num_neg_samples=pos_edge_label_index.size(1),
-                    method='sparse'
-                )
-                if neg_edge_label_index.numel() == 0:
-                    logging.warning(f"Epoch {epoch+1}: No negative samples generated.")
-                    continue
-                edge_label_index = torch.cat([pos_edge_label_index, neg_edge_label_index], dim=-1)
-                pos_labels = torch.ones(pos_edge_label_index.size(1), device=device)
-                neg_labels = torch.zeros(neg_edge_label_index.size(1), device=device)
-                edge_labels = torch.cat([pos_labels, neg_labels], dim=0)
-                out_scores = self.gnn_model.decode(z, edge_label_index)
-                if out_scores.size(0) != edge_labels.size(0):
-                    logging.error(f"Epoch {epoch+1}: Output scores size {out_scores.size(0)} does not match labels size {edge_labels.size(0)}.")
-                    continue
-                loss = self.gnn_loss_fn(out_scores, edge_labels)
-                loss.backward()
-                self.gnn_optimizer.step()
-                total_loss += loss.item()
-                logging.debug(f"Epoch {epoch+1}/{num_epochs}: Loss = {loss.item():.4f}")
-        except Exception as e:
-            logging.error(f"GNN Training error: {e}")
-        finally:
-            self.gnn_model.eval()
-            avg_loss = total_loss / num_epochs if num_epochs > 0 else float('inf')
-            logging.info(f"GNN Training finished: {num_epochs} epochs, Avg Loss = {avg_loss:.4f}")
-
-    def add_node(self, content="Abstract Concept", initial_state=0.1, keywords=None):
-        node_id = self.next_node_id
-        new_node = KnowledgeComponent(node_id, content, initial_state, set(keywords) if keywords else set())
-        self.nodes[node_id] = new_node
-        self.next_node_id += 1
-        self._last_modified = time.time()
-        return new_node
-
-    def add_edge(self, source_id, target_id, utility):
-        if source_id in self.nodes and target_id in self.nodes and source_id != target_id:
-            source_node = self.nodes[source_id]
-            target_node = self.nodes[target_id]
-            if target_id not in source_node.connections_out:
-                source_node.add_connection(target_node, utility)
-                self._last_modified = time.time()
-                return True
-        return False
-
-    def get_node(self, node_id):
-        return self.nodes.get(node_id)
-
-    def get_embedding(self, node_id):
-        return self.node_embeddings.get(node_id, None)
-
-    def get_random_node_biased(self):
-        if not self.nodes:
-            return None
-        nodes = list(self.nodes.values())
-        weights = [(node.state ** 2) + 0.01 for node in nodes]
-        if sum(weights) <= 0.0:
-            return random.choice(nodes)
-        return random.choices(nodes, weights=weights, k=1)[0]
-
-    def print_summary(self, log_level=logging.INFO):
-        num_nodes = len(self.nodes)
-        num_edges = sum(len(n.connections_out) for n in self.nodes.values())
-        avg_state = (sum(n.state for n in self.nodes.values()) / num_nodes) if num_nodes > 0 else 0
-        logging.log(log_level, f"Graph Summary - Nodes: {num_nodes}, Edges: {num_edges}, Avg State: {avg_state:.3f}")
-
-    def log_global_metrics(self, log_level=logging.INFO, current_step="N/A"):
-        logging.log(log_level, f"--- Global Metrics (Step: {current_step}) ---")
-        num_nodes = len(self.nodes)
-        if num_nodes < 2:
-            logging.log(log_level, "--- Global Metrics: Skipped (Graph too small) ---")
-            return
-        G = nx.DiGraph()
-        node_states = []
-        for node_id, node in self.nodes.items():
-            G.add_node(str(node_id))
-            node_states.append(node.state)
-        num_edges = 0
-        for node_id, node in self.nodes.items():
-            for target_id, utility in node.connections_out.items():
-                if str(node_id) in G and str(target_id) in G:
-                    G.add_edge(str(node_id), str(target_id))
-                    num_edges += 1
-        try:
-            density = nx.density(G)
-            logging.log(log_level, f"  Density: {density:.4f}")
-        except Exception as e:
-            logging.warning(f"  Density calculation error: {e}")
-        try:
-            avg_clustering = nx.average_clustering(G.to_undirected())
-            logging.log(log_level, f"  Avg Clustering Coefficient: {avg_clustering:.4f}")
-        except Exception as e:
-            logging.warning(f"  Clustering calculation error: {e}")
-        try:
-            num_components = nx.number_weakly_connected_components(G)
-            logging.log(log_level, f"  Weakly Connected Components: {num_components}")
-        except Exception as e:
-            logging.warning(f"  Component calculation error: {e}")
-        if node_states:
-            mean_state = statistics.mean(node_states)
-            median_state = statistics.median(node_states)
-            stdev_state = statistics.stdev(node_states) if len(node_states) > 1 else 0.0
-            min_state = min(node_states)
-            max_state = max(node_states)
-            logging.log(log_level, f"  Node State Stats: Mean={mean_state:.4f}, Median={median_state:.4f}, StdDev={stdev_state:.4f}, Min={min_state:.4f}, Max={max_state:.4f}")
-        else:
-            logging.log(log_level, "  Node State Stats: N/A")
-
-    def get_global_metrics(self):
-        metrics = {field: None for field in ["Nodes", "Edges", "Density", "AvgClustering",
-                                               "Components", "MeanState", "MedianState", "StdDevState", "MinState", "MaxState"]}
-        num_nodes = len(self.nodes)
-        metrics["Nodes"] = num_nodes
-        if num_nodes == 0:
-            return metrics
-        node_states = [n.state for n in self.nodes.values()]
-        if node_states:
-            metrics["MeanState"] = statistics.mean(node_states)
-            metrics["MedianState"] = statistics.median(node_states)
-            metrics["MinState"] = min(node_states)
-            metrics["MaxState"] = max(node_states)
-            metrics["StdDevState"] = statistics.stdev(node_states) if num_nodes > 1 else 0.0
-        G = nx.DiGraph()
-        for node_id in self.nodes.keys():
-            G.add_node(str(node_id))
-        num_edges = 0
-        for node_id, node in self.nodes.items():
-            for target_id in node.connections_out.keys():
-                if str(node_id) in G and str(target_id) in G:
-                    G.add_edge(str(node_id), str(target_id))
-                    num_edges += 1
-        metrics["Edges"] = num_edges
-        if num_nodes >= 2:
-            try:
-                metrics["Density"] = nx.density(G)
-            except:
-                pass
-        if num_nodes >= 1:
-            try:
-                metrics["Components"] = nx.number_weakly_connected_components(G)
-            except:
-                pass
-            try:
-                metrics["AvgClustering"] = nx.average_clustering(G) if num_edges > 0 and num_nodes > 1 else 0.0
-            except Exception as e:
-                logging.warning(f"Avg Clustering error: {e}")
-                metrics["AvgClustering"] = None
-        for key, value in metrics.items():
-            if isinstance(value, float):
-                metrics[key] = round(value, 4)
-        return metrics
-
-    def save_state(self, base_file_path):
-        graphml_path = base_file_path + ".graphml"
-        gnn_model_path = base_file_path + ".gnn.pth"
-        embeddings_path = base_file_path + ".embeddings.pth"
-        logging.info(f"Saving state to: {base_file_path}")
-        G = nx.DiGraph()
-        G.graph['next_node_id'] = self.next_node_id
-        for node_id, node in self.nodes.items():
-            keywords_str = ",".join(sorted(list(node.keywords)))
-            G.add_node(str(node_id), state=node.state, content=node.content, keywords=keywords_str)
-        for node_id, node in self.nodes.items():
-            for target_id, utility in node.connections_out.items():
-                if str(node_id) in G and str(target_id) in G:
-                    G.add_edge(str(node_id), str(target_id), utility=utility)
-        try:
-            nx.write_graphml(G, graphml_path)
-            logging.info(f"Graph saved to {graphml_path}")
-        except Exception as e:
-            logging.error(f"GraphML save error: {e}")
-        try:
-            torch.save(self.gnn_model.state_dict(), gnn_model_path)
-            logging.info(f"GNN model saved to {gnn_model_path}")
-        except Exception as e:
-            logging.error(f"GNN model save error: {e}")
-        try:
-            detached_embeddings = {node_id: emb.detach().cpu() for node_id, emb in self.node_embeddings.items()}
-            torch.save(detached_embeddings, embeddings_path)
-            logging.info(f"Embeddings saved to {embeddings_path}")
-        except Exception as e:
-            logging.error(f"Embeddings save error: {e}")
-
-    def load_state(self, base_file_path):
-        graphml_path = base_file_path + ".graphml"
-        gnn_model_path = base_file_path + ".gnn.pth"
-        embeddings_path = base_file_path + ".embeddings.pth"
-        logging.info(f"Loading state from: {base_file_path}")
-        try:
-            if not os.path.exists(graphml_path):
-                logging.error(f"GraphML file not found at {graphml_path}.")
-                return False
-            G = nx.read_graphml(graphml_path)
-            self.nodes = {}
-            self.next_node_id = 0
-            max_id = -1
-            logging.info("Loading nodes...")
-            for node_id_str, data in G.nodes(data=True):
-                try:
-                    node_id = int(node_id_str)
-                except ValueError:
-                    logging.warning(f"Skipping non-integer node ID: {node_id_str}")
-                    continue
-                keywords_str = data.get('keywords', '')
-                keywords = set(k for k in keywords_str.split(',') if k)
-                new_node = KnowledgeComponent(node_id,
-                                              content=data.get('content', ""),
-                                              initial_state=float(data.get('state', 0.1)),
-                                              keywords=keywords)
-                self.nodes[node_id] = new_node
-                max_id = max(max_id, node_id)
-            self.next_node_id = int(G.graph.get('next_node_id', max_id + 1))
-            logging.info(f"Loaded {len(self.nodes)} nodes. Next node ID: {self.next_node_id}")
-            logging.info("Loading edges...")
-            edge_count = 0
-            for source_id_str, target_id_str, data in G.edges(data=True):
-                try:
-                    source_id = int(source_id_str)
-                    target_id = int(target_id_str)
-                    if source_id in self.nodes and target_id in self.nodes:
-                        self.add_edge(source_id, target_id, float(data.get('utility', 0.0)))
-                        edge_count += 1
-                except ValueError:
-                    logging.warning(f"Skipping edge with non-integer IDs: {source_id_str} -> {target_id_str}")
-                    continue
-            logging.info(f"Loaded {edge_count} edges.")
-        except Exception as e:
-            logging.critical(f"Critical error loading state: {e}")
+        self.keywords = keywords or set()
+        self.connections_out: Dict[int, float] = {}
+        self.connections_in: Dict[int, float] = {}
+        
+        # Metadatos
+        self.metadata = NodeMetadata()
+        
+        # Embeddings y características
+        self.embedding: Optional[torch.Tensor] = None
+        self.features: Dict[str, float] = {
+            'centrality': 0.0,
+            'clustering_coefficient': 0.0,
+            'pagerank': 0.0,
+            'betweenness': 0.0,
+            'change_velocity': 0.0,
+            'stability': 1.0
+        }
+        
+        # Historial
+        self.state_history: deque = deque(maxlen=1000)
+        self.state_history.append((time.time(), initial_state))
+        self.interaction_history: deque = deque(maxlen=100)
+        
+        # Predicciones
+        self.predicted_state: Optional[float] = None
+        self.anomaly_score: float = 0.0
+    
+    async def update_state(self, new_state: float, source: Optional[str] = None, 
+                          reason: Optional[str] = None) -> bool:
+        """Actualiza el estado con validación y tracking"""
+        # Verificar bloqueo
+        if self.metadata.locked and self.metadata.locked_by != source:
+            logger.warning(f"Node {self.id} is locked by {self.metadata.locked_by}")
             return False
-        try:
-            if not os.path.exists(gnn_model_path):
-                logging.warning(f"GNN model file not found at {gnn_model_path}.")
-            else:
-                logging.info(f"Loading GNN model from {gnn_model_path}...")
-                state_dict = torch.load(gnn_model_path)
-                self.gnn_model.load_state_dict(state_dict)
-                self.gnn_model.eval()
-                logging.info("GNN model loaded.")
-        except Exception as e:
-            logging.error(f"GNN model load error: {e}")
-        try:
-            if not os.path.exists(embeddings_path):
-                logging.warning(f"Embeddings file not found at {embeddings_path}.")
-                self.node_embeddings = {}
-            else:
-                logging.info(f"Loading embeddings from {embeddings_path}...")
-                self.node_embeddings = torch.load(embeddings_path)
-                logging.info(f"Loaded embeddings for {len(self.node_embeddings)} nodes.")
-        except Exception as e:
-            logging.error(f"Embeddings load error: {e}")
-            self.node_embeddings = {}
-        self.node_id_to_idx = {node_id: i for i, node_id in enumerate(self.nodes.keys())}
-        self.idx_to_node_id = {i: node_id for node_id, i in self.node_id_to_idx.items()}
-        logging.info("Node ID mappings recalculated.")
-        return True
-
-    def get_graph_elements_for_cytoscape(self):
-        elements = []
-        try:
-            cmap = plt.cm.viridis
-            norm = plt.Normalize(vmin=0, vmax=1)
-            for node_id, node in self.nodes.items():
-                try:
-                    node_color = cmap(norm(node.state))
-                    hex_color = '#%02x%02x%02x' % tuple(int(c * 255) for c in node_color[:3])
-                except Exception as ex:
-                    logging.error(f"Error processing node {node_id}: {ex}")
-                    hex_color = "#cccccc"
-                elements.append({
-                    'data': {
-                        'id': str(node_id),
-                        'label': f'Node {node_id}\nS={node.state:.2f}',
-                        'state': node.state,
-                        'keywords': ", ".join(sorted(list(node.keywords))) if node.keywords else ""
-                    },
-                    'style': {
-                        'background-color': hex_color,
-                        'width': f"{20 + node.state * 40}px",
-                        'height': f"{20 + node.state * 40}px"
-                    }
-                })
-            for source_id, node in self.nodes.items():
-                for target_id, utility in node.connections_out.items():
-                    if target_id in self.nodes:
-                        elements.append({
-                            'data': {
-                                'source': str(source_id),
-                                'target': str(target_id),
-                                'utility': utility
-                            },
-                            'style': {
-                                'width': 1 + abs(utility) * 2,
-                                'line-color': 'red' if utility < 0 else ('blue' if utility > 0 else 'grey')
-                            }
-                        })
-        except Exception as e:
-            logging.error(f"Unexpected error in get_graph_elements_for_cytoscape: {e}")
-        return elements
-
-    def trim_stale_nodes(self, threshold=0.05, max_retain=1000):
-        """Remove nodes with very low state to manage memory if graph grows too large"""
-        if len(self.nodes) <= max_retain:
-            return 0
+        
+        MIN_STATE = 0.01
+        MAX_STATE = 1.0
+        old_state = self.state
+        
+        # Validar nuevo estado
+        new_state = max(MIN_STATE, min(MAX_STATE, new_state))
+        
+        # Detectar cambio anómalo
+        if len(self.state_history) > 10:
+            recent_states = [s[1] for s in list(self.state_history)[-10:]]
+            mean = np.mean(recent_states)
+            std = np.std(recent_states)
+            z_score = abs((new_state - mean) / (std + 1e-6))
+            self.anomaly_score = min(z_score / 3.0, 1.0)
+        
+        # Actualizar
+        self.state = new_state
+        self.state_history.append((time.time(), new_state))
+        self.metadata.updated_at = time.time()
+        self.metadata.version += 1
+        
+        # Calcular velocidad de cambio
+        if len(self.state_history) > 1:
+            time_delta = self.state_history[-1][0] - self.state_history[-2][0]
+            state_delta = self.state_history[-1][1] - self.state_history[-2][1]
+            self.features['change_velocity'] = state_delta / time_delta if time_delta > 0 else 0
             
-        # Find stale nodes (low state, few connections)
-        candidates = sorted(
-            [(node_id, node) for node_id, node in self.nodes.items()],
-            key=lambda x: (x[1].state, len(x[1].connections_in) + len(x[1].connections_out))
+            # Calcular estabilidad
+            recent_velocities = []
+            for i in range(min(10, len(self.state_history) - 1)):
+                t_delta = self.state_history[-i-1][0] - self.state_history[-i-2][0]
+                s_delta = self.state_history[-i-1][1] - self.state_history[-i-2][1]
+                if t_delta > 0:
+                    recent_velocities.append(abs(s_delta / t_delta))
+            
+            if recent_velocities:
+                self.features['stability'] = 1.0 / (1.0 + np.std(recent_velocities))
+        
+        # Registrar interacción
+        self.interaction_history.append({
+            'timestamp': time.time(),
+            'source': source,
+            'action': 'update_state',
+            'old_value': old_state,
+            'new_value': new_state,
+            'reason': reason
+        })
+        
+        return old_state != self.state
+    
+    def calculate_importance(self) -> float:
+        """Calcula importancia del nodo con ML"""
+        # Factores base
+        state_factor = self.state
+        connectivity_factor = (len(self.connections_in) + len(self.connections_out)) / 20
+        keyword_factor = len(self.keywords) / 10
+        access_factor = min(self.metadata.access_count / 100, 1.0)
+        
+        # Factores de red
+        centrality_factor = self.features.get('centrality', 0.0)
+        pagerank_factor = self.features.get('pagerank', 0.0)
+        
+        # Factor temporal
+        age = (time.time() - self.metadata.created_at) / 86400  # días
+        recency_factor = 1.0 / (1.0 + age * 0.1)
+        
+        # Factor de estabilidad
+        stability_factor = self.features.get('stability', 0.5)
+        
+        # Combinación ponderada
+        importance = (
+            state_factor * 0.20 +
+            connectivity_factor * 0.15 +
+            keyword_factor * 0.10 +
+            access_factor * 0.10 +
+            centrality_factor * 0.15 +
+            pagerank_factor * 0.10 +
+            recency_factor * 0.10 +
+            stability_factor * 0.10
         )
         
-        # Keep nodes until we're under the limit or hit important nodes
-        removed = 0
-        for node_id, node in candidates:
-            if len(self.nodes) <= max_retain:
-                break
-            if node.state <= threshold and "important" not in node.keywords:
-                # Remove all connections to this node
-                for other_id, other_node in self.nodes.items():
-                    if node_id in other_node.connections_out:
-                        other_node.connections_out.pop(node_id)
-                    if node_id in other_node.connections_in:
-                        other_node.connections_in.pop(node_id)
-                # Remove the node
-                self.nodes.pop(node_id)
-                removed += 1
-                
-        if removed > 0:
-            logging.info(f"Memory management: Removed {removed} stale nodes")
-            # Invalidate caches after structure change
-            if hasattr(self, '_cached_node_features'):
-                delattr(self, '_cached_node_features')
-            if hasattr(self, '_cached_edge_index'):
-                delattr(self, '_cached_edge_index')
-            self._last_modified = time.time()
-            
-        return removed
+        # Boost por anomalía (nodos interesantes)
+        if self.anomaly_score > 0.7:
+            importance *= 1.2
+        
+        self.metadata.importance_score = min(importance, 1.0)
+        return self.metadata.importance_score
+    
+    async def merge_with(self, other: 'AdvancedKnowledgeComponent') -> bool:
+        """Fusiona este nodo con otro"""
+        if self.metadata.locked or other.metadata.locked:
+            return False
+        
+        # Combinar contenido
+        self.content = f"{self.content} | {other.content}"
+        
+        # Combinar keywords
+        self.keywords.update(other.keywords)
+        
+        # Combinar estado (promedio ponderado)
+        total_weight = self.state + other.state
+        self.state = (self.state * self.state + other.state * other.state) / total_weight
+        
+        # Combinar conexiones
+        for target_id, utility in other.connections_out.items():
+            if target_id != self.id:
+                existing = self.connections_out.get(target_id, 0)
+                self.connections_out[target_id] = max(existing, utility)
+        
+        # Combinar metadatos
+        self.metadata.tags.update(other.metadata.tags)
+        self.metadata.access_count += other.metadata.access_count
+        
+        # Registrar fusión
+        self.interaction_history.append({
+            'timestamp': time.time(),
+            'action': 'merge',
+            'merged_with': other.id,
+            'merged_content': other.content[:50]
+        })
+        
+        return True
 
-def generate_code(prompt):
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        logging.error("FATAL ERROR: GEMINI_API_KEY not found.")
-        return None
-    try:
+# === GRAFO DE SÍNTESIS AVANZADO ===
+class AdvancedCollectiveSynthesisGraph:
+    """Grafo de síntesis colectiva avanzado con ML y distribución"""
+    
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.nodes: Dict[int, AdvancedKnowledgeComponent] = {}
+        self.next_node_id = 0
+        self._node_lock = asyncio.Lock()
+        
+        # Componentes
+        self.event_bus = EnhancedAsyncEventBus()
+        self.claude_client = ClaudeAPIClient()
+        
+        # Cache distribuido
+        self.cache: Optional[DistributedCache] = None
+        
+        # Modelo GNN avanzado
+        self.gnn_model = self._build_gnn_model()
+        self.gnn_optimizer = torch.optim.AdamW(
+            self.gnn_model.parameters(), 
+            lr=config.get('gnn_learning_rate', 0.001),
+            weight_decay=config.get('gnn_weight_decay', 0.01)
+        )
+        
+        # Embeddings de texto
+        self.text_encoder = self._init_text_encoder()
+        
+        # Índices
+        self.keyword_index: Dict[str, Set[int]] = defaultdict(set)
+        self.tag_index: Dict[str, Set[int]] = defaultdict(set)
+        self.cluster_index: Dict[int, Set[int]] = defaultdict(set)
+        
+        # Análisis de red
+        self.network_analyzer = NetworkAnalyzer(self)
+        
+        # Métricas
+        self.metrics = GraphMetrics()
+        
+        logger.info("Advanced Collective Synthesis Graph initialized")
+    
+    def _build_gnn_model(self):
+        """Construye modelo GNN avanzado"""
+        return AdvancedGNN(
+            num_node_features=self.config.get('node_features', 768),
+            hidden_channels=self.config.get('gnn_hidden', 128),
+            out_channels=self.config.get('gnn_output', 64),
+            num_heads=self.config.get('gnn_heads', 8),
+            num_layers=self.config.get('gnn_layers', 4),
+            dropout=self.config.get('gnn_dropout', 0.1)
+        )
+    
+    def _init_text_encoder(self):
+        """Inicializa encoder de texto"""
+        # Usar sentence-transformers para embeddings
         try:
-            import genai
-        except ImportError:
-            logging.error("Module 'genai' is not installed.")
+            from sentence_transformers import SentenceTransformer
+            return SentenceTransformer('all-MiniLM-L6-v2')
+        except:
+            logger.warning("Sentence transformers not available")
             return None
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(prompt)
-        if response.text:
-            return response.text.strip()
-        else:
-            logging.warning(f"Gemini API returned no text. Response: {response}")
-            return ""
-    except Exception as e:
-        logging.error(f"Error calling Gemini API: {e}")
-        return ""
-
-# Agregar después de la función generate_code
-def execute_generated_code(code_string, context_vars=None):
-    """
-    Ejecuta código generado dinámicamente en un entorno controlado.
     
-    Args:
-        code_string (str): El código Python a ejecutar
-        context_vars (dict): Variables de contexto a pasar al código
+    async def initialize(self, redis_url: str = None, postgres_url: str = None):
+        """Inicializa componentes asíncronos"""
+        await self.event_bus.start()
         
-    Returns:
-        tuple: (result, error) - Resultado de la ejecución y cualquier error
-    """
-    if not code_string:
-        return None, "Código vacío"
+        # Inicializar Redis si está disponible
+        if redis_url:
+            redis = await aioredis.create_redis_pool(redis_url)
+            self.cache = DistributedCache(redis)
+            self.event_bus._redis = redis
+        
+        # Inicializar PostgreSQL si está disponible
+        if postgres_url:
+            self.db_pool = await asyncpg.create_pool(postgres_url)
+            await self._init_database()
     
-    # Validación básica de seguridad
-    forbidden_keywords = ['import os', 'subprocess', 'system', '__import__', 'eval(', 'exec(', 
-                         'open(', 'file(', 'delete', 'remove(', 'rmdir', 'shutil']
-    
-    for keyword in forbidden_keywords:
-        if keyword in code_string:
-            return None, f"Código inseguro detectado: {keyword}"
-    
-    # Preparar entorno de ejecución limitado
-    safe_globals = {
-        'math': math,
-        'random': random,
-        'statistics': statistics,
-        'Counter': Counter,
-        'logging': logging,
-        'torch': torch,
-        'F': F,
-        'nx': nx,
-        'np': torch.tensor, # Simulando NumPy limitado
-    }
-    
-    local_vars = context_vars or {}
-    
-    try:
-        # Extraer nombre de la función del código
-        import re
-        func_match = re.search(r'def\s+([a-zA-Z0-9_]+)\s*\(', code_string)
-        if not func_match:
-            return None, "No se encontró definición de función"
+    async def add_node(self, content: str, initial_state: float = 0.1,
+                      keywords: Optional[Set[str]] = None,
+                      created_by: Optional[str] = None,
+                      properties: Dict[str, Any] = None) -> AdvancedKnowledgeComponent:
+        """Añade un nodo con validación completa"""
+        # Validar límites
+        if len(self.nodes) >= Config.MAX_NODES:
+            raise ValueError(f"Maximum number of nodes ({Config.MAX_NODES}) reached")
         
-        func_name = func_match.group(1)
-        
-        # Ejecutar el código en el entorno limitado
-        exec(code_string, safe_globals, local_vars)
-        
-        # Verificar que la función existe
-        if func_name not in local_vars:
-            return None, f"La función {func_name} no se definió correctamente"
-        
-        # Devolver la función
-        return local_vars[func_name], None
-        
-    except Exception as e:
-        return None, f"Error ejecutando código: {str(e)}"
-
-# Clase para persistir y gestionar el código autogenerado
-class CodeRepository:
-    def __init__(self, save_dir="generated_code"):
-        self.save_dir = save_dir
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        self.functions = {}
-        self.load_saved_functions()
-        
-    def save_function(self, name, code, metadata=None):
-        """Guarda una función generada con metadatos"""
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
-        filename = f"{self.save_dir}/{name}_{timestamp}.py"
-        
-        metadata = metadata or {}
-        metadata["timestamp"] = timestamp
-        
-        with open(filename, 'w') as f:
-            f.write(f"# Auto-generated by TAEC\n")
-            f.write(f"# {json.dumps(metadata)}\n\n")
-            f.write(code)
-        
-        self.functions[name] = {
-            'code': code,
-            'metadata': metadata,
-            'path': filename
-        }
-        return filename
-    
-    def load_function(self, name):
-        """Carga una función por nombre"""
-        if name in self.functions:
-            return self.functions[name]['code']
-        return None
-    
-    def load_saved_functions(self):
-        """Carga todas las funciones guardadas"""
-        if not os.path.exists(self.save_dir):
-            return
+        async with self._node_lock:
+            node_id = self.next_node_id
+            node = AdvancedKnowledgeComponent(node_id, content, initial_state, keywords)
             
-        for file in os.listdir(self.save_dir):
-            if file.endswith(".py"):
-                try:
-                    path = os.path.join(self.save_dir, file)
-                    name = file.split('_')[0]
-                    with open(path, 'r') as f:
-                        code = f.read()
-                    
-                    # Extraer metadatos
-                    import re
-                    metadata_match = re.search(r'# (\{.*\})', code)
-                    metadata = json.loads(metadata_match.group(1)) if metadata_match else {}
-                    
-                    self.functions[name] = {
-                        'code': code,
-                        'metadata': metadata,
-                        'path': path
-                    }
-                except Exception as e:
-                    logging.error(f"Error loading function from {file}: {e}")
-
-# --- Clase Base para Agentes ---
-class Synthesizer:
-    def __init__(self, agent_id, graph, config):
-        self.id = agent_id
-        self.graph = graph
-        self.config = config
-        self.omega = config.get('initial_omega', 100.0)
-        self.reputation = 1.0
-
-    def act(self):
-        logging.info(f"{type(self).__name__} {self.id} acting (base implementation).")
-
-# --- Clase Base para Agentes Institucionales ---
-class InstitutionAgent(ABC):
-    def __init__(self, agent_id, graph, config):
-        self.id = agent_id
-        self.graph = graph
-        self.config = config
-        self.omega = config.get('initial_omega', 100.0)
-        self.reputation = 1.0
-        
-    def act(self):
-        """Implementa la acción institucional principal"""
-        logging.info(f"InstitutionAgent {self.id} acting...")
-        self.institution_action()
-        
-    @abstractmethod
-    def institution_action(self):
-        """Método abstracto a implementar por cada agente institucional"""
-        pass
-        
-    def log_institution(self, message):
-        """Registra mensajes de acción institucional"""
-        logging.info(f"[Institution {self.id}] {message}")
-
-class RepairAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Repairing nodes with low reputation despite high state...")
-        for node in self.graph.nodes.values():
-            if node.state > 0.7 and hasattr(node, 'reputation') and node.reputation < 0.5:
-                self.log_institution(f"Rehabilitating node {node.id}.")
-                node.update_state(min(1.0, node.state + 0.1))
-
-class InspectorAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Inspecting node states and connections...")
-        for node in self.graph.nodes.values():
-            if node.state < 0.1:
-                node.update_state(node.state + 0.05)
-                self.log_institution(f"Improved low-state node {node.id}")
-
-class PoliceAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Enforcing rules and pruning invalid connections...")
-        for node in self.graph.nodes.values():
-            if len(node.connections_out) > 15:  # Demasiadas conexiones
-                # Quitar algunas conexiones
-                self.log_institution(f"Node {node.id} has too many connections. Pruning.")
-                connections = list(node.connections_out.keys())
-                for i in range(5):  # Quitar 5 conexiones
-                    if connections:
-                        del node.connections_out[connections.pop()]
-
-class CoordinatorAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Coordinating agent activities...")
-        # Ejemplo: redistribuir omega entre agentes
-        if hasattr(self.graph, 'agents'):
-            agents_low_omega = [a for a in self.graph.agents if a.omega < 50]
-            if agents_low_omega:
-                for agent in agents_low_omega:
-                    agent.omega += 5
-                    self.log_institution(f"Boosted omega for agent {agent.id}")
-
-# --- UNIVERSIDAD MSC ---
-class MasterAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Organizing learning paths for nodes...")
-        weak_nodes = [node for node in self.graph.nodes.values() if node.state < 0.3]
-        advanced_nodes = [node for node in self.graph.nodes.values() if node.state > 0.8]
-        if weak_nodes and advanced_nodes:
-            for node in weak_nodes:
-                mentor = random.choice(advanced_nodes)
-                if self.graph.add_edge(mentor.id, node.id, 0.8):
-                    self.log_institution(f"Connected node {node.id} with mentor {mentor.id}.")
-
-class StudentAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Seeking learning opportunities...")
-        candidate = self.graph.get_random_node_biased()
-        if candidate:
-            increment = 0.05
-            candidate.update_state(candidate.state + increment)
-            self.log_institution(f"Increased state of node {candidate.id} by {increment:.2f}.")
-
-class ScientistAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Generating and publishing new hypotheses...")
-        hypothesis = f"Hypothesis generated by {self.id}."
-        new_node = self.graph.add_node(content=hypothesis, initial_state=0.6, keywords={"theory", "hypothesis"})
-        self.graph.add_edge(random.choice(list(self.graph.nodes.keys())), new_node.id, 0.5)
-        self.log_institution(f"Created theoretical node {new_node.id}.")
-
-class StorageAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Archiving key nodes...")
-        archived = sum(1 for node in self.graph.nodes.values() if "archive" in node.keywords or node.state > 0.9)
-        self.log_institution(f"Archived {archived} nodes.")
-
-# --- INSTITUTO FINANCIERO MSC ---
-class BankAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Reviewing internal economic balance...")
-        for agent in self.graph.agents if hasattr(self.graph, 'agents') else []:
-            if agent.omega < 50:
-                bonus = 10
-                agent.omega += bonus
-                self.log_institution(f"Granted bonus of {bonus} Ω to agent {agent.id}.")
-
-class MerchantAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Facilitating resource exchanges...")
-        resourceful = [agent for agent in self.graph.agents if agent.omega > 150] if hasattr(self.graph, 'agents') else []
-        if resourceful:
-            donor = random.choice(resourceful)
-            recipient = random.choice([agent for agent in self.graph.agents if agent.omega < 80])
-            transfer = 20
-            donor.omega -= transfer
-            recipient.omega += transfer
-            self.log_institution(f"Transferred {transfer} Ω from {donor.id} to {recipient.id}.")
-
-class MinerAgent(InstitutionAgent):
-    def institution_action(self):
-        self.log_institution("Exploring for unclaimed resources...")
-        target = self.graph.get_random_node_biased()
-        if target:
-            bonus = 15
-            target.update_state(target.state + 0.05)
-            self.log_institution(f"Added {bonus} Ω bonus and increased state of node {target.id}.")
-
-# --- INSTITUTO DE DENSIDAD Y POBLACIÓN ---
-
-class PopulationRegulatorAgent(InstitutionAgent):
-    """
-    Reduce nodos redundantes y controla la explosión poblacional en el grafo.
-    """
-    def institution_action(self):
-        self.log_institution("Regulating population: analyzing redundancy and density...")
-        # Ejemplo: identificar nodos con estados muy similares en grupos muy densos
-        redundant_nodes = []
-        for node in self.graph.nodes.values():
-            # Criterio: si un nodo tiene muchas conexiones y muy poca variación con sus vecinos
-            if len(node.connections_out) > 5:
-                neighbors = [self.graph.get_node(nid) for nid in node.connections_out.keys()]
-                if all(abs(node.state - n.state) < 0.05 for n in neighbors if n):
-                    redundant_nodes.append(node)
-        if redundant_nodes:
-            self.log_institution(f"Identified {len(redundant_nodes)} redundant nodes for regulation.")
-            # Ejemplo: reducir estado o marcar nodos para eventual eliminación
-            for rn in redundant_nodes:
-                rn.update_state(rn.state * 0.95)
-        else:
-            self.log_institution("No redundant nodes detected.")
-
-class SeederAgent(InstitutionAgent):
-    """
-    Siembra nuevos nodos en regiones del grafo con baja densidad o actividad.
-    """
-    def institution_action(self):
-        self.log_institution("Seeding new nodes in sparse areas...")
-        if len(self.graph.nodes) < 10:
-            new_node = self.graph.add_node(content="Seeded Node", initial_state=0.2)
-            self.log_institution(f"Seeded new node {new_node.id} due to low overall density.")
-        else:
-            sparse_nodes = [n for n in self.graph.nodes.values() if (len(n.connections_in) + len(n.connections_out)) < 2]
-            if sparse_nodes:
-                # Inyecta contenido estratégico para vincular clusters aislados
-                new_content = "Strategic Seed: Bridge Node"
-                new_node = self.graph.add_node(content=new_content, initial_state=0.35, keywords={"bridge", "seed"})
-                target = random.choice(sparse_nodes)
-                if self.graph.add_edge(target.id, new_node.id, utility=0.5):
-                    self.log_institution(f"Seeded strategic node {new_node.id} attached to sparse node {target.id}.")
-            else:
-                self.log_institution("No significantly sparse regions detected for seeding.")
-
-class ClusterBalancerAgent(InstitutionAgent):
-    """
-    Redistribuye conexiones entre grupos de nodos para evitar desequilibrios topológicos.
-    """
-    def institution_action(self):
-        self.log_institution("Balancing clusters in the graph...")
-        for node in self.graph.nodes.values():
-            if len(node.connections_out) > 10:
-                min_conn = min(node.connections_out.items(), key=lambda item: item[1])
-                node.connections_out.pop(min_conn[0])
-                self.log_institution(f"Removed low-utility connection from node {node.id} (over-connected).")
-            elif len(node.connections_out) < 2:
-                # Seleccionar candidato preferentemente de un cluster diferente (mínima intersección de keywords)
-                candidates = [candidate for candidate in self.graph.nodes.values()
-                              if candidate.id != node.id and len(node.keywords.intersection(candidate.keywords)) < 1]
-                candidate = random.choice(candidates) if candidates else self.graph.get_random_node_biased()
-                if candidate and candidate.id != node.id:
-                    if self.graph.add_edge(node.id, candidate.id, utility=0.5):
-                        self.log_institution(f"Added strategic connection from node {node.id} to candidate {candidate.id}.")
-
-class MediatorAgent(InstitutionAgent):
-    """
-    Agente de mediación dinámica para resolver conflictos o coordinar acciones entre clusters.
-    """
-    def institution_action(self):
-        self.log_institution("Mediating between clusters...")
-        # Ejemplo: buscar pares de nodos con estados muy discrepantes conectados y ajustar su estado
-        conflicts = []
-        for node in self.graph.nodes.values():
-            for target_id, utility in node.connections_out.items():
-                target = self.graph.get_node(target_id)
-                if target and abs(node.state - target.state) > 0.3:
-                    conflicts.append((node, target))
-        if conflicts:
-            self.log_institution(f"Mediating {len(conflicts)} conflict pairs.")
-            for n1, n2 in conflicts:
-                average_state = (n1.state + n2.state) / 2
-                n1.update_state(average_state)
-                n2.update_state(average_state)
-        else:
-            self.log_institution("No conflicts require mediation.")
-
-class MigrationAgent(InstitutionAgent):
-    """
-    Evalúa los clústeres del grafo y migra nodos desde áreas saturadas hacia regiones menos pobladas
-    para fomentar la colaboración y reequilibrar la conectividad.
-    """
-    def institution_action(self):
-        self.log_institution("Evaluating clusters for adaptive migration with aggressive strategy...")
-        saturated_nodes = [node for node in self.graph.nodes.values() if len(node.connections_out) > 8]
-        sparse_nodes = [node for node in self.graph.nodes.values() if (len(node.connections_in) + len(node.connections_out)) < 2]
-        if saturated_nodes and sparse_nodes:
-            for node in saturated_nodes:
-                migration_attempts = 0
-                while len(node.connections_out) > 8 and migration_attempts < 3:
-                    # Seleccionar target de sparse_nodes que comparta pocas keywords con el nodo actual
-                    filtered_targets = [t for t in sparse_nodes if len(node.keywords.intersection(t.keywords)) < 1]
-                    target = random.choice(filtered_targets) if filtered_targets else random.choice(sparse_nodes)
-                    if node.connections_out:
-                        min_conn = min(node.connections_out.items(), key=lambda item: item[1])
-                        removed_util = node.connections_out.pop(min_conn[0])
-                        self.log_institution(f"Removed low-utility connection from node {node.id} to {min_conn[0]} (Utility: {removed_util:.2f}).")
-                        if self.graph.add_edge(node.id, target.id, utility=0.6):
-                            self.log_institution(f"Migrated node {node.id} by connecting to sparse node {target.id}.")
-                    migration_attempts += 1
-        else:
-            self.log_institution("No migration required at this step.")
-
-# Agregar después del MigrationAgent
-class TAECEvolutionAgent(InstitutionAgent):
-    """
-    Implementa la Teoría de Auto-Evolución Cognitiva (TAEC) para evolucionar 
-    el grafo y su propio código de manera autónoma, adaptándose a patrones emergentes.
-    """
-    def institution_action(self):
-        self.log_institution("Iniciando ciclo de auto-evolución TAEC...")
-        
-        # 1. Analizar el estado actual del grafo
-        metrics = self.graph.get_global_metrics()
-        mean_state = metrics.get('MeanState', 0)
-        node_count = len(self.graph.nodes)
-        
-        # 2. Identificar áreas para evolución cognitiva
-        high_potential_nodes = [node for node in self.graph.nodes.values() 
-                               if node.state > 0.7 and len(node.connections_out) > 3]
-        
-        low_connectivity_nodes = [node for node in self.graph.nodes.values() 
-                                 if len(node.connections_out) < 2 and node.state > 0.4]
-                                 
-        # 3. Auto-modificación de código utilizando generates de prompts dinámicos
-        if hasattr(self, 'step_count') and self.step_count % 100 == 0:
-            self.log_institution("TAEC: Iniciando auto-modificación de código...")
+            # Configurar metadatos
+            node.metadata.created_by = created_by
+            if properties:
+                node.metadata.properties.update(properties)
             
-            # Verificar que tengamos acceso al repositorio de código
-            if not hasattr(self.graph, 'code_repository'):
-                # Inicializar repositorio si no existe
-                self.graph.code_repository = CodeRepository(
-                    save_dir=os.path.join(os.path.dirname(self.config.get('save_state', 'generated_code')), 'taec_code')
+            # Generar embedding
+            if self.text_encoder:
+                embedding = await self._generate_embedding(content)
+                node.metadata.embedding = embedding
+            
+            # Añadir al grafo
+            self.nodes[node_id] = node
+            self.next_node_id += 1
+            
+            # Actualizar índices
+            self._update_indices(node, 'add')
+            
+            # Publicar evento
+            await self.event_bus.publish(Event(
+                type=EventType.NODE_CREATED,
+                data={
+                    'node_id': node_id,
+                    'content': content,
+                    'keywords': list(keywords) if keywords else []
+                },
+                source='graph',
+                target=str(node_id)
+            ))
+            
+            # Métricas
+            self.metrics.record_node_operation('create')
+            
+            logger.info(f"Node {node_id} created", extra={'node_id': node_id})
+            return node
+    
+    async def _generate_embedding(self, text: str) -> np.ndarray:
+        """Genera embedding de texto"""
+        if self.text_encoder:
+            loop = asyncio.get_event_loop()
+            embedding = await loop.run_in_executor(
+                None, self.text_encoder.encode, text
+            )
+            return embedding
+        return np.random.randn(768)  # Fallback random
+    
+    def _update_indices(self, node: AdvancedKnowledgeComponent, operation: str):
+        """Actualiza índices del grafo"""
+        if operation == 'add':
+            # Keywords
+            for keyword in node.keywords:
+                self.keyword_index[keyword].add(node.id)
+            
+            # Tags
+            for tag in node.metadata.tags:
+                self.tag_index[tag].add(node.id)
+            
+            # Cluster
+            if node.metadata.cluster_id is not None:
+                self.cluster_index[node.metadata.cluster_id].add(node.id)
+                
+        elif operation == 'remove':
+            # Limpiar índices
+            for keyword in node.keywords:
+                self.keyword_index[keyword].discard(node.id)
+            
+            for tag in node.metadata.tags:
+                self.tag_index[tag].discard(node.id)
+            
+            if node.metadata.cluster_id is not None:
+                self.cluster_index[node.metadata.cluster_id].discard(node.id)
+    
+    async def find_similar_nodes(self, node_id: int, top_k: int = 5) -> List[Tuple[int, float]]:
+        """Encuentra nodos similares usando embeddings"""
+        node = self.nodes.get(node_id)
+        if not node or node.metadata.embedding is None:
+            return []
+        
+        similarities = []
+        
+        for other_id, other_node in self.nodes.items():
+            if other_id == node_id or other_node.metadata.embedding is None:
+                continue
+            
+            # Calcular similitud coseno
+            similarity = self._cosine_similarity(
+                node.metadata.embedding,
+                other_node.metadata.embedding
+            )
+            similarities.append((other_id, similarity))
+        
+        # Ordenar y retornar top K
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        return similarities[:top_k]
+    
+    def _cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
+        """Calcula similitud coseno entre vectores"""
+        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    
+    async def cluster_nodes(self, algorithm: str = 'dbscan') -> Dict[int, int]:
+        """Agrupa nodos en clusters"""
+        if not self.nodes:
+            return {}
+        
+        # Preparar embeddings
+        node_ids = []
+        embeddings = []
+        
+        for node_id, node in self.nodes.items():
+            if node.metadata.embedding is not None:
+                node_ids.append(node_id)
+                embeddings.append(node.metadata.embedding)
+        
+        if not embeddings:
+            return {}
+        
+        embeddings_matrix = np.array(embeddings)
+        
+        # Aplicar algoritmo de clustering
+        if algorithm == 'dbscan':
+            clustering = DBSCAN(eps=0.3, min_samples=3)
+            labels = clustering.fit_predict(embeddings_matrix)
+        else:
+            raise ValueError(f"Unknown clustering algorithm: {algorithm}")
+        
+        # Asignar clusters
+        clusters = {}
+        for i, node_id in enumerate(node_ids):
+            cluster_id = int(labels[i])
+            clusters[node_id] = cluster_id
+            self.nodes[node_id].metadata.cluster_id = cluster_id
+        
+        # Actualizar índice
+        self.cluster_index.clear()
+        for node_id, cluster_id in clusters.items():
+            if cluster_id >= 0:  # -1 es ruido en DBSCAN
+                self.cluster_index[cluster_id].add(node_id)
+        
+        return clusters
+
+# === MODELO GNN AVANZADO ===
+class AdvancedGNN(nn.Module):
+    """Red neuronal de grafos avanzada con atención multi-cabeza"""
+    
+    def __init__(self, num_node_features: int, hidden_channels: int,
+                 out_channels: int, num_heads: int = 8, num_layers: int = 4,
+                 dropout: float = 0.1):
+        super().__init__()
+        
+        self.num_layers = num_layers
+        self.dropout = dropout
+        
+        # Capas de entrada
+        self.input_proj = nn.Linear(num_node_features, hidden_channels)
+        
+        # Capas GAT
+        self.gat_layers = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
+        
+        for i in range(num_layers):
+            if i == 0:
+                self.gat_layers.append(
+                    GATConv(hidden_channels, hidden_channels // num_heads,
+                           heads=num_heads, dropout=dropout)
                 )
-            
-            # Generar prompt basado en el estado actual del grafo
-            prompt = f"""
-            Genera una función Python que mejore el algoritmo de evolución del grafo MSC.
-            La función debe analizar nodos con estado medio de {mean_state:.3f} 
-            y crear conexiones estratégicas para optimizar la fluidez cognitiva.
-            
-            Los nodos tienen estas propiedades:
-            - state: Valor entre 0 y 1 que representa su estado de activación
-            - keywords: Conjunto de palabras clave (set)
-            - connections_out: Diccionario de conexiones salientes (key=node_id, value=utility)
-            
-            Usa este formato exactamente:
-            
-            def enhance_graph_evolution(graph, target_nodes):
-                '''Función generada por TAEC para mejorar la evolución del grafo'''
-                # código aquí
-                return {'modified_nodes': count, 'average_improvement': value}
-            """
-            
-            # Esta parte genera nuevo código funcional
-            if 'generate_code' in globals():
-                new_code = generate_code(prompt)
-                if new_code:
-                    self.log_institution(f"TAEC: Código auto-generado: {len(new_code)} caracteres")
-                    
-                    # Evaluar e integrar el código
-                    function, error = execute_generated_code(new_code)
-                    
-                    if error:
-                        self.log_institution(f"TAEC: Error en código generado: {error}")
-                    else:
-                        # Guardar la función en el repositorio
-                        function_name = "enhance_graph_evolution"
-                        metadata = {
-                            'step': self.step_count,
-                            'mean_state': mean_state,
-                            'node_count': len(self.graph.nodes)
-                        }
-                        self.graph.code_repository.save_function(function_name, new_code, metadata)
-                        
-                        # Ejecutar la función con el grafo actual
-                        try:
-                            # Seleccionar nodos para evolucionar
-                            suitable_nodes = [n for n in self.graph.nodes.values() 
-                                             if n.state > 0.4 and len(n.connections_out) > 2]
-                            
-                            if suitable_nodes:
-                                target_nodes = random.sample(suitable_nodes, 
-                                                            min(10, len(suitable_nodes)))
-                                
-                                # Ejecutar la función generada
-                                results = function(self.graph, target_nodes)
-                                self.log_institution(f"TAEC: Función ejecutada con resultados: {results}")
-                                
-                                # Marcar nodos que han sido modificados
-                                for node in target_nodes:
-                                    node.keywords.add("taec_auto_evolved")
-                        
-                        except Exception as execution_error:
-                            self.log_institution(f"TAEC: Error ejecutando función: {execution_error}")
-                            
-                    # Añadir a la lista de palabras clave que este agente ha generado código
-                    if not hasattr(self, 'keywords'):
-                        self.keywords = set()
-                    self.keywords.add("taec_code_evolution")
+            else:
+                self.gat_layers.append(
+                    GATConv(hidden_channels, hidden_channels // num_heads,
+                           heads=num_heads, dropout=dropout)
+                )
+            self.batch_norms.append(nn.BatchNorm1d(hidden_channels))
         
-        # 4. Evolución mediante síntesis avanzada
-        if high_potential_nodes:
-            # Seleccionar múltiples nodos fuente para síntesis emergente
-            sources = random.sample(high_potential_nodes, min(3, len(high_potential_nodes)))
-            keywords = set()
-            for source in sources:
-                keywords.update(source.keywords)
+        # Capas de salida
+        self.output_proj = nn.Sequential(
+            nn.Linear(hidden_channels, hidden_channels),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_channels, out_channels)
+        )
+        
+        # Skip connections
+        self.skip_proj = nn.Linear(num_node_features, out_channels)
+    
+    def forward(self, x, edge_index, edge_attr=None, batch=None):
+        """Forward pass"""
+        # Proyección de entrada
+        h = self.input_proj(x)
+        h = F.relu(h)
+        h = F.dropout(h, p=self.dropout, training=self.training)
+        
+        # Capas GAT con residual connections
+        for i, (gat, bn) in enumerate(zip(self.gat_layers, self.batch_norms)):
+            h_prev = h
+            h = gat(h, edge_index)
+            h = bn(h)
+            h = F.relu(h)
+            h = F.dropout(h, p=self.dropout, training=self.training)
             
-            keywords.add("taec_evolved")
-            content = f"TAEC Evolution: Meta-synthesis from {[s.id for s in sources]}"
+            # Residual connection
+            if i > 0:
+                h = h + h_prev
+        
+        # Proyección de salida
+        out = self.output_proj(h)
+        
+        # Skip connection desde entrada
+        skip = self.skip_proj(x)
+        out = out + skip
+        
+        # Global pooling si es necesario
+        if batch is not None:
+            out = global_mean_pool(out, batch)
+        
+        return out
+
+# === ANALIZADOR DE RED ===
+class NetworkAnalyzer:
+    """Analizador avanzado de la red del grafo"""
+    
+    def __init__(self, graph: AdvancedCollectiveSynthesisGraph):
+        self.graph = graph
+        self._nx_cache = None
+        self._cache_time = 0
+        self._cache_ttl = 60  # 1 minuto
+    
+    def _get_networkx_graph(self) -> nx.DiGraph:
+        """Obtiene representación NetworkX del grafo"""
+        current_time = time.time()
+        if self._nx_cache is None or current_time - self._cache_time > self._cache_ttl:
+            G = nx.DiGraph()
             
-            # Crear nodo con estado emergente aumentado
-            new_state = min(1.0, sum(s.state for s in sources)/len(sources) + 0.15)
-            new_node = self.graph.add_node(
-                content=content,
-                initial_state=new_state,
-                keywords=keywords
+            # Añadir nodos
+            for node_id, node in self.graph.nodes.items():
+                G.add_node(node_id, 
+                          state=node.state,
+                          importance=node.metadata.importance_score,
+                          keywords=list(node.keywords))
+            
+            # Añadir edges
+            for node_id, node in self.graph.nodes.items():
+                for target_id, utility in node.connections_out.items():
+                    G.add_edge(node_id, target_id, weight=utility)
+            
+            self._nx_cache = G
+            self._cache_time = current_time
+        
+        return self._nx_cache
+    
+    async def calculate_centralities(self) -> Dict[str, Dict[int, float]]:
+        """Calcula varias medidas de centralidad"""
+        G = self._get_networkx_graph()
+        
+        loop = asyncio.get_event_loop()
+        
+        # Calcular en paralelo
+        tasks = {
+            'degree': loop.run_in_executor(None, nx.degree_centrality, G),
+            'betweenness': loop.run_in_executor(None, nx.betweenness_centrality, G),
+            'closeness': loop.run_in_executor(None, nx.closeness_centrality, G),
+            'eigenvector': loop.run_in_executor(None, self._safe_eigenvector_centrality, G),
+            'pagerank': loop.run_in_executor(None, nx.pagerank, G)
+        }
+        
+        results = {}
+        for name, task in tasks.items():
+            try:
+                results[name] = await task
+            except Exception as e:
+                logger.error(f"Error calculating {name} centrality: {e}")
+                results[name] = {}
+        
+        # Actualizar nodos con centralidades
+        for node_id in self.graph.nodes:
+            node = self.graph.nodes[node_id]
+            node.features['centrality'] = results.get('degree', {}).get(node_id, 0)
+            node.features['betweenness'] = results.get('betweenness', {}).get(node_id, 0)
+            node.features['pagerank'] = results.get('pagerank', {}).get(node_id, 0)
+        
+        return results
+    
+    def _safe_eigenvector_centrality(self, G):
+        """Calcula eigenvector centrality con manejo de errores"""
+        try:
+            return nx.eigenvector_centrality(G, max_iter=1000)
+        except:
+            return {}
+    
+    async def detect_communities(self) -> Dict[int, int]:
+        """Detecta comunidades en el grafo"""
+        G = self._get_networkx_graph().to_undirected()
+        
+        if len(G) < 3:
+            return {}
+        
+        loop = asyncio.get_event_loop()
+        
+        try:
+            # Usar algoritmo de Louvain
+            import community as community_louvain
+            communities = await loop.run_in_executor(
+                None, community_louvain.best_partition, G
+            )
+            return communities
+        except:
+            # Fallback a algoritmo simple
+            return {}
+    
+    def find_critical_nodes(self, top_k: int = 10) -> List[int]:
+        """Encuentra nodos críticos para la conectividad"""
+        G = self._get_networkx_graph()
+        
+        # Calcular impacto de remover cada nodo
+        impacts = []
+        
+        for node in list(G.nodes())[:100]:  # Limitar para performance
+            # Contar componentes antes
+            before = nx.number_strongly_connected_components(G)
+            
+            # Remover temporalmente
+            edges_out = list(G.out_edges(node))
+            edges_in = list(G.in_edges(node))
+            G.remove_node(node)
+            
+            # Contar componentes después
+            after = nx.number_strongly_connected_components(G)
+            
+            # Restaurar
+            G.add_node(node)
+            G.add_edges_from(edges_out)
+            G.add_edges_from(edges_in)
+            
+            impact = after - before
+            impacts.append((node, impact))
+        
+        # Ordenar por impacto
+        impacts.sort(key=lambda x: x[1], reverse=True)
+        
+        return [node for node, _ in impacts[:top_k]]
+
+# === MÉTRICAS DEL GRAFO ===
+class GraphMetrics:
+    """Sistema de métricas para el grafo"""
+    
+    def __init__(self):
+        # Prometheus metrics
+        self.node_count = Gauge('msc_graph_nodes', 'Number of nodes in graph')
+        self.edge_count = Gauge('msc_graph_edges', 'Number of edges in graph')
+        self.avg_state = Gauge('msc_graph_avg_state', 'Average node state')
+        self.health_score = Gauge('msc_graph_health', 'Graph health score')
+        
+        self.operations = Counter('msc_graph_operations', 'Graph operations', ['operation'])
+        self.operation_duration = Histogram('msc_graph_operation_duration', 
+                                          'Operation duration', ['operation'])
+        
+        # Métricas internas
+        self.history = deque(maxlen=10000)
+        self.anomalies = deque(maxlen=1000)
+    
+    def record_node_operation(self, operation: str):
+        """Registra operación de nodo"""
+        self.operations.labels(operation=operation).inc()
+    
+    @contextmanager
+    def measure_operation(self, operation: str):
+        """Mide duración de operación"""
+        with self.operation_duration.labels(operation=operation).time():
+            yield
+    
+    def update_graph_metrics(self, graph: AdvancedCollectiveSynthesisGraph):
+        """Actualiza métricas del grafo"""
+        # Contar nodos y edges
+        node_count = len(graph.nodes)
+        edge_count = sum(len(node.connections_out) for node in graph.nodes.values())
+        
+        self.node_count.set(node_count)
+        self.edge_count.set(edge_count)
+        
+        # Calcular estado promedio
+        if node_count > 0:
+            states = [node.state for node in graph.nodes.values()]
+            avg_state = np.mean(states)
+            self.avg_state.set(avg_state)
+        
+        # Registrar en historial
+        self.history.append({
+            'timestamp': time.time(),
+            'nodes': node_count,
+            'edges': edge_count,
+            'avg_state': avg_state if node_count > 0 else 0
+        })
+    
+    def detect_anomalies(self) -> List[Dict[str, Any]]:
+        """Detecta anomalías en las métricas"""
+        if len(self.history) < 100:
+            return []
+        
+        # Analizar tendencias recientes
+        recent = list(self.history)[-100:]
+        
+        anomalies = []
+        
+        # Detectar cambios bruscos en número de nodos
+        node_counts = [h['nodes'] for h in recent]
+        node_mean = np.mean(node_counts)
+        node_std = np.std(node_counts)
+        
+        if node_std > 0:
+            current_z = (node_counts[-1] - node_mean) / node_std
+            if abs(current_z) > 3:
+                anomalies.append({
+                    'type': 'node_count_anomaly',
+                    'severity': 'high' if abs(current_z) > 5 else 'medium',
+                    'value': node_counts[-1],
+                    'z_score': current_z
+                })
+        
+        return anomalies
+
+# === AGENTES MEJORADOS ===
+class ImprovedBaseAgent(ABC):
+    """Clase base mejorada para agentes con capacidades ML"""
+    
+    def __init__(self, agent_id: str, graph: AdvancedCollectiveSynthesisGraph,
+                 config: Dict[str, Any]):
+        self.id = agent_id
+        self.graph = graph
+        self.config = config
+        
+        # Recursos
+        self.omega = config.get('initial_omega', 100.0)
+        self.max_omega = config.get('max_omega', 1000.0)
+        
+        # Estado
+        self.reputation = 1.0
+        self.specialization = set()
+        self.learning_rate = 0.1
+        
+        # Modelo de decisión
+        self.decision_model = self._init_decision_model()
+        
+        # Métricas
+        self.metrics = AgentMetrics(agent_id)
+        
+        # Historial
+        self.action_history = deque(maxlen=1000)
+        self.reward_history = deque(maxlen=1000)
+        
+        # Rate limiting
+        self.rate_limiter = RateLimiter(
+            rate=config.get('agent_rate_limit', 10),
+            per=60.0
+        )
+    
+    def _init_decision_model(self):
+        """Inicializa modelo de decisión del agente"""
+        return nn.Sequential(
+            nn.Linear(20, 64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 10),
+            nn.Softmax(dim=-1)
+        )
+    
+    async def perceive_environment(self) -> Dict[str, Any]:
+        """Percibe el estado del entorno"""
+        # Estado del grafo
+        graph_health = self.graph.calculate_graph_health()
+        
+        # Estado local (vecindario)
+        if hasattr(self, 'focus_nodes'):
+            local_state = await self._analyze_local_environment()
+        else:
+            local_state = {}
+        
+        # Estado propio
+        self_state = {
+            'omega': self.omega,
+            'reputation': self.reputation,
+            'recent_success_rate': self._calculate_recent_success_rate()
+        }
+        
+        return {
+            'graph': graph_health,
+            'local': local_state,
+            'self': self_state,
+            'timestamp': time.time()
+        }
+    
+    def _calculate_recent_success_rate(self) -> float:
+        """Calcula tasa de éxito reciente"""
+        if not self.action_history:
+            return 0.5
+        
+        recent = list(self.action_history)[-20:]
+        successes = sum(1 for a in recent if a.get('success', False))
+        return successes / len(recent)
+    
+    async def decide_action(self, perception: Dict[str, Any]) -> str:
+        """Decide qué acción tomar basado en percepción"""
+        # Preparar features
+        features = self._extract_features(perception)
+        features_tensor = torch.tensor(features, dtype=torch.float32)
+        
+        # Obtener probabilidades de acción
+        with torch.no_grad():
+            action_probs = self.decision_model(features_tensor)
+        
+        # Seleccionar acción (con exploración)
+        if random.random() < self.config.get('exploration_rate', 0.1):
+            action_idx = random.randint(0, 9)
+        else:
+            action_idx = torch.argmax(action_probs).item()
+        
+        # Mapear a acción específica
+        actions = self._get_available_actions()
+        return actions[min(action_idx, len(actions) - 1)]
+    
+    def _extract_features(self, perception: Dict[str, Any]) -> List[float]:
+        """Extrae features de la percepción"""
+        features = []
+        
+        # Features del grafo
+        graph = perception.get('graph', {})
+        features.extend([
+            graph.get('overall_health', 0.5),
+            graph.get('mean_state', 0.5),
+            graph.get('avg_degree', 0.0),
+            graph.get('num_components', 1) / 10.0,
+            min(graph.get('total_nodes', 0) / 1000.0, 1.0),
+            min(graph.get('total_edges', 0) / 10000.0, 1.0)
+        ])
+        
+        # Features propias
+        self_state = perception.get('self', {})
+        features.extend([
+            min(self_state.get('omega', 0) / self.max_omega, 1.0),
+            self_state.get('reputation', 1.0),
+            self_state.get('recent_success_rate', 0.5)
+        ])
+        
+        # Padding
+        while len(features) < 20:
+            features.append(0.0)
+        
+        return features[:20]
+    
+    @abstractmethod
+    def _get_available_actions(self) -> List[str]:
+        """Obtiene lista de acciones disponibles"""
+        pass
+    
+    @abstractmethod
+    async def execute_action(self, action: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Ejecuta una acción específica"""
+        pass
+    
+    async def act(self):
+        """Ciclo principal de acción del agente"""
+        # Rate limiting
+        await self.rate_limiter.acquire()
+        
+        try:
+            # Percibir
+            perception = await self.perceive_environment()
+            
+            # Decidir
+            action = await self.decide_action(perception)
+            
+            # Verificar recursos
+            action_cost = self._get_action_cost(action)
+            if self.omega < action_cost:
+                logger.warning(f"Agent {self.id} insufficient omega for {action}")
+                return
+            
+            # Ejecutar
+            self.omega -= action_cost
+            result = await self.execute_action(action, perception)
+            
+            # Registrar
+            self.action_history.append({
+                'timestamp': time.time(),
+                'action': action,
+                'success': result.get('success', False),
+                'result': result
+            })
+            
+            # Calcular recompensa
+            reward = self._calculate_reward(result)
+            self.reward_history.append(reward)
+            
+            # Actualizar modelo
+            await self._update_model(perception, action, reward)
+            
+            # Métricas
+            self.metrics.record_action(action, result.get('success', False))
+            
+            # Publicar evento
+            await self.graph.event_bus.publish(Event(
+                type=EventType.AGENT_ACTION,
+                data={
+                    'agent_id': self.id,
+                    'action': action,
+                    'success': result.get('success', False),
+                    'reward': reward
+                },
+                source=self.id
+            ))
+            
+        except Exception as e:
+            logger.error(f"Agent {self.id} error: {e}", extra={'agent_id': self.id})
+            self.metrics.record_error(str(e))
+    
+    def _get_action_cost(self, action: str) -> float:
+        """Obtiene costo de una acción"""
+        base_costs = {
+            'create_node': 5.0,
+            'create_edge': 2.0,
+            'update_node': 1.0,
+            'analyze': 0.5,
+            'synthesize': 10.0,
+            'evolve': 20.0
+        }
+        
+        base = base_costs.get(action, 1.0)
+        # Ajustar por reputación
+        return base * (2.0 - self.reputation)
+    
+    def _calculate_reward(self, result: Dict[str, Any]) -> float:
+        """Calcula recompensa por resultado de acción"""
+        if not result.get('success', False):
+            return -1.0
+        
+        # Recompensa base
+        reward = 1.0
+        
+        # Bonus por impacto
+        if 'impact' in result:
+            reward += result['impact']
+        
+        # Bonus por novedad
+        if result.get('novel', False):
+            reward += 2.0
+        
+        return min(reward, 10.0)
+    
+    async def _update_model(self, perception: Dict[str, Any], action: str, reward: float):
+        """Actualiza modelo de decisión con aprendizaje"""
+        # Aquí iría el aprendizaje por refuerzo
+        # Por ahora solo actualizamos reputación
+        if reward > 0:
+            self.reputation = min(2.0, self.reputation * 1.01)
+        else:
+            self.reputation = max(0.1, self.reputation * 0.99)
+
+# === AGENTE CLAUDE-TAEC ===
+class ClaudeTAECAgent(ImprovedBaseAgent):
+    """Agente TAEC mejorado con integración de Claude"""
+    
+    def __init__(self, agent_id: str, graph: AdvancedCollectiveSynthesisGraph,
+                 config: Dict[str, Any]):
+        super().__init__(agent_id, graph, config)
+        
+        # Estado específico TAEC
+        self.evolution_count = 0
+        self.code_repository = CodeRepository()
+        self.evolution_memory = EvolutionMemory()
+        
+        # Estrategias disponibles
+        self.strategies = {
+            'synthesis': self._strategy_synthesis,
+            'optimization': self._strategy_optimization,
+            'exploration': self._strategy_exploration,
+            'consolidation': self._strategy_consolidation,
+            'innovation': self._strategy_innovation,
+            'recovery': self._strategy_recovery
+        }
+        
+        # Modelo predictivo específico
+        self.evolution_predictor = self._init_evolution_predictor()
+        
+        # Claude client
+        self.claude = graph.claude_client
+        
+        logger.info(f"Claude-TAEC Agent {agent_id} initialized")
+    
+    def _init_evolution_predictor(self):
+        """Inicializa predictor de éxito de evoluciones"""
+        return nn.Sequential(
+            nn.Linear(30, 64),
+            nn.ReLU(),
+            nn.BatchNorm1d(64),
+            nn.Dropout(0.3),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 6),  # 6 estrategias
+            nn.Softmax(dim=-1)
+        )
+    
+    def _get_available_actions(self) -> List[str]:
+        """Obtiene acciones disponibles para TAEC"""
+        return ['evolve', 'synthesize', 'optimize', 'explore', 'innovate']
+    
+    async def execute_action(self, action: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Ejecuta acción específica de TAEC"""
+        if action == 'evolve':
+            return await self._execute_evolution(context)
+        elif action == 'synthesize':
+            return await self._execute_synthesis(context)
+        elif action == 'optimize':
+            return await self._execute_optimization(context)
+        elif action == 'explore':
+            return await self._execute_exploration(context)
+        elif action == 'innovate':
+            return await self._execute_innovation(context)
+        else:
+            return {'success': False, 'error': 'Unknown action'}
+    
+    async def _execute_evolution(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Ejecuta ciclo completo de evolución"""
+        self.evolution_count += 1
+        logger.info(f"TAEC {self.id}: Evolution cycle {self.evolution_count}")
+        
+        # Analizar situación
+        analysis = await self._analyze_evolution_context(context)
+        
+        # Seleccionar estrategia
+        strategy_name = await self._select_strategy(analysis)
+        strategy = self.strategies.get(strategy_name)
+        
+        if not strategy:
+            return {'success': False, 'error': 'Invalid strategy'}
+        
+        # Ejecutar estrategia
+        result = await strategy(analysis)
+        
+        # Guardar en memoria
+        self.evolution_memory.add_evolution(
+            self.evolution_count,
+            strategy_name,
+            analysis,
+            result
+        )
+        
+        # Publicar evento
+        await self.graph.event_bus.publish(Event(
+            type=EventType.AGENT_EVOLVED,
+            data={
+                'agent_id': self.id,
+                'evolution_count': self.evolution_count,
+                'strategy': strategy_name,
+                'result': result
+            },
+            source=self.id
+        ))
+        
+        return result
+    
+    async def _analyze_evolution_context(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Analiza contexto para evolución"""
+        # Análisis del grafo
+        graph_analysis = {
+            'health': context['graph'],
+            'trends': self._analyze_trends(),
+            'opportunities': await self._identify_opportunities(),
+            'risks': self._identify_risks()
+        }
+        
+        # Análisis de evoluciones previas
+        history_analysis = self.evolution_memory.analyze_history()
+        
+        # Análisis de código generado
+        code_analysis = self.code_repository.analyze_repository()
+        
+        return {
+            'graph': graph_analysis,
+            'history': history_analysis,
+            'code': code_analysis,
+            'timestamp': time.time()
+        }
+    
+    def _analyze_trends(self) -> Dict[str, Any]:
+        """Analiza tendencias en el grafo"""
+        if len(self.graph.metrics.history) < 10:
+            return {'trend': 'insufficient_data'}
+        
+        recent = list(self.graph.metrics.history)[-100:]
+        
+        # Tendencia de nodos
+        node_counts = [h['nodes'] for h in recent]
+        node_trend = 'growing' if node_counts[-1] > node_counts[0] else 'shrinking'
+        
+        # Tendencia de estado
+        states = [h['avg_state'] for h in recent]
+        state_trend = 'improving' if states[-1] > states[0] else 'declining'
+        
+        return {
+            'node_trend': node_trend,
+            'state_trend': state_trend,
+            'volatility': np.std(states)
+        }
+    
+    async def _identify_opportunities(self) -> List[Dict[str, Any]]:
+        """Identifica oportunidades de evolución"""
+        opportunities = []
+        
+        # Oportunidad 1: Nodos sin explotar
+        high_potential = [
+            n for n in self.graph.nodes.values()
+            if n.state > 0.8 and len(n.connections_out) < 3
+        ]
+        
+        if high_potential:
+            opportunities.append({
+                'type': 'underutilized_nodes',
+                'count': len(high_potential),
+                'priority': 'high',
+                'nodes': [n.id for n in high_potential[:5]]
+            })
+        
+        # Oportunidad 2: Clusters desconectados
+        if len(self.graph.cluster_index) > 1:
+            opportunities.append({
+                'type': 'disconnected_clusters',
+                'count': len(self.graph.cluster_index),
+                'priority': 'medium'
+            })
+        
+        # Oportunidad 3: Áreas temáticas nuevas
+        current_keywords = set()
+        for node in self.graph.nodes.values():
+            current_keywords.update(node.keywords)
+        
+        potential_keywords = {
+            'quantum_synthesis', 'emergent_intelligence', 
+            'collective_consciousness', 'meta_learning',
+            'recursive_improvement', 'semantic_convergence'
+        }
+        
+        new_keywords = potential_keywords - current_keywords
+        if new_keywords:
+            opportunities.append({
+                'type': 'unexplored_concepts',
+                'keywords': list(new_keywords),
+                'priority': 'low'
+            })
+        
+        return opportunities
+    
+    def _identify_risks(self) -> List[Dict[str, Any]]:
+        """Identifica riesgos en el sistema"""
+        risks = []
+        
+        # Riesgo 1: Fragmentación
+        if len(self.graph.nodes) > 100:
+            isolated = sum(
+                1 for n in self.graph.nodes.values()
+                if len(n.connections_in) == 0 and len(n.connections_out) == 0
+            )
+            if isolated > len(self.graph.nodes) * 0.1:
+                risks.append({
+                    'type': 'fragmentation',
+                    'severity': 'high',
+                    'isolated_ratio': isolated / len(self.graph.nodes)
+                })
+        
+        # Riesgo 2: Estancamiento
+        if len(self.evolution_memory.history) > 10:
+            recent_success = sum(
+                1 for e in list(self.evolution_memory.history)[-10:]
+                if e.get('result', {}).get('success', False)
+            )
+            if recent_success < 3:
+                risks.append({
+                    'type': 'stagnation',
+                    'severity': 'medium',
+                    'success_rate': recent_success / 10
+                })
+        
+        return risks
+    
+    async def _select_strategy(self, analysis: Dict[str, Any]) -> str:
+        """Selecciona estrategia óptima usando ML"""
+        # Preparar features
+        features = self._extract_strategy_features(analysis)
+        features_tensor = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
+        
+        # Predecir con modelo
+        with torch.no_grad():
+            strategy_probs = self.evolution_predictor(features_tensor)
+        
+        # Considerar contexto
+        health = analysis['graph']['health'].get('overall_health', 0.5)
+        
+        # Ajustar probabilidades según contexto
+        if health < 0.3:
+            # Priorizar recuperación
+            strategy_probs[0][5] *= 2.0  # recovery
+        elif health > 0.8:
+            # Priorizar innovación
+            strategy_probs[0][4] *= 1.5  # innovation
+        
+        # Normalizar
+        strategy_probs = strategy_probs / strategy_probs.sum()
+        
+        # Seleccionar
+        strategy_idx = torch.multinomial(strategy_probs[0], 1).item()
+        
+        strategies = list(self.strategies.keys())
+        return strategies[strategy_idx]
+    
+    def _extract_strategy_features(self, analysis: Dict[str, Any]) -> List[float]:
+        """Extrae features para selección de estrategia"""
+        features = []
+        
+        # Features del grafo
+        graph = analysis['graph']
+        features.extend([
+            graph['health'].get('overall_health', 0.5),
+            graph['health'].get('mean_state', 0.5),
+            graph['health'].get('avg_degree', 0) / 10.0,
+            len(graph.get('opportunities', [])) / 10.0,
+            len(graph.get('risks', [])) / 5.0
+        ])
+        
+        # Features de historia
+        history = analysis['history']
+        features.extend([
+            history.get('total_evolutions', 0) / 100.0,
+            history.get('success_rate', 0.5),
+            history.get('avg_impact', 0.5)
+        ])
+        
+        # Features de código
+        code = analysis['code']
+        features.extend([
+            code.get('total_functions', 0) / 50.0,
+            code.get('reuse_rate', 0.0)
+        ])
+        
+        # Padding
+        while len(features) < 30:
+            features.append(0.0)
+        
+        return features[:30]
+    
+    async def _strategy_synthesis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Estrategia: Síntesis avanzada con Claude"""
+        logger.info(f"TAEC {self.id}: Executing Claude-powered synthesis")
+        
+        # Seleccionar nodos fuente
+        candidates = self._select_synthesis_candidates(analysis)
+        
+        if len(candidates) < 2:
+            return {'success': False, 'error': 'Insufficient candidates'}
+        
+        # Preparar contexto para Claude
+        context = {
+            'node_count': len(self.graph.nodes),
+            'edge_count': sum(len(n.connections_out) for n in self.graph.nodes.values()),
+            'source_nodes': [
+                {
+                    'id': n.id,
+                    'content': n.content,
+                    'keywords': list(n.keywords),
+                    'state': n.state
+                }
+                for n in candidates
+            ]
+        }
+        
+        # Generar prompt para síntesis
+        prompt = f"""
+Create a synthesis function that combines the following knowledge nodes:
+
+{json.dumps(context['source_nodes'], indent=2)}
+
+The function should:
+1. Extract key concepts from each node
+2. Find semantic connections between concepts
+3. Generate a new synthesized concept with higher-order understanding
+4. Return a dictionary with 'content', 'keywords', and 'initial_state'
+
+The synthesis should create emergent knowledge, not just concatenation.
+"""
+        
+        # Generar código con Claude
+        code = await self.claude.generate_code(prompt, context)
+        
+        if not code:
+            return {'success': False, 'error': 'Code generation failed'}
+        
+        # Ejecutar código
+        try:
+            result = await self._execute_generated_code(code, {'nodes': candidates})
+            
+            if not isinstance(result, dict):
+                return {'success': False, 'error': 'Invalid synthesis result'}
+            
+            # Crear nodo sintetizado
+            new_node = await self.graph.add_node(
+                content=result.get('content', 'Synthesized concept'),
+                initial_state=result.get('initial_state', 0.7),
+                keywords=set(result.get('keywords', [])),
+                created_by=self.id,
+                properties={'synthesis_method': 'claude', 'evolution': self.evolution_count}
             )
             
-            # Conectar bidireccionalmente con fuentes de inspiración
-            for source in sources:
-                self.graph.add_edge(source.id, new_node.id, utility=0.8)
-                self.graph.add_edge(new_node.id, source.id, utility=0.6)
-                
-            self.log_institution(f"TAEC: Creado nodo evolucionado {new_node.id} a partir de {len(sources)} nodos fuente")
+            # Conectar con fuentes
+            for source in candidates:
+                await self.graph.add_edge(source.id, new_node.id, 0.8)
+                await self.graph.add_edge(new_node.id, source.id, 0.6)
             
-            # Buscar conexiones emergentes adicionales
-            for _ in range(3):
-                target = self.graph.get_random_node_biased()
-                if target and target.id != new_node.id and target not in sources:
-                    utility = random.uniform(0.5, 0.9)
-                    self.graph.add_edge(new_node.id, target.id, utility=utility)
+            # Guardar código exitoso
+            self.code_repository.add_code(
+                'synthesis',
+                code,
+                {'success': True, 'node_id': new_node.id}
+            )
+            
+            return {
+                'success': True,
+                'strategy': 'synthesis',
+                'new_node_id': new_node.id,
+                'impact': len(candidates) * 0.5
+            }
+            
+        except Exception as e:
+            logger.error(f"Synthesis execution error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def _select_synthesis_candidates(self, analysis: Dict[str, Any]) -> List[AdvancedKnowledgeComponent]:
+        """Selecciona candidatos para síntesis"""
+        candidates = []
         
-        # 5. Recuperación auto-adaptativa de nodos aislados
-        if low_connectivity_nodes:
-            for i in range(min(3, len(low_connectivity_nodes))):
-                target = low_connectivity_nodes[i]
-                target.keywords.add("taec_enhanced")
-                
-                # Incremento adaptativo basado en el promedio global
-                enhancement = 0.1 + (mean_state - target.state) * 0.2
-                target.update_state(target.state + enhancement)
-                
-                # Agregar conexiones estratégicas basadas en patrones emergentes
-                potential_connections = [n for n in self.graph.nodes.values() 
-                                       if n.id != target.id and 
-                                       (n.state > mean_state or "taec_evolved" in n.keywords)]
-                                       
-                if potential_connections:
-                    # Conectar en ambos sentidos para crear flujo bidireccional
-                    new_connection = random.choice(potential_connections)
-                    if self.graph.add_edge(target.id, new_connection.id, utility=0.7):
-                        self.graph.add_edge(new_connection.id, target.id, utility=0.5)
-                        self.log_institution(f"TAEC: Nodo {target.id} mejorado con conexión bidireccional a {new_connection.id}")
+        # Priorizar nodos de alta calidad
+        high_quality = [
+            n for n in self.graph.nodes.values()
+            if n.state > 0.6 and n.metadata.importance_score > 0.5
+        ]
         
-        # 6. Auto-optimización de grafo
-        if node_count > 50 and random.random() < 0.3:
-            self.log_institution("TAEC: Iniciando auto-optimización topológica...")
-            
-            # Identificar nodos de alta centralidad (cuellos de botella)
-            G = nx.DiGraph()
-            for node_id in self.graph.nodes:
-                G.add_node(node_id)
-            for node in self.graph.nodes.values():
-                for target_id in node.connections_out:
-                    G.add_edge(node.id, target_id)
-            
-            try:
-                # Calcular betweenness centrality para identificar nodos clave
-                if len(G) > 1:
-                    centrality = nx.betweenness_centrality(G)
-                    high_centrality_nodes = sorted(centrality.items(), 
-                                                key=lambda x: x[1], 
-                                                reverse=True)[:3]
+        if len(high_quality) >= 3:
+            # Seleccionar diversos
+            selected = []
+            for _ in range(min(4, len(high_quality))):
+                if not selected:
+                    selected.append(random.choice(high_quality))
+                else:
+                    # Buscar el más diferente
+                    best_candidate = None
+                    max_distance = 0
                     
-                    for node_id, score in high_centrality_nodes:
-                        if score > 0.2 and node_id in self.graph.nodes:
-                            # Fortalecer nodos clave
-                            node = self.graph.get_node(node_id)
-                            if node:
-                                node.update_state(min(1.0, node.state + 0.05))
-                                node.keywords.add("taec_optimized")
-                                self.log_institution(f"TAEC: Optimizado nodo central {node_id} (score: {score:.3f})")
-            except Exception as e:
-                self.log_institution(f"TAEC: Error en optimización: {e}")
-        
-        # 7. Crear nuevos agentes si es necesario (simulación de auto-replicación)
-        if hasattr(self.graph, 'agents') and len(self.graph.agents) > 0:
-            existing_taec = sum(1 for a in self.graph.agents if isinstance(a, TAECEvolutionAgent))
-            if existing_taec < 3 and random.random() < 0.1:
-                # Nota: en implementación real, aquí se crearían agentes dinámicamente
-                self.log_institution(f"TAEC: Auto-replicación sugerida (agentes TAEC actuales: {existing_taec})")
-        
-        # 8. Meta-análisis TAEC
-        taec_evolved_count = len([n for n in self.graph.nodes.values() if 
-                                "taec_evolved" in n.keywords or 
-                                "taec_enhanced" in n.keywords or
-                                "taec_optimized" in n.keywords])
-        
-        self.log_institution(f"TAEC Meta-análisis: {taec_evolved_count} nodos evolucionados por TAEC ({(taec_evolved_count/node_count*100):.1f}%)")
-        self.log_institution(f"TAEC Info: {len(high_potential_nodes)} nodos de alto potencial, {len(low_connectivity_nodes)} nodos para recuperación")
-
-# --- MINISTERIO DE DESARROLLO SOSTENIBLE COGNITIVO ---
-
-# Instituto de Ecología de Red
-class NodeBalancerAgent(InstitutionAgent):
-    """
-    Ajusta la población, densidad y conexiones para mantener el equilibrio de la red MSC.
-    """
-    def institution_action(self):
-        self.log_institution("Balancing node population and connections...")
-        # Si un nodo está sobredimensionado (muchas conexiones), se elimina la de menor utilidad.
-        for node in self.graph.nodes.values():
-            if len(node.connections_out) > 10:
-                min_conn = min(node.connections_out.items(), key=lambda item: item[1])
-                node.connections_out.pop(min_conn[0])
-                self.log_institution(f"Removed low-utility connection from node {node.id} (over-connected).")
-            # Si un nodo tiene pocas conexiones, se le añade una nueva conexión.
-            elif len(node.connections_out) < 2:
-                candidate = self.graph.get_random_node_biased()
-                if candidate and candidate.id != node.id:
-                    if self.graph.add_edge(node.id, candidate.id, utility=0.5):
-                        self.log_institution(f"Added connection from node {node.id} to {candidate.id} (under-connected).")
-
-class ClusterFormationAgent(InstitutionAgent):
-    """
-    Fomenta la creación de comunidades naturales conectando nodos con similitudes.
-    """
-    def institution_action(self):
-        self.log_institution("Encouraging natural cluster formation...")
-        for node in self.graph.nodes.values():
-            # Encuentra nodos con keywords comunes.
-            similar_nodes = [other for other in self.graph.nodes.values()
-                             if other.id != node.id and node.keywords.intersection(other.keywords)]
-            if similar_nodes:
-                target = random.choice(similar_nodes)
-                # Se agrega la conexión si aún no existe.
-                if target.id not in node.connections_out:
-                    if self.graph.add_edge(node.id, target.id, utility=0.6):
-                        self.log_institution(f"Formed cluster link between node {node.id} and {target.id}.")
-
-# Instituto de Diversidad Epistémica
-class PerspectiveAgent(InstitutionAgent):
-    """
-    Introduce puntos de vista divergentes en la red para enriquecer el conocimiento.
-    """
-    def institution_action(self):
-        self.log_institution("Injecting divergent perspectives...")
-        node = self.graph.get_random_node_biased()
-        if node:
-            perspective = f"perspective_{random.randint(1,100)}"
-            node.keywords.add(perspective)
-            # Ajuste opcional: modificar ligeramente el estado para reflejar diversidad.
-            node.update_state(max(0, node.state - 0.05))
-            self.log_institution(f"Node {node.id} enriched with perspective: {perspective}.")
-
-class CulturalMirrorAgent(InstitutionAgent):
-    """
-    Representa voces de distintas regiones o idiomas en la red MSC.
-    """
-    def institution_action(self):
-        self.log_institution("Reflecting cultural diversity in the network...")
-        culture = random.choice(["es", "en", "fr", "de", "zh"])
-        content = f"Cultural input from region {culture} provided by {self.id}"
-        new_node = self.graph.add_node(content=content, initial_state=0.5, keywords={culture, "culture"})
-        self.log_institution(f"Created cultural mirror node {new_node.id} with culture {culture}.")
-
-# --- MINISTERIO DE SÍNTESIS E INFERENCIA - Ministerio de Síntesis e Inferencia ---
-
-# Instituto de Síntesis Predictiva
-class SynthesizerAgent(InstitutionAgent):
-    """
-    Fusiona nodos para crear hipótesis emergentes a partir del conocimiento existente.
-    """
-    def institution_action(self):
-        self.log_institution("Synthesizing new hypotheses by merging nodes (bridging synthesis)...")
-        # Seleccionar node1 y buscar node2 que comparta pocas keywords
-        node1 = self.graph.get_random_node_biased()
-        candidates = [n for n in self.graph.nodes.values() if n.id != node1.id and len(node1.keywords.intersection(n.keywords)) < 1]
-        node2 = random.choice(candidates) if candidates else self.graph.get_random_node_biased()
-        if node1 and node2 and node1.id != node2.id:
-            new_content = f"Synthesized Bridge: {node1.content} + {node2.content}"
-            new_keywords = node1.keywords.union(node2.keywords).union({"synthesized", "bridge"})
-            base_state = (node1.state + node2.state) / 2
-            new_state = min(1.0, base_state + 0.05)
-            new_node = self.graph.add_node(content=new_content, initial_state=new_state, keywords=new_keywords)
-            self.graph.add_edge(new_node.id, node1.id, utility=0.7)
-            self.graph.add_edge(new_node.id, node2.id, utility=0.7)
-            self.log_institution(f"Created synthesized bridge node {new_node.id} merging nodes {node1.id} and {node2.id}. New state: {new_state:.2f}")
-        else:
-            self.log_institution("Not enough suitable nodes available for bridging synthesis.")
-
-class PatternMinerAgent(InstitutionAgent):
-    """
-    Encuentra patrones y correlaciones inesperadas dentro del grafo.
-    """
-    def institution_action(self):
-        self.log_institution("Mining patterns and unexpected correlations...")
-        patterns_found = 0
-        for node in self.graph.nodes.values():
-            if "pattern" in node.keywords:
-                continue
-            similar_nodes = [n for n in self.graph.nodes.values() if n != node and node.keywords.intersection(n.keywords)]
-            if len(similar_nodes) >= 2:
-                avg_state = (node.state + sum(n.state for n in similar_nodes)) / (len(similar_nodes) + 1)
-                node.keywords.add("pattern")
-                for n in similar_nodes:
-                    n.keywords.add("pattern")
-                self.log_institution(f"Pattern detected in node {node.id} and {len(similar_nodes)} similar nodes. Avg state: {avg_state:.2f}")
-                patterns_found += 1
-        if patterns_found == 0:
-            self.log_institution("No significant patterns detected this cycle.")
-
-# Instituto de Tendencias y Prospección
-class TrendDetectorAgent(InstitutionAgent):
-    """
-    Detecta temas crecientes o tendencias globales a partir de la evolución del grafo.
-    """
-    def institution_action(self):
-        self.log_institution("Detecting emerging trends across the graph...")
-        trend_count = {}
-        for node in self.graph.nodes.values():
-            for keyword in node.keywords:
-                trend_count[keyword] = trend_count.get(keyword, 0) + node.state
-        if trend_count:
-            trending_keyword = max(trend_count, key=trend_count.get)
-            self.log_institution(f"Detected trending topic: {trending_keyword} with score {trend_count[trending_keyword]:.2f}")
-        else:
-            self.log_institution("No trends detected.")
-
-class ChronoAgent(InstitutionAgent):
-    """
-    Analiza la evolución de conceptos en el tiempo, creando líneas temporales de nodos relacionados.
-    """
-    def institution_action(self):
-        self.log_institution("Analyzing temporal evolution of concepts...")
-        if self.graph.nodes:
-            sorted_nodes = sorted(self.graph.nodes.values(), key=lambda n: n.id)
-            timeline = [(node.id, node.state) for node in sorted_nodes]
-            self.log_institution(f"Chronological data collected: {timeline}")
-        else:
-            self.log_institution("Graph empty, no temporal data available.")
-
-# --- MINISTERIO DE EVALUACIÓN Y APRENDIZAJE ---
-
-# Instituto de Retroalimentación
-class FeedbackLoopAgent(InstitutionAgent):
-    """
-    Compara las predicciones del sistema MSC con eventos reales
-    y ajusta estrategias basándose en la diferencia.
-    """
-    def institution_action(self):
-        self.log_institution("Running feedback loop: comparing predictions with real outcomes...")
-        predicted = self.graph.get_random_node_biased()
-        actual = self.graph.get_random_node_biased()
-        if predicted and actual:
-            diff = abs(predicted.state - actual.state)
-            if diff > 0.2:
-                self.log_institution(f"Significant deviation detected (diff = {diff:.2f}) between node {predicted.id} and {actual.id}.")
-            else:
-                self.log_institution(f"Feedback: predictions align (diff = {diff:.2f}).")
-        else:
-            self.log_institution("Insufficient nodes for feedback comparison.")
-
-class MemoryAdjusterAgent(InstitutionAgent):
-    """
-    Reajusta estados y conexiones en el grafo en base a la retroalimentación evaluativa.
-    """
-    def institution_action(self):
-        self.log_institution("Adjusting memory based on evaluative feedback...")
-        for node in self.graph.nodes.values():
-            if node.state > 0.8 and "verified" not in node.keywords:
-                old_state = node.state
-                node.update_state(node.state * 0.95)
-                self.log_institution(f"Node {node.id} state adjusted from {old_state:.2f} to {node.state:.2f} (lacking verification).")
-            elif node.state < 0.3:
-                old_state = node.state
-                node.update_state(node.state + 0.05)
-                self.log_institution(f"Node {node.id} state increased from {old_state:.2f} to {node.state:.2f} for recovery.")
-
-# Instituto de Medición Global
-class GlobalMetricsAgent(InstitutionAgent):
-    """
-    Evalúa métricas agregadas del sistema (estado, densidad, clusters)
-    y reporta los hallazgos globales.
-    """
-    def institution_action(self):
-        self.log_institution("Evaluating global graph metrics...")
-        metrics = self.graph.get_global_metrics()
-        self.log_institution(f"Global Metrics: {metrics}")
-
-class LogEvaluatorAgent(InstitutionAgent):
-    """
-    Analiza logs previos y eventos del sistema para generar reportes
-    de evaluación longitudinal y aprendizaje a largo plazo.
-    """
-    def institution_action(self):
-        self.log_institution("Analyzing system logs to generate longitudinal evaluation reports...")
-        # Simulación: generar un reporte a partir del conteo de pasos (o cualquier otro indicador)
-        report = f"Report generated at simulation step {self.graph.config.get('current_step', 'N/A')}."
-        self.log_institution(f"Longitudinal Evaluation Report: {report}")
-
-# --- GOBIERNO COGNITIVO DEL MSC - Ministerio de Conectividad Global ---
-
-# Instituto de Infraestructura Informativa
-class WebCrawlerAgent(InstitutionAgent):
-    """
-    Rastrea páginas web y repositorios para incorporar nuevos datos al grafo.
-    """
-    def institution_action(self):
-        self.log_institution("Crawling web pages for new data...")
-        # Implementación de ejemplo: simula la creación de un nodo con contenido extraído web.
-        new_content = f"Web data fetched by {self.id}"
-        new_node = self.graph.add_node(content=new_content, initial_state=0.5, keywords={"web", "data"})
-        self.log_institution(f"Created node {new_node.id} with web-fetched content.")
-
-class RSSListenerAgent(InstitutionAgent):
-    """
-    Escucha fuentes RSS para incorporar noticias o actualizaciones al grafo.
-    """
-    def institution_action(self):
-        self.log_institution("Listening to RSS feeds for news updates...")
-        # Simulación: si se detecta una 'noticia', se agrega un nodo.
-        news = f"News item captured by {self.id}"
-        new_node = self.graph.add_node(content=news, initial_state=0.4, keywords={"news"})
-        self.log_institution(f"Added news node {new_node.id} from RSS feed.")
-
-class APICollectorAgent(InstitutionAgent):
-    """
-    Accede a datos vivos de APIs reales y los integra en el grafo.
-    """
-    def institution_action(self):
-        self.log_institution("Collecting live data from external APIs...")
-        # Simulación: se crea un nodo representativo de datos externos.
-        api_data = f"API data collected by {self.id}"
-        new_node = self.graph.add_node(content=api_data, initial_state=0.6, keywords={"api", "external"})
-        self.log_institution(f"Inserted API data node {new_node.id}.")
-
-# Instituto de Enlace Humano-Máquina
-class InterfaceAgent(InstitutionAgent):
-    """
-    Recoge preguntas e inputs humanos y los inserta en el grafo para ser procesados.
-    """
-    def institution_action(self):
-        self.log_institution("Gathering human interface inputs...")
-        # Simulación: se añade un nodo que representa una consulta o input humano.
-        human_input = f"Human query received by {self.id}"
-        new_node = self.graph.add_node(content=human_input, initial_state=0.4, keywords={"human", "query"})
-        self.log_institution(f"Created interface node {new_node.id} with human input.")
-
-class TranslatorAgent(InstitutionAgent):
-    """
-    Convierte lenguaje natural a un formato compatible con el MSC, integrando la información.
-    """
-    def institution_action(self):
-        self.log_institution("Translating natural language to MSC format...")
-        # Simulación: se toma un nodo de entrada y se crea uno traducido.
-        original_node = self.graph.get_random_node_biased()
-        if original_node:
-            translated_content = f"Translated content of node {original_node.id} by {self.id}"
-            new_node = self.graph.add_node(content=translated_content, initial_state=original_node.state, keywords={"translated"})
-            self.log_institution(f"Created translated node {new_node.id} from node {original_node.id}.")
-
-# --- MINISTERIO DEL ENTRENAMIENTO Y DATOS ---
-
-# Instituto de Datos Reales y Sintéticos
-class DatasetAgent(InstitutionAgent):
-    """
-    Introduce datasets reales o sintéticos (por ejemplo, de Kaggle, OpenAI, etc.)
-    al grafo para enriquecer el conocimiento.
-    """
-    def institution_action(self):
-        self.log_institution("Injecting dataset into the graph...")
-        # Simulación: crear un nodo con datos identificados como datasets.
-        dataset_info = f"Dataset provided by {self.id}"
-        new_node = self.graph.add_node(content=dataset_info, initial_state=0.7, keywords={"dataset", "real", "synthetic"})
-        self.log_institution(f"Dataset node {new_node.id} created with content: {dataset_info}")
-
-class AutoLabelAgent(InstitutionAgent):
-    """
-    Etiqueta o anota información en el grafo utilizando LLMs (o lógica simulada).
-    """
-    def institution_action(self):
-        self.log_institution("Auto-labeling information using LLM assistance...")
-        # Simulación: seleccionar un nodo y "etiquetar" su contenido.
-        target_node = self.graph.get_random_node_biased()
-        if target_node:
-            # Ejemplo: se agregan etiquetas adicionales a los keywords del nodo.
-            target_node.keywords.update({"auto-labeled", "LLM"})
-            self.log_institution(f"Node {target_node.id} auto-labeled with tags: auto-labeled, LLM")
-        else:
-            self.log_institution("No node found for auto-labeling.")
-
-# Instituto de Validación y Contraste
-class RealVsFictionAgent(InstitutionAgent):
-    """
-    Distingue fuentes verificadas versus especulativas, para marcar la confiabilidad de la fuente.
-    """
-    def institution_action(self):
-        self.log_institution("Evaluating source authenticity (Real vs Fiction)...")
-        # Simulación: elegir un nodo y asignar una bandera de confiabilidad.
-        candidate = self.graph.get_random_node_biased()
-        if candidate:
-            # Se podría asignar un campo o ajustar el estado para reflejar mayor confiabilidad.
-            if "verified" in candidate.keywords:
-                self.log_institution(f"Node {candidate.id} already verified as real.")
-            else:
-                # Supongamos que un incremento en el estado indica mayor confiabilidad.
-                candidate.update_state(candidate.state + 0.1)
-                candidate.keywords.add("verified")
-                self.log_institution(f"Node {candidate.id} marked as real (verified) and state increased.")
-        else:
-            self.log_institution("No candidate node found for source evaluation.")
-
-class SourceVerifierAgent(InstitutionAgent):
-    """
-    Asigna reputación y confiabilidad a nodos de acuerdo a la fiabilidad de su fuente.
-    """
-    def institution_action(self):
-        self.log_institution("Verifying source reliability for nodes...")
-        # Simulación: recorrer nodos y ajustar reputación según ciertas palabras clave.
-        for node in self.graph.nodes.values():
-            # Si un nodo tiene la etiqueta "verified", aumentar reputación.
-            if "verified" in node.keywords:
-                # Incremento en la reputación para nodos verificados.
-                self.log_institution(f"Node {node.id} verified. Increasing reputation.")
-                node.update_state(min(1.0, node.state + 0.05))
-            else:
-                # Reducir reputación (simulado, por ejemplo) para nodos sin verificación.
-                node.update_state(max(0.1, node.state - 0.03))
-                self.log_institution(f"Node {node.id} not verified. Decreasing state slightly for caution.")
-
-# --- Agentes Operativos ---
-class ProposerAgent(Synthesizer):
-    def act(self):
-        logging.info(f"ProposerAgent {self.id} acting.")
-
-class EvaluatorAgent(Synthesizer):
-    def act(self):
-        logging.info(f"EvaluatorAgent {self.id} acting.")
-
-class CombinerAgent(Synthesizer):
-    def act(self):
-        logging.info(f"CombinerAgent {self.id} acting.")
-
-class AdvancedCoderAgent(Synthesizer):
-    def act(self):
-        logging.info(f"AdvancedCoderAgent {self.id} acting.")
-
-class BridgingAgent(Synthesizer):
-    def act(self):
-        logging.info(f"BridgingAgent {self.id} acting.")
-
-class KnowledgeFetcherAgent(Synthesizer):
-    def act(self):
-        logging.info(f"KnowledgeFetcherAgent {self.id} acting.")
-
-class HorizonScannerAgent(Synthesizer):
-    def act(self):
-        logging.info(f"HorizonScannerAgent {self.id} acting.")
-
-class EpistemicValidatorAgent(Synthesizer):
-    def act(self):
-        logging.info(f"EpistemicValidatorAgent {self.id} acting.")
-
-class TechnogenesisAgent(Synthesizer):
-    def act(self):
-        logging.info(f"TechnogenesisAgent {self.id} acting.")
-
-# --- Simulation Runner ---
-class SimulationRunner:
-    """Encapsulates and runs the simulation in a separate thread."""
-    def __init__(self, config):
-        self.config = config
-        self.graph = CollectiveSynthesisGraph(config)
-
-        # Inicializar repositorio de código con la nueva ruta configurada
-        if 'taec_runtime_path' in config:
-            # Usar la ruta específica para TAEC
-            code_repo_path = config['taec_runtime_path']
-        else:
-            # Usar la ruta por defecto en el directorio actual
-            save_path = config.get('save_state')
-            if save_path:
-                # Si hay una ruta de guardado especificada, usar su directorio
-                code_repo_path = os.path.join(os.path.dirname(save_path), 'taec_code')
-            else:
-                # Si no hay ninguna ruta, usar 'generated_code/taec_code' en el directorio actual
-                code_repo_path = os.path.join('generated_code', 'taec_code')
-
-        # Asegurarse de que el directorio exista
-        if not os.path.exists(code_repo_path):
-            os.makedirs(code_repo_path, exist_ok=True)
-
-        self.graph.code_repository = CodeRepository(save_dir=code_repo_path)
-        logging.info(f"Initialized code repository at {code_repo_path}")
-
-        self.agents = []
-        self.is_running = False
-        self.simulation_thread = None
-        self.step_count = 0
-        self.lock = threading.Lock()
-        self.start_time = time.time()  # Añadir esta línea
-
-        # --- Inicialización del Log de Métricas CSV ---
-        self.metrics_file = None
-        self.metrics_writer = None
-        self.metrics_fieldnames = ["Step", "Nodes", "Edges", "Density", "AvgClustering", "Components", "MeanState", "MedianState", "StdDevState", "MinState", "MaxState"]
-        metrics_path = self.config.get('metrics_log_path', None)
-        if metrics_path:
-            try:
-                is_new_file = not os.path.exists(metrics_path) or os.path.getsize(metrics_path) == 0
-                self.metrics_file = open(metrics_path, 'a', newline='', encoding='utf-8')
-                self.metrics_writer = csv.DictWriter(self.metrics_file, fieldnames=self.metrics_fieldnames)
-                if is_new_file:
-                    self.metrics_writer.writeheader()
-                logging.info(f"Logging global metrics to CSV: {metrics_path}")
-            except Exception as e:
-                logging.error(f"Error opening metrics log file: {e}")
-                self.metrics_file = None
-                self.metrics_writer = None
-
-        # Inicialización de nodos semilla si el grafo está vacío
-        if len(self.graph.nodes) == 0:
-            logging.info("El grafo está vacío. Inicializando nodos semilla para TAEC...")
+                    for candidate in high_quality:
+                        if candidate in selected:
+                            continue
+                        
+                        # Calcular distancia semántica
+                        min_distance = float('inf')
+                        for s in selected:
+                            if s.metadata.embedding is not None and candidate.metadata.embedding is not None:
+                                distance = np.linalg.norm(
+                                    s.metadata.embedding - candidate.metadata.embedding
+                                )
+                                min_distance = min(min_distance, distance)
+                        
+                        if min_distance > max_distance:
+                            max_distance = min_distance
+                            best_candidate = candidate
+                    
+                    if best_candidate:
+                        selected.append(best_candidate)
             
-            # Crear nodos base con diferentes dominios de conocimiento
-            domains = [
-                {"name": "IA General", "keywords": {"ai", "machine_learning", "intelligence"}},
-                {"name": "Procesamiento de Lenguaje Natural", "keywords": {"nlp", "language", "text"}}, 
-                {"name": "Visión por Computadora", "keywords": {"vision", "image", "recognition"}},
-                {"name": "Redes Neuronales", "keywords": {"neural_networks", "deep_learning", "backprop"}},
-                {"name": "Grafos de Conocimiento", "keywords": {"knowledge_graphs", "semantic", "ontology"}},
-                {"name": "Auto-evolución", "keywords": {"self_evolution", "taec", "metacognition"}},
-                {"name": "Aprendizaje por Refuerzo", "keywords": {"reinforcement_learning", "rl", "rewards"}},
-                {"name": "Síntesis Cognitiva", "keywords": {"cognitive_synthesis", "integration", "emergence"}}
+            candidates = selected
+        else:
+            # Fallback: selección aleatoria
+            all_nodes = list(self.graph.nodes.values())
+            candidates = random.sample(all_nodes, min(3, len(all_nodes)))
+        
+        return candidates
+    
+    async def _strategy_optimization(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Estrategia: Optimización con Claude"""
+        logger.info(f"TAEC {self.id}: Executing Claude-powered optimization")
+        
+        # Preparar contexto
+        context = {
+            'node_count': len(self.graph.nodes),
+            'edge_count': sum(len(n.connections_out) for n in self.graph.nodes.values()),
+            'health_metrics': analysis['graph']['health'],
+            'opportunities': analysis['graph']['opportunities'][:3]
+        }
+        
+        # Generar prompt
+        prompt = f"""
+Create an optimization function for a knowledge graph with these characteristics:
+{json.dumps(context, indent=2)}
+
+The function should:
+1. Analyze the graph structure and identify optimization opportunities
+2. Create strategic connections between nodes
+3. Adjust node states to improve overall health
+4. Return a list of actions taken with their impact
+
+Focus on improving connectivity and knowledge flow.
+"""
+        
+        # Generar código
+        code = await self.claude.generate_code(prompt, context)
+        
+        if not code:
+            return {'success': False, 'error': 'Code generation failed'}
+        
+        # Ejecutar
+        try:
+            result = await self._execute_generated_code(
+                code, 
+                {'graph': self.graph, 'analysis': analysis}
+            )
+            
+            # Guardar código
+            self.code_repository.add_code(
+                'optimization',
+                code,
+                {'success': True, 'result': result}
+            )
+            
+            return {
+                'success': True,
+                'strategy': 'optimization',
+                'actions': result,
+                'impact': len(result) * 0.3 if isinstance(result, list) else 1.0
+            }
+            
+        except Exception as e:
+            logger.error(f"Optimization execution error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    async def _strategy_innovation(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Estrategia: Innovación radical con Claude"""
+        logger.info(f"TAEC {self.id}: Executing Claude-powered innovation")
+        
+        # Contexto para innovación
+        context = {
+            'current_concepts': list(set(
+                n.content[:50] for n in list(self.graph.nodes.values())[:20]
+            )),
+            'current_keywords': list(set(
+                kw for n in self.graph.nodes.values() for kw in n.keywords
+            ))[:50],
+            'graph_state': analysis['graph']['health']
+        }
+        
+        # Prompt creativo
+        prompt = f"""
+Given this knowledge graph context:
+{json.dumps(context, indent=2)}
+
+Create an innovative function that:
+1. Generates completely novel concepts that don't exist in the graph
+2. These concepts should be related but transformative
+3. Identify cross-domain connections and emergent patterns
+4. Return a list of innovative nodes with content, keywords, and rationale
+
+Be creative and think beyond conventional boundaries. Generate concepts that could lead to breakthrough insights.
+"""
+        
+        # Generar código innovador
+        code = await self.claude.generate_code(prompt, context)
+        
+        if not code:
+            return {'success': False, 'error': 'Innovation generation failed'}
+        
+        try:
+            # Ejecutar
+            innovations = await self._execute_generated_code(code, context)
+            
+            if not isinstance(innovations, list):
+                innovations = [innovations]
+            
+            created_nodes = []
+            
+            # Crear nodos innovadores
+            for innovation in innovations[:3]:  # Limitar para no sobrecargar
+                if isinstance(innovation, dict):
+                    new_node = await self.graph.add_node(
+                        content=innovation.get('content', 'Innovative concept'),
+                        initial_state=0.8,
+                        keywords=set(innovation.get('keywords', [])),
+                        created_by=self.id,
+                        properties={
+                            'innovation_type': 'claude_generated',
+                            'rationale': innovation.get('rationale', ''),
+                            'evolution': self.evolution_count
+                        }
+                    )
+                    created_nodes.append(new_node.id)
+                    
+                    # Añadir tag especial
+                    new_node.metadata.tags.add('innovative')
+                    new_node.metadata.tags.add('claude_inspired')
+            
+            # Guardar código exitoso
+            self.code_repository.add_code(
+                'innovation',
+                code,
+                {'success': True, 'nodes_created': created_nodes}
+            )
+            
+            return {
+                'success': True,
+                'strategy': 'innovation',
+                'nodes_created': created_nodes,
+                'impact': len(created_nodes) * 2.0,
+                'novel': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Innovation execution error: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    async def _execute_generated_code(self, code: str, context: Dict[str, Any]) -> Any:
+        """Ejecuta código generado de forma segura"""
+        # Usar sandbox mejorado
+        sandbox = EnhancedSecureExecutionSandbox()
+        result = await sandbox.execute(code, context)
+        
+        if result['success']:
+            return result['output']
+        else:
+            raise Exception(result['error'])
+    
+    # Implementar otras estrategias...
+    async def _strategy_exploration(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Estrategia: Exploración de nuevos dominios"""
+        # Implementación similar con Claude
+        pass
+    
+    async def _strategy_consolidation(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Estrategia: Consolidación de conocimiento"""
+        # Implementación similar con Claude
+        pass
+    
+    async def _strategy_recovery(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Estrategia: Recuperación del sistema"""
+        # Implementación similar con Claude
+        pass
+
+# === REPOSITORIO DE CÓDIGO ===
+class CodeRepository:
+    """Repositorio para código generado"""
+    
+    def __init__(self):
+        self.repository = defaultdict(list)
+        self.execution_stats = defaultdict(lambda: {'success': 0, 'failure': 0})
+        self.code_index = {}
+        self._next_id = 0
+    
+    def add_code(self, category: str, code: str, metadata: Dict[str, Any]):
+        """Añade código al repositorio"""
+        code_id = self._next_id
+        self._next_id += 1
+        
+        entry = {
+            'id': code_id,
+            'category': category,
+            'code': code,
+            'hash': hashlib.sha256(code.encode()).hexdigest(),
+            'metadata': metadata,
+            'timestamp': time.time(),
+            'executions': 0,
+            'last_execution': None
+        }
+        
+        self.repository[category].append(entry)
+        self.code_index[code_id] = entry
+        
+        # Actualizar estadísticas
+        if metadata.get('success', False):
+            self.execution_stats[category]['success'] += 1
+        else:
+            self.execution_stats[category]['failure'] += 1
+        
+        return code_id
+    
+    def get_best_code(self, category: str) -> Optional[Dict[str, Any]]:
+        """Obtiene el mejor código de una categoría"""
+        if category not in self.repository:
+            return None
+        
+        # Ordenar por éxito y recencia
+        codes = self.repository[category]
+        
+        def score_code(entry):
+            success = entry['metadata'].get('success', False)
+            recency = 1.0 / (time.time() - entry['timestamp'] + 1)
+            executions = entry['executions']
+            
+            return (1 if success else 0) * 10 + recency + executions * 0.1
+        
+        best = max(codes, key=score_code)
+        return best
+    
+    def analyze_repository(self) -> Dict[str, Any]:
+        """Analiza el repositorio de código"""
+        total_codes = sum(len(codes) for codes in self.repository.values())
+        
+        # Calcular tasa de reutilización
+        total_executions = sum(
+            entry['executions'] 
+            for codes in self.repository.values() 
+            for entry in codes
+        )
+        
+        reuse_rate = total_executions / total_codes if total_codes > 0 else 0
+        
+        return {
+            'total_functions': total_codes,
+            'categories': list(self.repository.keys()),
+            'reuse_rate': reuse_rate,
+            'success_rate': self._calculate_success_rate()
+        }
+    
+    def _calculate_success_rate(self) -> float:
+        """Calcula tasa de éxito global"""
+        total_success = sum(stats['success'] for stats in self.execution_stats.values())
+        total_failure = sum(stats['failure'] for stats in self.execution_stats.values())
+        total = total_success + total_failure
+        
+        return total_success / total if total > 0 else 0
+
+# === MEMORIA DE EVOLUCIÓN ===
+class EvolutionMemory:
+    """Memoria de evoluciones del agente"""
+    
+    def __init__(self, max_size: int = 1000):
+        self.history = deque(maxlen=max_size)
+        self.strategy_performance = defaultdict(lambda: {'count': 0, 'success': 0, 'impact': 0})
+        self.pattern_recognition = PatternRecognizer()
+    
+    def add_evolution(self, evolution_id: int, strategy: str, 
+                     analysis: Dict[str, Any], result: Dict[str, Any]):
+        """Registra una evolución"""
+        entry = {
+            'id': evolution_id,
+            'timestamp': time.time(),
+            'strategy': strategy,
+            'analysis_summary': self._summarize_analysis(analysis),
+            'result': result,
+            'success': result.get('success', False),
+            'impact': result.get('impact', 0)
+        }
+        
+        self.history.append(entry)
+        
+        # Actualizar estadísticas
+        self.strategy_performance[strategy]['count'] += 1
+        if entry['success']:
+            self.strategy_performance[strategy]['success'] += 1
+        self.strategy_performance[strategy]['impact'] += entry['impact']
+        
+        # Detectar patrones
+        self.pattern_recognition.add_entry(entry)
+    
+    def _summarize_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Resume análisis para almacenamiento eficiente"""
+        return {
+            'health': analysis['graph']['health'].get('overall_health', 0),
+            'opportunities': len(analysis['graph'].get('opportunities', [])),
+            'risks': len(analysis['graph'].get('risks', [])),
+            'trend': analysis['graph'].get('trends', {}).get('state_trend', 'unknown')
+        }
+    
+    def analyze_history(self) -> Dict[str, Any]:
+        """Analiza historia de evoluciones"""
+        if not self.history:
+            return {
+                'total_evolutions': 0,
+                'success_rate': 0,
+                'avg_impact': 0
+            }
+        
+        total = len(self.history)
+        successes = sum(1 for e in self.history if e['success'])
+        total_impact = sum(e['impact'] for e in self.history)
+        
+        # Mejores estrategias
+        best_strategies = []
+        for strategy, stats in self.strategy_performance.items():
+            if stats['count'] > 0:
+                success_rate = stats['success'] / stats['count']
+                avg_impact = stats['impact'] / stats['count']
+                score = success_rate * 0.6 + min(avg_impact / 5, 1) * 0.4
+                
+                best_strategies.append({
+                    'strategy': strategy,
+                    'score': score,
+                    'success_rate': success_rate,
+                    'avg_impact': avg_impact
+                })
+        
+        best_strategies.sort(key=lambda x: x['score'], reverse=True)
+        
+        # Patrones detectados
+        patterns = self.pattern_recognition.get_patterns()
+        
+        return {
+            'total_evolutions': total,
+            'success_rate': successes / total,
+            'avg_impact': total_impact / total,
+            'best_strategies': best_strategies[:3],
+            'patterns': patterns
+        }
+
+# === RECONOCEDOR DE PATRONES ===
+class PatternRecognizer:
+    """Reconoce patrones en evoluciones"""
+    
+    def __init__(self):
+        self.sequences = defaultdict(list)
+        self.patterns = {}
+    
+    def add_entry(self, entry: Dict[str, Any]):
+        """Añade entrada para análisis"""
+        # Agrupar por contexto similar
+        context_key = f"{entry['analysis_summary']['trend']}_{entry['analysis_summary']['health']:.1f}"
+        self.sequences[context_key].append({
+            'strategy': entry['strategy'],
+            'success': entry['success'],
+            'impact': entry['impact']
+        })
+        
+        # Detectar patrones cada 10 entradas
+        if len(self.sequences[context_key]) % 10 == 0:
+            self._detect_patterns(context_key)
+    
+    def _detect_patterns(self, context_key: str):
+        """Detecta patrones en secuencias"""
+        sequence = self.sequences[context_key]
+        
+        if len(sequence) < 20:
+            return
+        
+        # Buscar secuencias exitosas
+        for window_size in [2, 3, 4]:
+            for i in range(len(sequence) - window_size):
+                window = sequence[i:i+window_size]
+                
+                # Verificar si es patrón exitoso
+                if all(e['success'] for e in window):
+                    pattern_key = tuple(e['strategy'] for e in window)
+                    
+                    if pattern_key not in self.patterns:
+                        self.patterns[pattern_key] = {
+                            'count': 0,
+                            'avg_impact': 0,
+                            'context': context_key
+                        }
+                    
+                    self.patterns[pattern_key]['count'] += 1
+                    self.patterns[pattern_key]['avg_impact'] = (
+                        self.patterns[pattern_key]['avg_impact'] * 
+                        (self.patterns[pattern_key]['count'] - 1) +
+                        sum(e['impact'] for e in window)
+                    ) / self.patterns[pattern_key]['count']
+    
+    def get_patterns(self) -> List[Dict[str, Any]]:
+        """Obtiene patrones detectados"""
+        pattern_list = []
+        
+        for pattern, stats in self.patterns.items():
+            if stats['count'] >= 3:  # Mínimo 3 ocurrencias
+                pattern_list.append({
+                    'sequence': pattern,
+                    'frequency': stats['count'],
+                    'avg_impact': stats['avg_impact'],
+                    'context': stats['context']
+                })
+        
+        pattern_list.sort(key=lambda x: x['frequency'] * x['avg_impact'], reverse=True)
+        return pattern_list[:5]
+
+# === MÉTRICAS DE AGENTE ===
+class AgentMetrics:
+    """Métricas específicas de agente"""
+    
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+        
+        # Prometheus metrics
+        self.actions = Counter(
+            'msc_agent_actions',
+            'Agent actions',
+            ['agent_id', 'action', 'result']
+        )
+        
+        self.omega = Gauge(
+            'msc_agent_omega',
+            'Agent omega level',
+            ['agent_id']
+        )
+        
+        self.reputation = Gauge(
+            'msc_agent_reputation',
+            'Agent reputation',
+            ['agent_id']
+        )
+        
+        self.action_duration = Histogram(
+            'msc_agent_action_duration',
+            'Action execution duration',
+            ['agent_id', 'action']
+        )
+        
+        # Métricas internas
+        self.action_history = deque(maxlen=1000)
+        self.error_log = deque(maxlen=100)
+    
+    def record_action(self, action: str, success: bool):
+        """Registra una acción"""
+        result = 'success' if success else 'failure'
+        self.actions.labels(
+            agent_id=self.agent_id,
+            action=action,
+            result=result
+        ).inc()
+        
+        self.action_history.append({
+            'timestamp': time.time(),
+            'action': action,
+            'success': success
+        })
+    
+    def record_error(self, error: str):
+        """Registra un error"""
+        self.error_log.append({
+            'timestamp': time.time(),
+            'error': error
+        })
+    
+    def update_resources(self, omega: float, reputation: float):
+        """Actualiza métricas de recursos"""
+        self.omega.labels(agent_id=self.agent_id).set(omega)
+        self.reputation.labels(agent_id=self.agent_id).set(reputation)
+    
+    @contextmanager
+    def measure_action(self, action: str):
+        """Mide duración de acción"""
+        with self.action_duration.labels(
+            agent_id=self.agent_id,
+            action=action
+        ).time():
+            yield
+
+# === SANDBOX DE EJECUCIÓN MEJORADO ===
+class EnhancedSecureExecutionSandbox:
+    """Sandbox mejorado para ejecución segura de código"""
+    
+    def __init__(self):
+        self.forbidden_patterns = [
+            r'__import__', r'eval', r'exec', r'compile',
+            r'open', r'file', r'input', r'raw_input',
+            r'os\.', r'sys\.', r'subprocess',
+            r'importlib', r'__builtins__',
+            r'\bimport\s+os\b', r'\bimport\s+sys\b'
+        ]
+        
+        self.allowed_imports = {
+            'math', 'random', 'statistics', 'itertools',
+            'collections', 'functools', 'json', 're'
+        }
+        
+        self.execution_stats = {
+            'total': 0,
+            'successful': 0,
+            'failed': 0,
+            'timeouts': 0
+        }
+    
+    async def execute(self, code: str, context: Dict[str, Any],
+                     timeout: float = 5.0) -> Dict[str, Any]:
+        """Ejecuta código con múltiples capas de seguridad"""
+        self.execution_stats['total'] += 1
+        
+        try:
+            # Validación estática
+            validation = self._validate_code(code)
+            if not validation['safe']:
+                self.execution_stats['failed'] += 1
+                return {
+                    'success': False,
+                    'error': f"Code validation failed: {validation['reason']}"
+                }
+            
+            # Preparar entorno
+            safe_globals = self._prepare_safe_environment(context)
+            
+            # Ejecutar con timeout
+            loop = asyncio.get_event_loop()
+            future = loop.run_in_executor(
+                None,
+                self._execute_code,
+                code,
+                safe_globals
+            )
+            
+            result = await asyncio.wait_for(future, timeout=timeout)
+            
+            self.execution_stats['successful'] += 1
+            return {
+                'success': True,
+                'output': result
+            }
+            
+        except asyncio.TimeoutError:
+            self.execution_stats['timeouts'] += 1
+            return {
+                'success': False,
+                'error': f'Execution timeout ({timeout}s)'
+            }
+        except Exception as e:
+            self.execution_stats['failed'] += 1
+            return {
+                'success': False,
+                'error': f'Execution error: {str(e)}'
+            }
+    
+    def _validate_code(self, code: str) -> Dict[str, Any]:
+        """Valida código con múltiples verificaciones"""
+        # Verificar patrones prohibidos
+        for pattern in self.forbidden_patterns:
+            if re.search(pattern, code):
+                return {
+                    'safe': False,
+                    'reason': f'Forbidden pattern: {pattern}'
+                }
+        
+        # Verificar AST
+        try:
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            return {
+                'safe': False,
+                'reason': f'Syntax error: {e}'
+            }
+        
+        # Analizar imports
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name not in self.allowed_imports:
+                        return {
+                            'safe': False,
+                            'reason': f'Forbidden import: {alias.name}'
+                        }
+            
+            elif isinstance(node, ast.ImportFrom):
+                if node.module and node.module not in self.allowed_imports:
+                    return {
+                        'safe': False,
+                        'reason': f'Forbidden import: {node.module}'
+                    }
+            
+            # Verificar llamadas peligrosas
+            elif isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    if node.func.id in {'eval', 'exec', 'compile', '__import__'}:
+                        return {
+                            'safe': False,
+                            'reason': f'Forbidden function: {node.func.id}'
+                        }
+        
+        # Verificar complejidad
+        complexity = self._calculate_complexity(tree)
+        if complexity > 100:
+            return {
+                'safe': False,
+                'reason': f'Code too complex (complexity: {complexity})'
+            }
+        
+        return {'safe': True}
+    
+    def _calculate_complexity(self, tree: ast.AST) -> int:
+        """Calcula complejidad ciclomática del código"""
+        complexity = 1
+        
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.If, ast.While, ast.For)):
+                complexity += 1
+            elif isinstance(node, ast.ExceptHandler):
+                complexity += 1
+        
+        return complexity
+    
+    def _prepare_safe_environment(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Prepara entorno seguro para ejecución"""
+        # Built-ins seguros
+        safe_builtins = {
+            'abs': abs, 'all': all, 'any': any, 'bool': bool,
+            'dict': dict, 'enumerate': enumerate, 'filter': filter,
+            'float': float, 'int': int, 'len': len, 'list': list,
+            'map': map, 'max': max, 'min': min, 'range': range,
+            'round': round, 'set': set, 'sorted': sorted, 'str': str,
+            'sum': sum, 'tuple': tuple, 'zip': zip,
+            'True': True, 'False': False, 'None': None
+        }
+        
+        # Imports permitidos
+        safe_imports = {
+            'math': math,
+            'random': random,
+            'statistics': statistics,
+            'json': json,
+            're': re
+        }
+        
+        # Crear entorno
+        safe_globals = {
+            '__builtins__': safe_builtins,
+            **safe_imports,
+            **context
+        }
+        
+        return safe_globals
+    
+    def _execute_code(self, code: str, globals_dict: Dict[str, Any]) -> Any:
+        """Ejecuta el código en entorno restringido"""
+        locals_dict = {}
+        
+        # Compilar y ejecutar
+        compiled = compile(code, '<sandbox>', 'exec')
+        exec(compiled, globals_dict, locals_dict)
+        
+        # Buscar resultado
+        # Primero buscar función principal
+        for name, obj in locals_dict.items():
+            if callable(obj) and not name.startswith('_'):
+                # Llamar función con contexto si es posible
+                try:
+                    if 'graph' in globals_dict:
+                        return obj(globals_dict.get('graph'))
+                    elif 'nodes' in globals_dict:
+                        return obj(globals_dict.get('nodes'))
+                    elif 'analysis' in globals_dict:
+                        return obj(globals_dict.get('analysis'))
+                    else:
+                        return obj()
+                except TypeError:
+                    # Intentar sin argumentos
+                    try:
+                        return obj()
+                    except:
+                        pass
+        
+        # Si no hay función, buscar variable resultado
+        if 'result' in locals_dict:
+            return locals_dict['result']
+        
+        # Retornar todo el namespace local
+        return locals_dict
+
+# === API SERVER AVANZADO ===
+class AdvancedAPIServer:
+    """Servidor API avanzado con todas las características"""
+    
+    def __init__(self, simulation_runner, config: Dict[str, Any]):
+        self.simulation_runner = simulation_runner
+        self.config = config
+        
+        # Flask app
+        self.app = Flask(__name__)
+        self.configure_app()
+        
+        # SocketIO
+        self.socketio = SocketIO(
+            self.app, 
+            cors_allowed_origins="*",
+            async_mode='threading',
+            logger=True,
+            engineio_logger=True
+        )
+        
+        # OAuth
+        self.oauth = OAuth(self.app)
+        self.configure_oauth()
+        
+        # Métricas
+        self.request_metrics = Counter(
+            'api_requests',
+            'API requests',
+            ['method', 'endpoint', 'status']
+        )
+        
+        # WebSocket rooms
+        self.rooms = {
+            'updates': set(),
+            'metrics': set(),
+            'agents': set()
+        }
+        
+        # Registro de rutas
+        self._register_routes()
+        self._register_socketio_handlers()
+        
+        logger.info("Advanced API Server initialized")
+    
+    def configure_app(self):
+        """Configura la aplicación Flask"""
+        self.app.config['SECRET_KEY'] = Config.SECRET_KEY
+        self.app.config['JWT_SECRET_KEY'] = Config.JWT_SECRET_KEY
+        self.app.config['JWT_ACCESS_TOKEN_EXPIRES'] = Config.JWT_ACCESS_TOKEN_EXPIRES
+        
+        # CORS
+        CORS(self.app, resources={
+            r"/api/*": {
+                "origins": "*",
+                "methods": ["GET", "POST", "PUT", "DELETE"],
+                "allow_headers": ["Content-Type", "Authorization"]
+            }
+        })
+        
+        # JWT
+        self.jwt = JWTManager(self.app)
+        
+        # Rate limiting
+        self.limiter = Limiter(
+            self.app,
+            key_func=get_remote_address,
+            default_limits=["1000 per hour", "100 per minute"],
+            storage_uri=Config.REDIS_URL if Config.REDIS_URL else None
+        )
+    
+    def configure_oauth(self):
+        """Configura OAuth providers"""
+        if Config.OAUTH_PROVIDERS['google']['client_id']:
+            self.oauth.register(
+                name='google',
+                client_id=Config.OAUTH_PROVIDERS['google']['client_id'],
+                client_secret=Config.OAUTH_PROVIDERS['google']['client_secret'],
+                server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+                client_kwargs={'scope': 'openid email profile'}
+            )
+    
+    def _register_routes(self):
+        """Registra todas las rutas de la API"""
+        
+        # === RUTAS DE AUTENTICACIÓN ===
+        @self.app.route('/api/auth/login', methods=['POST'])
+        @self.limiter.limit("5 per minute")
+        async def login():
+            """Login con credenciales"""
+            data = request.get_json()
+            username = data.get('username')
+            password = data.get('password')
+            
+            # Verificar en base de datos (placeholder)
+            # En producción, usar bcrypt y base de datos real
+            if username and password:  # Verificación real aquí
+                access_token = create_access_token(
+                    identity=username,
+                    additional_claims={'role': 'admin'}
+                )
+                
+                self.request_metrics.labels('POST', '/api/auth/login', '200').inc()
+                
+                return jsonify({
+                    'access_token': access_token,
+                    'user': {
+                        'username': username,
+                        'role': 'admin'
+                    }
+                })
+            
+            self.request_metrics.labels('POST', '/api/auth/login', '401').inc()
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        @self.app.route('/api/auth/google')
+        async def google_login():
+            """Login con Google OAuth"""
+            redirect_uri = url_for('google_callback', _external=True)
+            return await self.oauth.google.authorize_redirect(redirect_uri)
+        
+        # === RUTAS DEL SISTEMA ===
+        @self.app.route('/api/system/health')
+        async def system_health():
+            """Health check del sistema"""
+            health = {
+                'status': 'healthy',
+                'timestamp': time.time(),
+                'components': {
+                    'graph': self.simulation_runner.graph is not None,
+                    'agents': len(self.simulation_runner.agents) > 0,
+                    'event_bus': self.simulation_runner.graph.event_bus._running if self.simulation_runner.graph else False
+                }
+            }
+            
+            return jsonify(health)
+        
+        @self.app.route('/api/system/metrics')
+        async def system_metrics():
+            """Métricas Prometheus"""
+            return Response(
+                generate_latest(),
+                mimetype='text/plain'
+            )
+        
+        # === RUTAS DEL GRAFO ===
+        @self.app.route('/api/graph/status')
+        @jwt_required()
+        async def graph_status():
+            """Estado del grafo"""
+            if not self.simulation_runner.graph:
+                return jsonify({'error': 'Graph not initialized'}), 500
+            
+            status = {
+                'nodes': len(self.simulation_runner.graph.nodes),
+                'edges': sum(
+                    len(n.connections_out) 
+                    for n in self.simulation_runner.graph.nodes.values()
+                ),
+                'health': self.simulation_runner.graph.calculate_graph_health(),
+                'clusters': len(self.simulation_runner.graph.cluster_index)
+            }
+            
+            return jsonify(status)
+        
+        @self.app.route('/api/graph/nodes', methods=['GET'])
+        @jwt_required()
+        async def get_nodes():
+            """Lista de nodos con paginación y filtros"""
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 50, type=int)
+            sort_by = request.args.get('sort_by', 'id')
+            order = request.args.get('order', 'asc')
+            
+            # Filtros
+            min_state = request.args.get('min_state', type=float)
+            max_state = request.args.get('max_state', type=float)
+            keywords = request.args.get('keywords', '').split(',')
+            tags = request.args.get('tags', '').split(',')
+            cluster_id = request.args.get('cluster_id', type=int)
+            
+            if not self.simulation_runner.graph:
+                return jsonify({'error': 'Graph not initialized'}), 500
+            
+            # Aplicar filtros
+            nodes = list(self.simulation_runner.graph.nodes.values())
+            
+            if min_state is not None:
+                nodes = [n for n in nodes if n.state >= min_state]
+            if max_state is not None:
+                nodes = [n for n in nodes if n.state <= max_state]
+            if keywords[0]:
+                keyword_set = set(k.strip() for k in keywords if k.strip())
+                nodes = [n for n in nodes if keyword_set & n.keywords]
+            if tags[0]:
+                tag_set = set(t.strip() for t in tags if t.strip())
+                nodes = [n for n in nodes if tag_set & n.metadata.tags]
+            if cluster_id is not None:
+                nodes = [n for n in nodes if n.metadata.cluster_id == cluster_id]
+            
+            # Ordenar
+            if sort_by == 'state':
+                nodes.sort(key=lambda n: n.state, reverse=(order == 'desc'))
+            elif sort_by == 'importance':
+                nodes.sort(key=lambda n: n.metadata.importance_score, reverse=(order == 'desc'))
+            elif sort_by == 'created':
+                nodes.sort(key=lambda n: n.metadata.created_at, reverse=(order == 'desc'))
+            else:  # id
+                nodes.sort(key=lambda n: n.id, reverse=(order == 'desc'))
+            
+            # Paginar
+            total = len(nodes)
+            start = (page - 1) * per_page
+            end = start + per_page
+            
+            nodes_data = [
+                {
+                    'id': n.id,
+                    'content': n.content,
+                    'state': n.state,
+                    'keywords': list(n.keywords),
+                    'connections': {
+                        'in': len(n.connections_in),
+                        'out': len(n.connections_out)
+                    },
+                    'metadata': {
+                        'importance': n.metadata.importance_score,
+                        'cluster_id': n.metadata.cluster_id,
+                        'tags': list(n.metadata.tags),
+                        'created_at': n.metadata.created_at,
+                        'created_by': n.metadata.created_by
+                    }
+                }
+                for n in nodes[start:end]
             ]
             
-            # Crear los nodos semilla
-            nodes = []
-            for domain in domains:
-                node = self.graph.add_node(
-                    content=f"TAEC Seed: {domain['name']}", 
-                    initial_state=0.5, 
-                    keywords=domain['keywords']
+            return jsonify({
+                'nodes': nodes_data,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'pages': (total + per_page - 1) // per_page
+                }
+            })
+        
+        @self.app.route('/api/graph/nodes/<int:node_id>')
+        @jwt_required()
+        async def get_node(node_id):
+            """Detalles de un nodo específico"""
+            if not self.simulation_runner.graph:
+                return jsonify({'error': 'Graph not initialized'}), 500
+            
+            node = self.simulation_runner.graph.nodes.get(node_id)
+            if not node:
+                return jsonify({'error': 'Node not found'}), 404
+            
+            # Información detallada
+            similar_nodes = await self.simulation_runner.graph.find_similar_nodes(node_id)
+            
+            return jsonify({
+                'id': node.id,
+                'content': node.content,
+                'state': node.state,
+                'keywords': list(node.keywords),
+                'connections_out': node.connections_out,
+                'connections_in': node.connections_in,
+                'metadata': asdict(node.metadata),
+                'features': node.features,
+                'state_history': list(node.state_history)[-20:],
+                'similar_nodes': similar_nodes,
+                'anomaly_score': node.anomaly_score
+            })
+        
+        @self.app.route('/api/graph/nodes', methods=['POST'])
+        @jwt_required()
+        @self.limiter.limit("10 per minute")
+        async def create_node():
+            """Crea un nuevo nodo"""
+            data = request.get_json()
+            user = get_jwt_identity()
+            
+            try:
+                node = await self.simulation_runner.graph.add_node(
+                    content=data.get('content', 'New concept'),
+                    initial_state=data.get('initial_state', 0.5),
+                    keywords=set(data.get('keywords', [])),
+                    created_by=user,
+                    properties=data.get('properties', {})
                 )
-                nodes.append(node)
-                logging.info(f"Creado nodo semilla {node.id}: {domain['name']}")
-            
-            # Crear algunas conexiones iniciales entre nodos relacionados
-            for i in range(len(nodes)):
-                for j in range(i+1, len(nodes)):
-                    if random.random() < 0.4:  # 40% de probabilidad de conexión
-                        utility = random.uniform(0.4, 0.8)
-                        if self.graph.add_edge(nodes[i].id, nodes[j].id, utility=utility):
-                            logging.info(f"Creada conexión entre nodos {nodes[i].id} y {nodes[j].id} con utilidad {utility:.2f}")
-            
-            # Actualizar embeddings iniciales
-            self.graph.update_embeddings()
-            logging.info(f"Grafo inicializado con {len(self.graph.nodes)} nodos semilla y {sum(len(n.connections_out) for n in self.graph.nodes.values())} conexiones")
-
-        load_path = self.config.get('load_state', None)
-        if load_path:
-            logging.info(f"Loading initial state from: {load_path}")
-            if not self.graph.load_state(load_path):
-                logging.error("State load failed. Starting fresh simulation.")
-            else:
-                logging.info("Initializing embeddings after state load...")
-                self.graph.update_embeddings()
-                if self.graph.node_embeddings:
-                    logging.info(f"Initial embeddings for {len(self.graph.node_embeddings)} nodes available.")
-
-        # Instanciación de agentes operativos
-        num_proposers = config.get('num_proposers', 3)
-        num_evaluators = config.get('num_evaluators', 6)
-        num_combiners = config.get('num_combiners', 2)
-        num_coders = config.get('num_coders', 1)
-        num_bridging_agents = config.get('num_bridging_agents', 1)
-        num_knowledge_fetchers = config.get('num_knowledge_fetchers', 1)
-        num_horizon_scanners = config.get('num_horizon_scanners', 1)
-        num_epistemic_validators = config.get('num_epistemic_validators', 1)
-        num_technogenesis_agents = config.get('num_technogenesis_agents', 1)
-        for i in range(num_proposers):
-            self.agents.append(ProposerAgent(f"P{i}", self.graph, config))
-        for i in range(num_evaluators):
-            self.agents.append(EvaluatorAgent(f"E{i}", self.graph, config))
-        for i in range(num_combiners):
-            self.agents.append(CombinerAgent(f"C{i}", self.graph, config))
-        for i in range(num_coders):
-            self.agents.append(AdvancedCoderAgent(f"CD{i}", self.graph, config))
-        for i in range(num_bridging_agents):
-            self.agents.append(BridgingAgent(f"B{i}", self.graph, config))
-        for i in range(num_knowledge_fetchers):
-            self.agents.append(KnowledgeFetcherAgent(f"KF{i}", self.graph, config))
-        for i in range(num_horizon_scanners):
-            self.agents.append(HorizonScannerAgent(f"HS{i}", self.graph, config))
-        for i in range(num_epistemic_validators):
-            self.agents.append(EpistemicValidatorAgent(f"EV{i}", self.graph, config))
-        for i in range(num_technogenesis_agents):
-            self.agents.append(TechnogenesisAgent(f"TG{i}", self.graph, config))
-
-        # Instanciación de agentes institucionales (Juzgado MSC, Universidad MSC, Instituto Financiero MSC)
-        num_inspectors = self.config.get('num_inspectors', 1)
-        for i in range(num_inspectors):
-            self.agents.append(InspectorAgent(f"INSP{i}", self.graph, self.config))
-        num_police = self.config.get('num_police', 1)
-        for i in range(num_police):
-            self.agents.append(PoliceAgent(f"POL{i}", self.graph, self.config))
-        num_coordinators = self.config.get('num_coordinators', 1)
-        for i in range(num_coordinators):
-            self.agents.append(CoordinatorAgent(f"COORD{i}", self.graph, self.config))
-        num_repair = self.config.get('num_repair', 1)
-        for i in range(num_repair):
-            self.agents.append(RepairAgent(f"REP{i}", self.graph, self.config))
-        num_master = self.config.get('num_master', 1)
-        for i in range(num_master):
-            self.agents.append(MasterAgent(f"MAS{i}", self.graph, self.config))
-        num_students = self.config.get('num_students', 1)
-        for i in range(num_students):
-            self.agents.append(StudentAgent(f"STU{i}", self.graph, self.config))
-        num_scientists = self.config.get('num_scientists', 1)
-        for i in range(num_scientists):
-            self.agents.append(ScientistAgent(f"SCI{i}", self.graph, self.config))
-        num_storage = self.config.get('num_storage', 1)
-        for i in range(num_storage):
-            self.agents.append(StorageAgent(f"STR{i}", self.graph, self.config))
-        num_bank = self.config.get('num_bank', 1)
-        for i in range(num_bank):
-            self.agents.append(BankAgent(f"BANK{i}", self.graph, self.config))
-        num_merchant = self.config.get('num_merchant', 1)
-        for i in range(num_merchant):
-            self.agents.append(MerchantAgent(f"MER{i}", self.graph, self.config))
-        num_miner = self.config.get('num_miner', 1)
-        for i in range(num_miner):
-            self.agents.append(MinerAgent(f"MIN{i}", self.graph, self.config))
-        num_population_regulators = self.config.get('num_population_regulators', 1)
-        for i in range(num_population_regulators):
-            self.agents.append(PopulationRegulatorAgent(f"POP{i}", self.graph, self.config))
-        num_seeders = self.config.get('num_seeders', 1)
-        for i in range(num_seeders):
-            self.agents.append(SeederAgent(f"SEED{i}", self.graph, self.config))
-        num_cluster_balancers = self.config.get('num_cluster_balancers', 1)
-        for i in range(num_cluster_balancers):
-            self.agents.append(ClusterBalancerAgent(f"CLB{i}", self.graph, self.config))
-        num_mediators = self.config.get('num_mediators', 1)
-        for i in range(num_mediators):
-            self.agents.append(MediatorAgent(f"MED{i}", self.graph, self.config))
-        num_migration_agents = self.config.get('num_migration_agents', 1)
-        for i in range(num_migration_agents):
-            self.agents.append(MigrationAgent(f"MIG{i}", self.graph, self.config))
-
-        # Agregar la instanciación de agentes del Ministerio de Desarrollo Sostenible Cognitivo:
-        num_node_balancer = self.config.get('num_node_balancer_agents', 1)
-        for i in range(num_node_balancer):
-            self.agents.append(NodeBalancerAgent(f"NB{i}", self.graph, self.config))
-
-        num_cluster_formation = self.config.get('num_cluster_formation_agents', 1)
-        for i in range(num_cluster_formation):
-            self.agents.append(ClusterFormationAgent(f"CF{i}", self.graph, self.config))
-
-        num_perspective = self.config.get('num_perspective_agents', 1)
-        for i in range(num_perspective):
-            self.agents.append(PerspectiveAgent(f"PA{i}", self.graph, self.config))
-
-        num_cultural_mirror = self.config.get('num_cultural_mirror_agents', 1)
-        for i in range(num_cultural_mirror):
-            self.agents.append(CulturalMirrorAgent(f"CM{i}", self.graph, self.config))
-
-        # Agregar la instanciación de agentes del Ministerio de Síntesis e Inferencia:
-        num_synthesizer = self.config.get('num_synthesizer_agents', 3)  # Aumentado de 1 a 3 por defecto
-        for i in range(num_synthesizer):
-            self.agents.append(SynthesizerAgent(f"SYN{i}", self.graph, self.config))
-        # También se pueden agregar agentes extras si se desea:
-        extra_synthesizers = self.config.get('num_extra_synthesizer_agents', 1)
-        for i in range(extra_synthesizers):
-            self.agents.append(SynthesizerAgent(f"EXSYN{i}", self.graph, self.config))
-
-        num_pattern_miner = self.config.get('num_pattern_miner_agents', 1)
-        for i in range(num_pattern_miner):
-            self.agents.append(PatternMinerAgent(f"PM{i}", self.graph, self.config))
-
-        num_trend_detector = self.config.get('num_trend_detector_agents', 1)
-        for i in range(num_trend_detector):
-            self.agents.append(TrendDetectorAgent(f"TD{i}", self.graph, self.config))
-
-        num_chrono = self.config.get('num_chrono_agents', 1)
-        for i in range(num_chrono):
-            self.agents.append(ChronoAgent(f"CHRO{i}", self.graph, self.config))
-
-        # Agregar la instanciación de agentes del Ministerio de Evaluación y Aprendizaje:
-        num_feedback = self.config.get('num_feedback_agents', 1)
-        for i in range(num_feedback):
-            self.agents.append(FeedbackLoopAgent(f"FB{i}", self.graph, self.config))
-
-        num_memory_adjuster = self.config.get('num_memory_adjuster_agents', 1)
-        for i in range(num_memory_adjuster):
-            self.agents.append(MemoryAdjusterAgent(f"MA{i}", self.graph, self.config))
-
-        num_global_metrics = self.config.get('num_global_metrics_agents', 1)
-        for i in range(num_global_metrics):
-            self.agents.append(GlobalMetricsAgent(f"GM{i}", self.graph, self.config))
-
-        num_log_evaluator = self.config.get('num_log_evaluator_agents', 1)
-        for i in range(num_log_evaluator):
-            self.agents.append(LogEvaluatorAgent(f"LE{i}", self.graph, self.config))
-
-        # Agregar la instanciación de agentes del Ministerio de Conectividad Global:
-        num_webcrawler = self.config.get('num_webcrawler_agents', 1)
-        for i in range(num_webcrawler):
-            self.agents.append(WebCrawlerAgent(f"WC{i}", self.graph, self.config))
-
-        num_rsslistener = self.config.get('num_rsslistener_agents', 1)
-        for i in range(num_rsslistener):
-            self.agents.append(RSSListenerAgent(f"RSS{i}", self.graph, self.config))
-
-        num_apicollector = self.config.get('num_apicollector_agents', 1)
-        for i in range(num_apicollector):
-            self.agents.append(APICollectorAgent(f"API{i}", self.graph, self.config))
-
-        num_interface = self.config.get('num_interface_agents', 1)
-        for i in range(num_interface):
-            self.agents.append(InterfaceAgent(f"INT{i}", self.graph, self.config))
-
-        num_translator = self.config.get('num_translator_agents', 1)
-        for i in range(num_translator):
-            self.agents.append(TranslatorAgent(f"TR{i}", self.graph, self.config))
-
-        # Agregar la instanciación de agentes del Ministerio del Entrenamiento y Datos:
-        num_dataset = self.config.get('num_dataset_agents', 1)
-        for i in range(num_dataset):
-            self.agents.append(DatasetAgent(f"DATA{i}", self.graph, self.config))
-
-        num_autolabel = self.config.get('num_autolabel_agents', 1)
-        for i in range(num_autolabel):
-            self.agents.append(AutoLabelAgent(f"AUTOLABEL{i}", self.graph, self.config))
-
-        num_realvsfiction = self.config.get('num_realvsfiction_agents', 1)
-        for i in range(num_realvsfiction):
-            self.agents.append(RealVsFictionAgent(f"RVF{i}", self.graph, self.config))
-
-        num_sourceverifier = self.config.get('num_sourceverifier_agents', 1)
-        for i in range(num_sourceverifier):
-            self.agents.append(SourceVerifierAgent(f"SV{i}", self.graph, self.config))
-
-        # Agregar la instanciación de agentes TAEC:
-        num_taec_agents = self.config.get('num_taec_agents', 2)  # Valor por defecto de 2
-        for i in range(num_taec_agents):
-            self.agents.append(TAECEvolutionAgent(f"TAEC{i}", self.graph, self.config))
-
-        logging.info(f"Created agents: "
-                     f"Proposers={config.get('num_proposers',0)}, Evaluators={config.get('num_evaluators',0)}, "
-                     f"Combiners={config.get('num_combiners',0)}, Bridging={num_bridging_agents}, "
-                     f"KnowledgeFetchers={num_knowledge_fetchers}, HorizonScanners={num_horizon_scanners}, "
-                     f"EpistemicValidators={num_epistemic_validators}, TechnogenesisAgents={num_technogenesis_agents}, "
-                     f"Inspectors={num_inspectors}, Police={num_police}, Coordinators={num_coordinators}, "
-                     f"RepairAgents={num_repair}, Masters={num_master}, Students={num_students}, Scientists={num_scientists}, "
-                     f"StorageAgents={num_storage}, BankAgents={num_bank}, MerchantAgents={num_merchant}, MinerAgents={num_miner}, "
-                     f"PopulationRegulators={num_population_regulators}, Seeders={num_seeders}, ClusterBalancers={num_cluster_balancers}, Mediators={num_mediators}, MigrationAgents={num_migration_agents}, "
-                     f"NodeBalancers={num_node_balancer}, ClusterFormers={num_cluster_formation}, Perspectives={num_perspective}, CulturalMirrors={num_cultural_mirror}, "
-                     f"Synthesizers={num_synthesizer}, PatternMiners={num_pattern_miner}, TrendDetectors={num_trend_detector}, ChronoAgents={num_chrono}, "
-                     f"FeedbackLoops={num_feedback}, MemoryAdjusters={num_memory_adjuster}, GlobalMetrics={num_global_metrics}, LogEvaluators={num_log_evaluator}, "
-                     f"WebCrawlers={num_webcrawler}, RSSListeners={num_rsslistener}, APICollectors={num_apicollector}, Interfaces={num_interface}, Translators={num_translator}, "
-                     f"DatasetAgents={num_dataset}, AutoLabelAgents={num_autolabel}, RealVsFictionAgents={num_realvsfiction}, SourceVerifierAgents={num_sourceverifier}, "
-                     f"TAECEvolutionAgents={num_taec_agents}")  # Añadir esta línea
-
-    def _simulation_loop(self):
-        step_delay = self.config.get('step_delay', 0.1)
-        gnn_update_frequency = self.config.get('gnn_update_frequency', 10)
-        summary_frequency = self.config.get('summary_frequency', 50)
-        max_steps = self.config.get('simulation_steps', None)
-        is_api_mode = self.config.get('run_api', False)
-        run_continuously = is_api_mode or (max_steps is None)
-        gnn_training_frequency = self.config.get('gnn_training_frequency', 50)
-        gnn_training_epochs = self.config.get('gnn_training_epochs', 5)
-
-        # Use progress bar for fixed-step simulations
-        if not run_continuously and max_steps is not None:
-            progress_bar = tqdm(total=max_steps, desc="Simulation Progress")
-        else:
-            progress_bar = None
-
-        # Use parallel processing for agent actions when appropriate
-        def _process_agent_batch(agent_batch):
-            results = []
-            for agent_data in agent_batch:
-                agent = agent_data['agent']
-                cost = agent_data['cost']
-                agent.omega -= cost
-                try:
-                    agent.act()
-                except Exception as e:
-                    agent_type = type(agent).__name__
-                    logging.error(f"Error in {agent_type} {agent.id}: {e}")
-                    # Optional recovery of agent state
-                    if self.config.get('auto_recover_agents', True):
-                        agent.omega = max(agent.omega, self.config.get('min_omega_recovery', 10.0))
-                        logging.info(f"Auto-recovered agent {agent.id} with omega={agent.omega}")
-                results.append((agent.id, cost, agent.omega))
-            return results
-
-        while self.is_running:
-            self.step_count += 1
-            if progress_bar:
-                progress_bar.update(1)
-            log_level = logging.DEBUG if self.step_count % summary_frequency != 0 else logging.INFO
-            logging.log(log_level, f"--- Step {self.step_count} ---")
-            if not run_continuously and max_steps is not None and self.step_count > max_steps:
-                logging.info(f"Reached max steps ({max_steps}). Stopping simulation.")
-                self.is_running = False
-                break
-            if not self.agents:
-                logging.warning("No agents available to act.")
-                self.is_running = False
-                break
-            with self.lock:
-                if self.step_count > 0 and self.step_count % gnn_update_frequency == 0:
-                    self.graph.update_embeddings()
-                    # Actualizar contador de pasos en el adaptador si existe
-                    if hasattr(self, 'sim_adapter') and self.sim_adapter:
-                        self.sim_adapter.current_step = self.step_count
-                if self.step_count > 0 and self.step_count % gnn_training_frequency == 0:
-                    logging.info(f"GNN training at step {self.step_count}...")
-                    self.graph.train_gnn(num_epochs=gnn_training_epochs)
-                runnable_agents = []
-                agent_costs = {
-                    "ProposerAgent": self.config.get('proposer_cost', 1.0),
-                    "EvaluatorAgent": self.config.get('evaluator_cost', 0.5),
-                    "CombinerAgent": self.config.get('combiner_cost', 1.5),
-                    "BridgingAgent": self.config.get('bridging_agent_cost', 2.0),
-                    "KnowledgeFetcherAgent": self.config.get('knowledge_fetcher_cost', 2.5),
-                    "HorizonScannerAgent": self.config.get('horizonscanner_cost', 3.0),
-                    "EpistemicValidatorAgent": self.config.get('epistemic_validator_cost', 2.0),
-                    "TechnogenesisAgent": self.config.get('technogenesis_cost', 2.5)
-                }
-                for agent in self.agents:
-                    cost = agent_costs.get(type(agent).__name__, 1.0)
-                    if agent.omega >= cost:
-                        runnable_agents.append({'agent': agent, 'cost': cost})
-                if len(runnable_agents) >= self.config.get('parallel_batch_threshold', 5):
-                    # Parallel processing for larger agent groups
-                    batch_size = min(len(runnable_agents), self.config.get('max_parallel_batch', 10))
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.get('max_workers', 4)) as executor:
-                        batches = [runnable_agents[i:i+batch_size] for i in range(0, len(runnable_agents), batch_size)]
-                        for results in executor.map(_process_agent_batch, batches):
-                            for agent_id, cost, omega in results:
-                                logging.debug(f"Agent {agent_id} acted (Cost: {cost:.2f}, Omega: {omega:.2f})")
-                else:
-                    # Original sequential processing for small numbers of agents
-                    if runnable_agents:
-                        chosen = random.choice(runnable_agents)
-                        agent = chosen['agent']
-                        cost = chosen['cost']
-                        omega_before = agent.omega
-                        agent.omega -= cost
-                        try:
-                            agent.act()
-                        except Exception as e:
-                            agent_type = type(agent).__name__
-                            logging.error(f"Error in {agent_type} {agent.id}: {e}")
-                            # Optional recovery of agent state
-                            if self.config.get('auto_recover_agents', True):
-                                agent.omega = max(agent.omega, self.config.get('min_omega_recovery', 10.0))
-                                logging.info(f"Auto-recovered agent {agent.id} with omega={agent.omega}")
-                        logging.debug(f"Agent {agent.id} acted (Cost: {cost:.2f}, Omega: {omega_before:.2f} -> {agent.omega:.2f})")
-                    else:
-                        logging.warning("No agents have sufficient Omega to act.")
-                regen_rate = self.config.get('omega_regeneration_rate', 0.05)
-                if regen_rate > 0:
-                    for a in self.agents:
-                        a.omega += regen_rate * a.reputation
-                if self.step_count % summary_frequency == 0:
-                    self.graph.print_summary(logging.INFO)
-                    if self.metrics_writer:
-                        metrics = self.graph.get_global_metrics()
-                        if metrics:
-                            metrics["Step"] = self.step_count
-                        try:
-                            self.metrics_writer.writerow(metrics)
-                            self.metrics_file.flush()
-                        except Exception as e:
-                            logging.error(f"CSV write error at step {self.step_count}: {e}")
-                if self.config.get('run_api', False) and self.step_count % self.config.get('websocket_update_frequency', 5) == 0:
-                    try:
-                        status = self.get_status()
-                        socketio.emit('simulation_update', status)
-                    except Exception as e:
-                        logging.error(f"Error emitting websocket update: {e}")
-
-                # Automatic checkpointing
-                checkpoint_frequency = self.config.get('checkpoint_frequency', 1000)
-                checkpoint_base_path = self.config.get('checkpoint_base_path')
                 
-                if checkpoint_base_path and checkpoint_frequency > 0 and self.step_count % checkpoint_frequency == 0:
-                    checkpoint_path = f"{checkpoint_base_path}_step{self.step_count}"
-                    logging.info(f"Creating checkpoint at step {self.step_count}: {checkpoint_path}")
-                    try:
-                        self.graph.save_state(checkpoint_path)
-                        
-                        # Optionally, clean up old checkpoints
-                        max_checkpoints = self.config.get('max_checkpoints', 5)
-                        if max_checkpoints > 0:
-                            checkpoint_dir = os.path.dirname(checkpoint_base_path)
-                            checkpoint_prefix = os.path.basename(checkpoint_base_path)
-                            if os.path.exists(checkpoint_dir):
-                                checkpoints = [f for f in os.listdir(checkpoint_dir) 
-                                              if f.startswith(checkpoint_prefix) and f.endswith(".graphml")]
-                                if len(checkpoints) > max_checkpoints:
-                                    checkpoints.sort()
-                                    for old_checkpoint in checkpoints[:-max_checkpoints]:
-                                        old_path = os.path.join(checkpoint_dir, old_checkpoint)
-                                        os.remove(old_path)
-                                        logging.debug(f"Removed old checkpoint: {old_path}")
-                    except Exception as e:
-                        logging.error(f"Error creating checkpoint: {e}")
-
-            time.sleep(step_delay)
-        if progress_bar:
-            progress_bar.close()
-        logging.info("--- Simulation loop finished ---")
-
-    def start(self):
-        if not self.is_running:
-            self.is_running = True
-            self.simulation_thread = threading.Thread(target=self._simulation_loop, daemon=True)
-            self.simulation_thread.start()
-            logging.info("--- Simulation thread started ---")
-        else:
-            logging.warning("Simulation already running.")
-
-    def stop(self):
-        if self.is_running:
-            logging.info("--- Stopping simulation ---")
-            self.is_running = False
-        if self.simulation_thread is not None and self.simulation_thread.is_alive():
-            self.simulation_thread.join(timeout=5.0)
-            if self.simulation_thread.is_alive():
-                logging.warning("Simulation thread did not stop gracefully.")
-        logging.info("--- Performing final actions ---")
-        with self.lock:
-            logging.info("GNN: Final embedding update...")
-            self.graph.update_embeddings()
-            if self.graph.node_embeddings:
-                logging.info(f"GNN: Final embeddings computed for {len(self.graph.node_embeddings)} nodes.")
-            save_path = self.config.get('save_state', None)
-            if save_path:
-                logging.info(f"Saving final state to: {save_path}")
-                self.graph.save_state(save_path)
-            logging.info("--- Final Graph State ---")
-            self.graph.print_summary(logging.INFO)
-            self.graph.log_global_metrics(logging.INFO, current_step=self.step_count)
-            if self.metrics_writer:
-                logging.info("Writing final metrics to CSV...")
-                metrics = self.graph.get_global_metrics()
-                if metrics:
-                    metrics["Step"] = self.step_count
-                    try:
-                        self.metrics_writer.writerow(metrics)
-                    except Exception as e:
-                        logging.error(f"Final CSV write error: {e}")
-            if self.metrics_file:
-                try:
-                    self.metrics_file.close()
-                    logging.info("Metrics log file closed.")
-                except Exception as e:
-                    logging.error(f"Error closing metrics file: {e}")
-            save_vis_path = self.config.get('visualization_output_path', None)
-            if save_vis_path:
-                if self.graph.nodes:
-                    logging.info(f"Saving final graph visualization to {save_vis_path}...")
-                    try:
-                        self.graph.visualize_graph(self.config)
-                    except Exception as e:
-                        logging.error(f"Error saving visualization: {e}")
-                else:
-                    logging.warning("Graph empty, skipping visualization.")
-        logging.info("--- Simulation Runner Stopped ---")
-
-    def get_status(self):
-        """Devuelve el estado actual de la simulación para el visualizador"""
-        with self.lock:
-            try:
-                # Calcular estado promedio de los nodos
-                if hasattr(self, 'graph') and hasattr(self.graph, 'nodes') and self.graph.nodes:
-                    avg_state = sum(node.state for node in self.graph.nodes.values()) / len(self.graph.nodes)
-                    node_count = len(self.graph.nodes)
-                    edge_count = sum(len(node.connections_out) for node in self.graph.nodes.values())
-                else:
-                    avg_state = 0
-                    node_count = 0
-                    edge_count = 0
-                    
-                # Calcular omega promedio de los agentes
-                if hasattr(self, 'agents') and self.agents:
-                    avg_omega = sum(agent.omega for agent in self.agents if hasattr(agent, 'omega')) / len(self.agents)
-                    agent_count = len(self.agents)
-                    
-                    # Recopilar información de los agentes para el visualizador
-                    agents_data = []
-                    for agent in self.agents:
-                        agents_data.append({
-                            'id': agent.id,
-                            'type': agent.__class__.__name__,
-                            'status': 'Active' if agent.omega > 0 else 'Depleted',
-                            'lastActivity': time.strftime('%H:%M:%S')
-                        })
-                else:
-                    avg_omega = 0
-                    agent_count = 0
-                    agents_data = []
-                    
-                return {
-                    "isRunning": self.is_running,
-                    "currentStep": self.step_count,
-                    "nodeCount": node_count,
-                    "edgeCount": edge_count,
-                    "agentCount": agent_count,
-                    "averageState": round(avg_state, 3),
-                    "averageOmega": round(avg_omega, 3),
-                    "runtime": round(time.time() - self.start_time, 1) if hasattr(self, 'start_time') else 0,
-                    "agents": agents_data
-                }
+                return jsonify({
+                    'success': True,
+                    'node_id': node.id,
+                    'message': 'Node created successfully'
+                })
+                
             except Exception as e:
-                logging.error(f"Error al generar estado de simulación: {e}")
-                return {"error": str(e)}
-
-    def get_graph_elements_for_cytoscape(self):
-        elements = []
-        with self.lock:
-            try:
-                cmap = plt.cm.viridis
-                norm = plt.Normalize(vmin=0, vmax=1)
-                for node_id, node in self.graph.nodes.items():
-                    try:
-                        node_color = cmap(norm(node.state))
-                        hex_color = '#%02x%02x%02x' % tuple(int(c * 255) for c in node_color[:3])
-                    except Exception as ex:
-                        logging.error(f"Error processing node {node_id}: {ex}")
-                        hex_color = "#cccccc"
-                    elements.append({
-                        'data': {
-                            'id': str(node_id),
-                            'label': f'Node {node_id}\nS={node.state:.2f}',
+                return jsonify({'error': str(e)}), 400
+        
+        @self.app.route('/api/graph/edges', methods=['POST'])
+        @jwt_required()
+        @self.limiter.limit("20 per minute")
+        async def create_edge():
+            """Crea una conexión entre nodos"""
+            data = request.get_json()
+            
+            source_id = data.get('source_id')
+            target_id = data.get('target_id')
+            utility = data.get('utility', 0.5)
+            
+            if not all([source_id is not None, target_id is not None]):
+                return jsonify({'error': 'Missing source_id or target_id'}), 400
+            
+            success = await self.simulation_runner.graph.add_edge(
+                source_id, target_id, utility
+            )
+            
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': 'Edge created successfully'
+                })
+            else:
+                return jsonify({'error': 'Failed to create edge'}), 400
+        
+        @self.app.route('/api/graph/search')
+        @jwt_required()
+        async def search_graph():
+            """Búsqueda avanzada en el grafo"""
+            query = request.args.get('q', '')
+            search_type = request.args.get('type', 'keyword')  # keyword, content, semantic
+            limit = request.args.get('limit', 20, type=int)
+            
+            if not query:
+                return jsonify({'error': 'Query parameter required'}), 400
+            
+            results = []
+            
+            if search_type == 'keyword':
+                keywords = set(query.split(','))
+                nodes = self.simulation_runner.graph.search_by_keywords(keywords)
+                results = [
+                    {
+                        'id': n.id,
+                        'content': n.content,
+                        'state': n.state,
+                        'relevance': len(keywords & n.keywords) / len(keywords)
+                    }
+                    for n in nodes[:limit]
+                ]
+                
+            elif search_type == 'content':
+                # Búsqueda por contenido
+                for node in self.simulation_runner.graph.nodes.values():
+                    if query.lower() in node.content.lower():
+                        results.append({
+                            'id': node.id,
+                            'content': node.content,
                             'state': node.state,
-                            'keywords': ", ".join(sorted(list(node.keywords))) if node.keywords else ""
-                        },
-                        'style': {
-                            'background-color': hex_color,
-                            'width': f"{20 + node.state * 40}px",
-                            'height': f"{20 + node.state * 40}px"
+                            'relevance': 1.0
+                        })
+                        if len(results) >= limit:
+                            break
+                            
+            elif search_type == 'semantic':
+                # Búsqueda semántica usando embeddings
+                # Generar embedding de la query
+                if self.simulation_runner.graph.text_encoder:
+                    query_embedding = await self.simulation_runner.graph._generate_embedding(query)
+                    
+                    similarities = []
+                    for node_id, node in self.simulation_runner.graph.nodes.items():
+                        if node.metadata.embedding is not None:
+                            sim = self.simulation_runner.graph._cosine_similarity(
+                                query_embedding,
+                                node.metadata.embedding
+                            )
+                            similarities.append((node, sim))
+                    
+                    # Ordenar por similitud
+                    similarities.sort(key=lambda x: x[1], reverse=True)
+                    
+                    results = [
+                        {
+                            'id': node.id,
+                            'content': node.content,
+                            'state': node.state,
+                            'relevance': sim
                         }
+                        for node, sim in similarities[:limit]
+                    ]
+            
+            return jsonify({
+                'query': query,
+                'type': search_type,
+                'results': results,
+                'count': len(results)
+            })
+        
+        @self.app.route('/api/graph/analyze/centrality')
+        @jwt_required()
+        async def analyze_centrality():
+            """Análisis de centralidad del grafo"""
+            centralities = await self.simulation_runner.graph.network_analyzer.calculate_centralities()
+            
+            # Top nodos por cada medida
+            top_k = 10
+            analysis = {}
+            
+            for measure, values in centralities.items():
+                sorted_nodes = sorted(values.items(), key=lambda x: x[1], reverse=True)
+                analysis[measure] = [
+                    {
+                        'node_id': node_id,
+                        'value': value,
+                        'content': self.simulation_runner.graph.nodes[node_id].content[:50]
+                    }
+                    for node_id, value in sorted_nodes[:top_k]
+                ]
+            
+            return jsonify(analysis)
+        
+        @self.app.route('/api/graph/analyze/communities')
+        @jwt_required()
+        async def analyze_communities():
+            """Detecta comunidades en el grafo"""
+            communities = await self.simulation_runner.graph.network_analyzer.detect_communities()
+            
+            # Agrupar nodos por comunidad
+            community_groups = defaultdict(list)
+            for node_id, community_id in communities.items():
+                node = self.simulation_runner.graph.nodes.get(node_id)
+                if node:
+                    community_groups[community_id].append({
+                        'id': node_id,
+                        'content': node.content[:50],
+                        'state': node.state
                     })
-                for source_id, node in self.graph.nodes.items():
-                    for target_id, utility in node.connections_out.items():
-                        if source_id in self.graph.nodes and target_id in self.graph.nodes:
-                            elements.append({
-                                'data': {
-                                    'source': str(source_id),
-                                    'target': str(target_id),
-                                    'utility': utility
-                                },
-                                'style': {
-                                    'width': 1 + abs(utility) * 2,
-                                    'line-color': 'red' if utility < 0 else ('blue' if utility > 0 else 'grey')
-                                }
-                            })
-            except Exception as e:
-                logging.error(f"Unexpected error in get_graph_elements_for_cytoscape: {e}")
-                raise e
-        return elements
-
-def load_config(args):
-    config = {
-        'simulation_steps': None,
-        'num_proposers': 3,
-        'num_evaluators': 6,
-        'num_combiners': 2,
-        'step_delay': 0.1,
-        'evaluator_learning_rate': 0.1,
-        'evaluator_decay_rate': 0.01,
-        'combiner_compatibility_threshold': 0.6,
-        'combiner_similarity_threshold': 0.7,
-        'gnn_hidden_dim': 16,
-        'gnn_embedding_dim': 8,
-        'gnn_update_frequency': 10,
-        'save_state': None,
-        'load_state': None,
-        'summary_frequency': 50,
-        'run_api': False,
-        'gnn_training_frequency': 50,
-        'gnn_training_epochs': 5,
-        'gnn_learning_rate': 0.01,
-        'initial_omega': 100.0,
-        'proposer_cost': 1.0,
-        'evaluator_cost': 0.5,
-        'combiner_cost': 1.5,
-        'omega_regeneration_rate': 0.1,
-        'evaluator_reward_factor': 2.0,
-        'evaluator_reward_threshold': 0.05,
-        'proposer_reward_factor': 0.5,
-        'combiner_reward_factor': 1.0,
-        'visualization_output_path': None,
-        'metrics_log_path': None,
-        'num_bridging_agents': 1,
-        'bridging_agent_cost': 2.0,
-        'bridging_similarity_threshold': 0.75,
-        'bridging_adjusted_threshold': 0.65,
-        'knowledge_fetcher_cost': 2.5,
-        'num_knowledge_fetchers': 1,
-        'horizonscanner_cost': 3.0,
-        'horizonscanner_psi_reward': 0.05,
-        'num_horizon_scanners': 1,
-        'epistemic_validator_cost': 2.0,
-        'epistemic_validator_omega_reward': 0.05,
-        'epistemic_validator_psi_reward': 0.01,
-        'num_epistemic_validators': 1,
-        'technogenesis_cost': 2.5,
-        'technogenesis_omega_reward': 0.05,
-        'technogenesis_psi_reward': 0.01,
-        'num_technogenesis_agents': 1,
-        'num_inspectors': 1,
-        'num_police': 1,
-        'num_coordinators': 1,
-        'num_repair': 1,
-        'num_master': 1,
-        'num_students': 1,
-        'num_scientists': 1,
-        'num_storage': 1,
-        'num_bank': 1,
-        'num_merchant': 1,
-        'num_miner': 1,
-        'num_population_regulators': 1,
-        'num_seeders': 1,
-        'num_cluster_balancers': 1,
-        'num_mediators': 1,
-        'num_migration_agents': 1,
-        'num_node_balancers': 1,
-        'num_cluster_formers': 1,
-        'num_perspective_agents': 1,
-        'num_cultural_mirrors': 1,
-        'num_synthesizer_agents': 1,
-        'num_pattern_miner_agents': 1,
-        'num_trend_detector_agents': 1,
-        'num_chrono_agents': 1,
-        'num_feedback_loop_agents': 1,
-        'num_memory_adjuster_agents': 1,
-        'num_global_metrics_agents': 1,
-        'num_log_evaluator_agents': 1,
-        'num_webcrawler_agents': 1,
-        'num_rsslistener_agents': 1,
-        'num_apicollector_agents': 1,
-        'num_interface_agents': 1,
-        'num_translator_agents': 1,
-        'num_dataset_agents': 1,
-        'num_autolabel_agents': 1,
-        'num_realvsfiction_agents': 1,
-        'num_sourceverifier_agents': 1,
-        'parallel_batch_threshold': 5,
-        'max_workers': 4,
-        'max_parallel_batch': 10,
-        'checkpoint_frequency': 1000,
-        'checkpoint_base_path': None,
-        'max_checkpoints': 5,
-        'max_nodes': 5000,
-        'auto_recover_agents': False,
-        'min_omega_recovery': 10.0,
-        'websocket_update_frequency': 5,
-        'num_taec_agents': 2,  # Default value for TAEC agents
-    }
-    if args.config:
-        try:
-            with open(args.config, 'r') as f:
-                yaml_config = yaml.safe_load(f)
-            if yaml_config:
-                config.update(yaml_config)
-            logging.info(f"Loaded config from: {args.config}")
-        except FileNotFoundError:
-            logging.warning(f"Config file not found at {args.config}.")
-        except Exception as e:
-            logging.error(f"Error loading config from {args.config}: {e}.")
-    cli_args = vars(args).copy()
-    cli_args.pop('config', None)
-    cli_args.pop('gnn_input_dim', None)
-    if 'visualize_graph' in cli_args:
-        config['visualize_graph'] = cli_args.pop('visualize_graph')
-    if 'run_api' in cli_args:
-        config['run_api'] = cli_args.pop('run_api')
-    for key, value in cli_args.items():
-        if value is not None:
-            config[key] = value
-    config['gnn_input_dim'] = 4 + (TEXT_EMBEDDING_DIM if text_embedding_model else 0)
-    
-    # Add config version tracking
-    config['version'] = '1.1.0'
-    
-    # Add runtime timestamp 
-    config['runtime_timestamp'] = time.strftime("%Y%m%d-%H%M%S")
-    
-    # Auto-create output directories if needed
-    for path_key in ['save_state', 'visualization_output_path', 'metrics_log_path']:
-        if config.get(path_key):
+            
+            # Estadísticas de comunidades
+            community_stats = []
+            for comm_id, nodes in community_groups.items():
+                states = [n['state'] for n in nodes]
+                community_stats.append({
+                    'id': comm_id,
+                    'size': len(nodes),
+                    'avg_state': np.mean(states),
+                    'nodes': nodes[:5]  # Muestra
+                })
+            
+            community_stats.sort(key=lambda x: x['size'], reverse=True)
+            
+            return jsonify({
+                'communities': community_stats,
+                'total_communities': len(community_groups)
+            })
+        
+        @self.app.route('/api/graph/cluster', methods=['POST'])
+        @jwt_required()
+        async def cluster_nodes():
+            """Ejecuta clustering en los nodos"""
+            data = request.get_json()
+            algorithm = data.get('algorithm', 'dbscan')
+            
+            clusters = await self.simulation_runner.graph.cluster_nodes(algorithm)
+            
+            # Estadísticas de clusters
+            cluster_stats = defaultdict(lambda: {'count': 0, 'avg_state': 0})
+            
+            for node_id, cluster_id in clusters.items():
+                if cluster_id >= 0:  # Ignorar ruido (-1)
+                    node = self.simulation_runner.graph.nodes.get(node_id)
+                    if node:
+                        cluster_stats[cluster_id]['count'] += 1
+                        cluster_stats[cluster_id]['avg_state'] += node.state
+            
+            # Calcular promedios
+            for cluster_id, stats in cluster_stats.items():
+                if stats['count'] > 0:
+                    stats['avg_state'] /= stats['count']
+            
+            return jsonify({
+                'clusters': dict(cluster_stats),
+                'total_clusters': len(cluster_stats),
+                'noise_nodes': sum(1 for c in clusters.values() if c == -1)
+            })
+        
+        # === RUTAS DE AGENTES ===
+        @self.app.route('/api/agents')
+        @jwt_required()
+        async def get_agents():
+            """Lista de agentes activos"""
+            agents_data = []
+            
+            for agent in self.simulation_runner.agents:
+                agents_data.append({
+                    'id': agent.id,
+                    'type': agent.__class__.__name__,
+                    'omega': agent.omega,
+                    'reputation': agent.reputation,
+                    'performance_score': agent.get_performance_score() if hasattr(agent, 'get_performance_score') else 0,
+                    'specialization': list(agent.specialization) if hasattr(agent, 'specialization') else [],
+                    'metrics': {
+                        'actions_performed': len(agent.action_history),
+                        'recent_success_rate': agent._calculate_recent_success_rate()
+                    }
+                })
+            
+            return jsonify({
+                'agents': agents_data,
+                'total': len(agents_data)
+            })
+        
+        @self.app.route('/api/agents/<agent_id>')
+        @jwt_required()
+        async def get_agent_details(agent_id):
+            """Detalles de un agente específico"""
+            agent = None
+            for a in self.simulation_runner.agents:
+                if a.id == agent_id:
+                    agent = a
+                    break
+            
+            if not agent:
+                return jsonify({'error': 'Agent not found'}), 404
+            
+            # Historial reciente
+            recent_actions = list(agent.action_history)[-20:]
+            
+            # Análisis de rendimiento
+            if recent_actions:
+                success_count = sum(1 for a in recent_actions if a.get('success', False))
+                success_rate = success_count / len(recent_actions)
+            else:
+                success_rate = 0
+            
+            details = {
+                'id': agent.id,
+                'type': agent.__class__.__name__,
+                'omega': agent.omega,
+                'max_omega': agent.max_omega,
+                'reputation': agent.reputation,
+                'learning_rate': agent.learning_rate,
+                'recent_actions': recent_actions,
+                'performance': {
+                    'success_rate': success_rate,
+                    'total_actions': len(agent.action_history),
+                    'avg_reward': np.mean(list(agent.reward_history)) if agent.reward_history else 0
+                }
+            }
+            
+            # Información específica de TAEC
+            if isinstance(agent, ClaudeTAECAgent):
+                details['taec_info'] = {
+                    'evolution_count': agent.evolution_count,
+                    'code_repository_size': len(agent.code_repository.repository),
+                    'evolution_memory': agent.evolution_memory.analyze_history()
+                }
+            
+            return jsonify(details)
+        
+        @self.app.route('/api/agents/<agent_id>/act', methods=['POST'])
+        @jwt_required()
+        @self.limiter.limit("5 per minute")
+        async def trigger_agent_action(agent_id):
+            """Dispara una acción manual del agente"""
+            agent = None
+            for a in self.simulation_runner.agents:
+                if a.id == agent_id:
+                    agent = a
+                    break
+            
+            if not agent:
+                return jsonify({'error': 'Agent not found'}), 404
+            
+            # Ejecutar acción
             try:
-                dir_path = os.path.dirname(config[path_key])
-                if dir_path and not os.path.exists(dir_path):
-                    os.makedirs(dir_path)
-                    logging.info(f"Created directory: {dir_path}")
+                await agent.act()
+                return jsonify({
+                    'success': True,
+                    'message': f'Agent {agent_id} action triggered'
+                })
             except Exception as e:
-                logging.warning(f"Could not create directory for {path_key}: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        # === RUTAS DE SIMULACIÓN ===
+        @self.app.route('/api/simulation/status')
+        @jwt_required()
+        async def simulation_status():
+            """Estado de la simulación"""
+            status = self.simulation_runner.get_detailed_status()
+            return jsonify(status)
+        
+        @self.app.route('/api/simulation/control', methods=['POST'])
+        @jwt_required()
+        async def control_simulation():
+            """Control de la simulación"""
+            data = request.get_json()
+            action = data.get('action')
+            
+            if action == 'start':
+                if not self.simulation_runner.is_running:
+                    await self.simulation_runner.start()
+                    return jsonify({'success': True, 'message': 'Simulation started'})
+                else:
+                    return jsonify({'error': 'Simulation already running'}), 400
+                    
+            elif action == 'stop':
+                if self.simulation_runner.is_running:
+                    await self.simulation_runner.stop()
+                    return jsonify({'success': True, 'message': 'Simulation stopped'})
+                else:
+                    return jsonify({'error': 'Simulation not running'}), 400
+                    
+            elif action == 'pause':
+                self.simulation_runner.pause()
+                return jsonify({'success': True, 'message': 'Simulation paused'})
+                
+            elif action == 'resume':
+                self.simulation_runner.resume()
+                return jsonify({'success': True, 'message': 'Simulation resumed'})
+                
+            else:
+                return jsonify({'error': 'Invalid action'}), 400
+        
+        @self.app.route('/api/simulation/checkpoint', methods=['POST'])
+        @jwt_required()
+        async def create_checkpoint():
+            """Crea un checkpoint manual"""
+            data = request.get_json()
+            name = data.get('name', f'manual_{int(time.time())}')
+            
+            try:
+                path = await self.simulation_runner.create_checkpoint(name)
+                return jsonify({
+                    'success': True,
+                    'checkpoint_path': path
+                })
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/simulation/export')
+        @jwt_required()
+        async def export_simulation():
+            """Exporta datos de la simulación"""
+            format_type = request.args.get('format', 'json')
+            
+            if format_type == 'json':
+                data = await self.simulation_runner.export_data()
+                return jsonify(data)
+                
+            elif format_type == 'graphml':
+                # Exportar en formato GraphML
+                nx_graph = self.simulation_runner.graph.network_analyzer._get_networkx_graph()
+                
+                from io import BytesIO
+                buffer = BytesIO()
+                nx.write_graphml(nx_graph, buffer)
+                buffer.seek(0)
+                
+                return Response(
+                    buffer.getvalue(),
+                    mimetype='application/xml',
+                    headers={
+                        'Content-Disposition': 'attachment; filename=graph.graphml'
+                    }
+                )
+            
+            else:
+                return jsonify({'error': 'Invalid format'}), 400
+        
+        # === RUTAS DE VISUALIZACIÓN ===
+        @self.app.route('/api/visualization/graph3d')
+        @jwt_required()
+        async def get_graph_3d_data():
+            """Datos para visualización 3D del grafo"""
+            if not self.simulation_runner.graph:
+                return jsonify({'error': 'Graph not initialized'}), 500
+            
+            # Preparar datos para visualización 3D
+            nodes = []
+            edges = []
+            
+            # Layout 3D usando spring layout
+            G = self.simulation_runner.graph.network_analyzer._get_networkx_graph()
+            
+            # Calcular posiciones 3D
+            if len(G) > 0:
+                # Usar Kamada-Kawai para grafos pequeños, spring para grandes
+                if len(G) < 100:
+                    pos_2d = nx.kamada_kawai_layout(G)
+                else:
+                    pos_2d = nx.spring_layout(G, k=1/np.sqrt(len(G)), iterations=50)
+                
+                # Añadir tercera dimensión basada en estado
+                pos_3d = {}
+                for node_id, (x, y) in pos_2d.items():
+                    node = self.simulation_runner.graph.nodes.get(node_id)
+                    z = node.state if node else 0.5
+                    pos_3d[node_id] = (x, y, z)
+                
+                # Preparar nodos
+                for node_id, (x, y, z) in pos_3d.items():
+                    node = self.simulation_runner.graph.nodes.get(node_id)
+                    if node:
+                        nodes.append({
+                            'id': node_id,
+                            'x': float(x),
+                            'y': float(y),
+                            'z': float(z),
+                            'label': node.content[:30],
+                            'size': 5 + node.metadata.importance_score * 10,
+                            'color': self._get_node_color(node),
+                            'state': node.state,
+                            'cluster': node.metadata.cluster_id
+                        })
+                
+                # Preparar edges
+                for node_id, node in self.simulation_runner.graph.nodes.items():
+                    if node_id in pos_3d:
+                        for target_id, utility in node.connections_out.items():
+                            if target_id in pos_3d:
+                                edges.append({
+                                    'source': node_id,
+                                    'target': target_id,
+                                    'weight': utility,
+                                    'color': self._get_edge_color(utility)
+                                })
+            
+            return jsonify({
+                'nodes': nodes,
+                'edges': edges,
+                'stats': {
+                    'total_nodes': len(nodes),
+                    'total_edges': len(edges)
+                }
+            })
+        
+        def _get_node_color(self, node):
+            """Calcula color del nodo basado en características"""
+            # Color basado en cluster
+            if node.metadata.cluster_id is not None:
+                # Paleta de colores para clusters
+                colors = [
+                    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
+                    '#DDA0DD', '#FFD93D', '#6BCF7F', '#FF6B9D'
+                ]
+                return colors[node.metadata.cluster_id % len(colors)]
+            
+            # Color basado en estado
+            r = int(255 * (1 - node.state))
+            g = int(255 * node.state)
+            b = 100
+            return f'#{r:02x}{g:02x}{b:02x}'
+        
+        def _get_edge_color(self, weight):
+            """Calcula color del edge basado en peso"""
+            intensity = int(255 * weight)
+            return f'#{intensity:02x}{intensity:02x}{intensity:02x}'
+        
+        # === RUTAS DE ANALYTICS ===
+        @self.app.route('/api/analytics/timeline')
+        @jwt_required()
+        async def get_timeline_data():
+            """Datos de línea temporal"""
+            # Obtener historial de métricas
+            history = list(self.simulation_runner.graph.metrics.history)[-1000:]
+            
+            timeline = {
+                'timestamps': [h['timestamp'] for h in history],
+                'metrics': {
+                    'nodes': [h['nodes'] for h in history],
+                    'edges': [h['edges'] for h in history],
+                    'avg_state': [h['avg_state'] for h in history]
+                }
+            }
+            
+            # Detectar eventos importantes
+            events = []
+            for i in range(1, len(history)):
+                # Detectar cambios bruscos
+                node_change = abs(history[i]['nodes'] - history[i-1]['nodes'])
+                if node_change > 10:
+                    events.append({
+                        'timestamp': history[i]['timestamp'],
+                        'type': 'node_spike',
+                        'description': f'Node count changed by {node_change}'
+                    })
+            
+            timeline['events'] = events
+            
+            return jsonify(timeline)
+        
+        @self.app.route('/api/analytics/predictions')
+        @jwt_required()
+        async def get_predictions():
+            """Predicciones del sistema"""
+            # Usar modelo ML para predecir evolución
+            predictions = await self.simulation_runner.predict_evolution()
+            
+            return jsonify(predictions)
+        
+        # === WEBSOCKET HANDLERS ===
+        @self.app.route('/')
+        def index():
+            """Sirve la aplicación web"""
+            return send_from_directory('static', 'index.html')
+        
+        @self.app.route('/static/<path:path>')
+        def serve_static(path):
+            """Sirve archivos estáticos"""
+            return send_from_directory('static', path)
     
-    return config
-
-simulation_runner = None
-app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-@app.route('/status')
-def get_simulation_status():
-    if simulation_runner:
-        return jsonify(simulation_runner.get_status())
-    else:
-        return jsonify({"error": "Simulation not initialized"}), 500
-
-@app.route('/graph_data')
-def get_graph_data():
-    try:
-        if simulation_runner:
-            elements = simulation_runner.get_graph_elements_for_cytoscape()
-            return jsonify(elements)
-        else:
-            return jsonify({"error": "Simulation not initialized"}), 500
-    except Exception as e:
-        app.logger.error("Error in /graph_data: %s", e)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/control/stop', methods=['POST'])
-def stop_simulation():
-    if simulation_runner:
-        simulation_runner.stop()
-        return jsonify({"status": "stopped"})
-    return jsonify({"error": "Simulation not initialized"}), 500
-
-@app.route('/control/start', methods=['POST'])
-def start_simulation():
-    if simulation_runner and not simulation_runner.is_running:
-        simulation_runner.start()
-        return jsonify({"status": "started"})
-    return jsonify({"error": "Simulation already running or not initialized"}), 500
-
-@socketio.on('connect')
-def handle_connect():
-    logging.info('Client connected to websocket')
-    if simulation_runner:
-        socketio.emit('simulation_update', simulation_runner.get_status())
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    logging.info('Client disconnected from websocket')
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run MSC Simulation with GNN and optional API.")
-    parser.add_argument('--config', type=str, help='Path to YAML config file')
-    parser.add_argument('--simulation_steps', type=int, help='Number of simulation steps to run')
-    parser.add_argument('--num_proposers', type=int, help='Number of proposer agents')
-    parser.add_argument('--num_evaluators', type=int, help='Number of evaluator agents')
-    parser.add_argument('--num_combiners', type=int, help='Number of combiner agents')
-    parser.add_argument('--step_delay', type=float, help='Delay between simulation steps in seconds')
-    parser.add_argument('--save_state', type=str, help='Path to save the simulation state')
-    parser.add_argument('--load_state', type=str, help='Path to load the simulation state from')
-    parser.add_argument('--run_api', action='store_true', help='Run the Flask API server')
-    parser.add_argument('--visualization_output_path', type=str, help='Path to output visualization')
-    parser.add_argument('--metrics_log_path', type=str, help='Path to log metrics CSV')
-    parser.add_argument('--checkpoint_frequency', type=int, help='Save checkpoints every N steps')
-    parser.add_argument('--checkpoint_base_path', type=str, help='Base path for checkpoint files')
-    parser.add_argument('--max_checkpoints', type=int, help='Maximum number of checkpoint files to keep')
+    def _register_socketio_handlers(self):
+        """Registra handlers de WebSocket"""
+        
+        @self.socketio.on('connect')
+        def handle_connect():
+            """Cliente conectado"""
+            logger.info(f"Client connected: {request.sid}")
+            emit('connected', {
+                'message': 'Connected to MSC Framework v4.0',
+                'sid': request.sid
+            })
+        
+        @self.socketio.on('disconnect')
+        def handle_disconnect():
+            """Cliente desconectado"""
+            logger.info(f"Client disconnected: {request.sid}")
+            # Remover de todas las rooms
+            for room_name, sids in self.rooms.items():
+                sids.discard(request.sid)
+        
+        @self.socketio.on('subscribe')
+        def handle_subscribe(data):
+            """Suscribir a actualizaciones"""
+            room = data.get('room', 'updates')
+            if room in self.rooms:
+                join_room(room)
+                self.rooms[room].add(request.sid)
+                emit('subscribed', {'room': room})
+        
+        @self.socketio.on('unsubscribe')
+        def handle_unsubscribe(data):
+            """Desuscribir de actualizaciones"""
+            room = data.get('room', 'updates')
+            if room in self.rooms:
+                leave_room(room)
+                self.rooms[room].discard(request.sid)
+                emit('unsubscribed', {'room': room})
+        
+        @self.socketio.on('request_update')
+        def handle_update_request(data):
+            """Solicitud de actualización específica"""
+            update_type = data.get('type', 'status')
+            
+            if update_type == 'status':
+                status = self.simulation_runner.get_detailed_status()
+                emit('status_update', status)
+                
+            elif update_type == 'graph':
+                graph_data = {
+                    'nodes': len(self.simulation_runner.graph.nodes),
+                    'edges': sum(
+                        len(n.connections_out) 
+                        for n in self.simulation_runner.graph.nodes.values()
+                    ),
+                    'health': self.simulation_runner.graph.calculate_graph_health()
+                }
+                emit('graph_update', graph_data)
+                
+            elif update_type == 'agents':
+                agents_data = [
+                    {
+                        'id': a.id,
+                        'type': a.__class__.__name__,
+                        'omega': a.omega,
+                        'reputation': a.reputation
+                    }
+                    for a in self.simulation_runner.agents
+                ]
+                emit('agents_update', agents_data)
     
-    # Añadir argumentos para el nuevo visualizador
-    parser.add_argument('--viewer_port', type=int, default=8080, 
-                        help='Port for the MSC Viewer server')
-    parser.add_argument('--run_viewer', action='store_true', 
-                        help='Run the MSC Viewer visualization server')
+    def broadcast_event(self, event: Event):
+        """Broadcast evento a clientes suscritos"""
+        # Determinar room basado en tipo de evento
+        room = 'updates'  # Default
+        
+        if event.type in [EventType.METRICS_UPDATE, EventType.PERFORMANCE_ALERT]:
+            room = 'metrics'
+        elif event.type in [EventType.AGENT_ACTION, EventType.AGENT_EVOLVED]:
+            room = 'agents'
+        
+        # Broadcast a la room
+        self.socketio.emit(
+            'event',
+            event.to_dict(),
+            room=room,
+            namespace='/'
+        )
     
-    # Añadir argumento para el directorio de código TAEC
-    parser.add_argument('--taec_runtime_path', type=str,
-                        help='Directory path to store TAEC generated code')
+    def run(self, host='0.0.0.0', port=5000, debug=False):
+        """Ejecuta el servidor"""
+        self.socketio.run(
+            self.app,
+            host=host,
+            port=port,
+            debug=debug,
+            use_reloader=False
+        )
+
+# === SIMULACIÓN AVANZADA ===
+class AdvancedSimulationRunner:
+    """Runner de simulación avanzado con todas las características"""
+    
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.graph = AdvancedCollectiveSynthesisGraph(config)
+        self.agents: List[ImprovedBaseAgent] = []
+        self.is_running = False
+        self.is_paused = False
+        self.step_count = 0
+        self.start_time = time.time()
+        
+        # Componentes
+        self.event_bus = self.graph.event_bus
+        self.api_server: Optional[AdvancedAPIServer] = None
+        
+        # Estado
+        self.simulation_state = SimulationState()
+        
+        # Predictor ML
+        self.predictor = SimulationPredictor()
+        
+        # Monitor de rendimiento
+        self.performance_monitor = PerformanceMonitor()
+        
+        # Inicialización
+        asyncio.create_task(self._initialize())
+    
+    async def _initialize(self):
+        """Inicializa componentes asíncronos"""
+        # Inicializar grafo con backends
+        await self.graph.initialize(
+            redis_url=self.config.get('redis_url'),
+            postgres_url=self.config.get('postgres_url')
+        )
+        
+        # Crear agentes
+        await self._create_agents()
+        
+        # Suscribir a eventos
+        self._setup_event_handlers()
+        
+        # Crear servidor API
+        self.api_server = AdvancedAPIServer(self, self.config)
+        
+        # Cargar estado si existe
+        if self.config.get('load_checkpoint'):
+            await self.load_checkpoint(self.config['load_checkpoint'])
+        
+        logger.info("Advanced Simulation Runner initialized")
+    
+    async def _create_agents(self):
+        """Crea agentes según configuración"""
+        agent_configs = self.config.get('agents', {})
+        
+        # Agentes Claude-TAEC
+        for i in range(agent_configs.get('claude_taec', 3)):
+            agent = ClaudeTAECAgent(
+                f"ClaudeTAEC_{i}",
+                self.graph,
+                self.config
+            )
+            self.agents.append(agent)
+        
+        # Otros tipos de agentes pueden añadirse aquí
+        
+        logger.info(f"Created {len(self.agents)} agents")
+    
+    def _setup_event_handlers(self):
+        """Configura handlers de eventos"""
+        # Handlers para diferentes tipos de eventos
+        self.event_bus.subscribe(
+            EventType.NODE_CREATED,
+            self._handle_node_created
+        )
+        self.event_bus.subscribe(
+            EventType.AGENT_EVOLVED,
+            self._handle_agent_evolved
+        )
+        self.event_bus.subscribe(
+            EventType.CRITICAL_ERROR,
+            self._handle_critical_error
+        )
+    
+    async def start(self):
+        """Inicia la simulación"""
+        if self.is_running:
+            logger.warning("Simulation already running")
+            return
+        
+        self.is_running = True
+        self.is_paused = False
+        self.simulation_state.phase = 'running'
+        
+        # Iniciar servidor API si está configurado
+        if self.config.get('enable_api', True):
+            api_thread = threading.Thread(
+                target=self.api_server.run,
+                kwargs={
+                    'host': self.config.get('api_host', '0.0.0.0'),
+                    'port': self.config.get('api_port', 5000),
+                    'debug': False
+                },
+                daemon=True
+            )
+            api_thread.start()
+        
+        # Loop principal
+        asyncio.create_task(self._simulation_loop())
+        
+        logger.info("Simulation started")
+    
+    async def stop(self):
+        """Detiene la simulación"""
+        logger.info("Stopping simulation...")
+        self.is_running = False
+        self.simulation_state.phase = 'stopped'
+        
+        # Guardar estado final
+        if self.config.get('auto_save', True):
+            await self.create_checkpoint('final')
+        
+        # Detener event bus
+        await self.event_bus.stop()
+        
+        logger.info("Simulation stopped")
+    
+    def pause(self):
+        """Pausa la simulación"""
+        self.is_paused = True
+        self.simulation_state.phase = 'paused'
+        logger.info("Simulation paused")
+    
+    def resume(self):
+        """Reanuda la simulación"""
+        self.is_paused = False
+        self.simulation_state.phase = 'running'
+        logger.info("Simulation resumed")
+    
+    async def _simulation_loop(self):
+        """Loop principal de simulación"""
+        while self.is_running:
+            try:
+                if not self.is_paused:
+                    # Ejecutar paso
+                    await self._execute_step()
+                    
+                    # Actualizar métricas
+                    await self._update_metrics()
+                    
+                    # Checkpoints automáticos
+                    if self.step_count % self.config.get('checkpoint_interval', 1000) == 0:
+                        await self.create_checkpoint(f'auto_{self.step_count}')
+                    
+                    # Broadcast estado
+                    if self.api_server and self.step_count % 10 == 0:
+                        await self._broadcast_status()
+                
+                # Delay
+                await asyncio.sleep(self.config.get('step_delay', 0.1))
+                
+            except Exception as e:
+                logger.error(f"Error in simulation loop: {e}")
+                await self.event_bus.publish(Event(
+                    type=EventType.CRITICAL_ERROR,
+                    data={'error': str(e), 'traceback': traceback.format_exc()},
+                    source='simulation',
+                    priority=1
+                ))
+    
+    async def _execute_step(self):
+        """Ejecuta un paso de simulación"""
+        self.step_count += 1
+        
+        with self.performance_monitor.measure('simulation_step'):
+            # Fase 1: Percepción
+            perceptions = await self._perception_phase()
+            
+            # Fase 2: Decisión
+            decisions = await self._decision_phase(perceptions)
+            
+            # Fase 3: Acción
+            await self._action_phase(decisions)
+            
+            # Fase 4: Evolución
+            if self.step_count % self.config.get('evolution_interval', 100) == 0:
+                await self._evolution_phase()
+            
+            # Fase 5: Consenso
+            if self.step_count % self.config.get('consensus_interval', 500) == 0:
+                await self._consensus_phase()
+    
+    async def _perception_phase(self):
+        """Fase de percepción para todos los agentes"""
+        perceptions = {}
+        
+        # Percepción paralela
+        tasks = []
+        for agent in self.agents:
+            if agent.omega > 0:  # Solo agentes activos
+                tasks.append(agent.perceive_environment())
+        
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for i, result in enumerate(results):
+                if not isinstance(result, Exception):
+                    perceptions[self.agents[i].id] = result
+        
+        return perceptions
+    
+    async def _decision_phase(self, perceptions):
+        """Fase de decisión para agentes"""
+        decisions = {}
+        
+        for agent in self.agents:
+            if agent.id in perceptions:
+                decision = await agent.decide_action(perceptions[agent.id])
+                decisions[agent.id] = decision
+        
+        return decisions
+    
+    async def _action_phase(self, decisions):
+        """Fase de ejecución de acciones"""
+        # Limitar número de acciones simultáneas
+        max_concurrent = self.config.get('max_concurrent_actions', 5)
+        
+        # Seleccionar agentes que actuarán
+        acting_agents = []
+        for agent in self.agents:
+            if agent.id in decisions and agent.omega > 0:
+                acting_agents.append(agent)
+        
+        # Shuffle para fairness
+        random.shuffle(acting_agents)
+        
+        # Ejecutar acciones
+        for i in range(0, len(acting_agents), max_concurrent):
+            batch = acting_agents[i:i + max_concurrent]
+            tasks = [agent.act() for agent in batch]
+            await asyncio.gather(*tasks, return_exceptions=True)
+    
+    async def _evolution_phase(self):
+        """Fase de evolución del sistema"""
+        logger.info(f"Evolution phase at step {self.step_count}")
+        
+        # Seleccionar agentes TAEC para evolución
+        taec_agents = [
+            a for a in self.agents 
+            if isinstance(a, ClaudeTAECAgent) and a.omega > 20
+        ]
+        
+        if taec_agents:
+            # Elegir uno aleatoriamente
+            agent = random.choice(taec_agents)
+            
+            # Ejecutar evolución
+            perception = await agent.perceive_environment()
+            await agent.execute_action('evolve', perception)
+            
+            # Publicar evento
+            await self.event_bus.publish(Event(
+                type=EventType.EVOLUTION_CYCLE,
+                data={'agent_id': agent.id, 'step': self.step_count},
+                source='simulation'
+            ))
+    
+    async def _consensus_phase(self):
+        """Fase de consenso entre agentes"""
+        logger.info(f"Consensus phase at step {self.step_count}")
+        
+        # Implementar mecanismo de consenso
+        # Por ahora, simple votación sobre acciones importantes
+        
+        # Tema de consenso: nodos a promover
+        candidates = [
+            n for n in self.graph.nodes.values()
+            if n.state > 0.7 and n.metadata.importance_score < 0.5
+        ]
+        
+        if candidates and len(self.agents) > 1:
+            # Votación
+            votes = defaultdict(int)
+            
+            for agent in self.agents:
+                if agent.omega > 0:
+                    # Cada agente vota por un candidato
+                    choice = random.choice(candidates)
+                    votes[choice.id] += agent.reputation
+            
+            # Ganador
+            if votes:
+                winner_id = max(votes.items(), key=lambda x: x[1])[0]
+                winner = self.graph.nodes[winner_id]
+                
+                # Promover nodo
+                winner.metadata.importance_score = min(1.0, winner.metadata.importance_score * 1.5)
+                winner.metadata.tags.add('consensus_promoted')
+                
+                # Evento
+                await self.event_bus.publish(Event(
+                    type=EventType.CONSENSUS_REACHED,
+                    data={'node_id': winner_id, 'votes': dict(votes)},
+                    source='simulation'
+                ))
+    
+    async def _update_metrics(self):
+        """Actualiza métricas del sistema"""
+        # Métricas del grafo
+        self.graph.metrics.update_graph_metrics(self.graph)
+        
+        # Métricas de agentes
+        for agent in self.agents:
+            if hasattr(agent, 'metrics'):
+                agent.metrics.update_resources(agent.omega, agent.reputation)
+        
+        # Detectar anomalías
+        anomalies = self.graph.metrics.detect_anomalies()
+        if anomalies:
+            for anomaly in anomalies:
+                await self.event_bus.publish(Event(
+                    type=EventType.PERFORMANCE_ALERT,
+                    data=anomaly,
+                    source='metrics',
+                    priority=2
+                ))
+        
+        # Regeneración de omega
+        for agent in self.agents:
+            regen = self.config.get('omega_regeneration', 0.1) * agent.reputation
+            agent.omega = min(agent.omega + regen, agent.max_omega)
+    
+    async def _broadcast_status(self):
+        """Broadcast estado a clientes conectados"""
+        if self.api_server:
+            status_event = Event(
+                type=EventType.METRICS_UPDATE,
+                data=self.get_detailed_status(),
+                source='simulation'
+            )
+            self.api_server.broadcast_event(status_event)
+    
+    async def create_checkpoint(self, name: str) -> str:
+        """Crea un checkpoint de la simulación"""
+        os.makedirs(Config.CHECKPOINT_DIR, exist_ok=True)
+        
+        checkpoint_path = os.path.join(
+            Config.CHECKPOINT_DIR,
+            f"{name}_{int(time.time())}.checkpoint"
+        )
+        
+        checkpoint_data = {
+            'version': '4.0.0',
+            'timestamp': time.time(),
+            'step_count': self.step_count,
+            'graph': await self._serialize_graph(),
+            'agents': self._serialize_agents(),
+            'simulation_state': asdict(self.simulation_state)
+        }
+        
+        # Comprimir y guardar
+        compressed = zlib.compress(
+            json.dumps(checkpoint_data).encode('utf-8')
+        )
+        
+        async with aiofiles.open(checkpoint_path, 'wb') as f:
+            await f.write(compressed)
+        
+        logger.info(f"Checkpoint created: {checkpoint_path}")
+        
+        # Evento
+        await self.event_bus.publish(Event(
+            type=EventType.CHECKPOINT_CREATED,
+            data={'path': checkpoint_path, 'name': name},
+            source='simulation'
+        ))
+        
+        return checkpoint_path
+    
+    async def load_checkpoint(self, path: str):
+        """Carga un checkpoint"""
+        async with aiofiles.open(path, 'rb') as f:
+            compressed = await f.read()
+        
+        checkpoint_data = json.loads(
+            zlib.decompress(compressed).decode('utf-8')
+        )
+        
+        # Restaurar grafo
+        await self._restore_graph(checkpoint_data['graph'])
+        
+        # Restaurar agentes
+        self._restore_agents(checkpoint_data['agents'])
+        
+        # Restaurar estado
+        self.step_count = checkpoint_data['step_count']
+        # Restaurar simulation_state...
+        
+        logger.info(f"Checkpoint loaded: {path}")
+    
+    async def _serialize_graph(self) -> Dict[str, Any]:
+        """Serializa el grafo"""
+        nodes_data = []
+        
+        for node in self.graph.nodes.values():
+            node_dict = {
+                'id': node.id,
+                'content': node.content,
+                'state': node.state,
+                'keywords': list(node.keywords),
+                'connections_out': node.connections_out,
+                'connections_in': node.connections_in,
+                'metadata': {
+                    'created_at': node.metadata.created_at,
+                    'updated_at': node.metadata.updated_at,
+                    'created_by': node.metadata.created_by,
+                    'tags': list(node.metadata.tags),
+                    'properties': node.metadata.properties,
+                    'importance_score': node.metadata.importance_score,
+                    'cluster_id': node.metadata.cluster_id
+                },
+                'features': node.features
+            }
+            
+            # Embedding como lista si existe
+            if node.metadata.embedding is not None:
+                node_dict['metadata']['embedding'] = node.metadata.embedding.tolist()
+            
+            nodes_data.append(node_dict)
+        
+        return {
+            'nodes': nodes_data,
+            'next_node_id': self.graph.next_node_id,
+            'metrics': {
+                'history': list(self.graph.metrics.history)[-1000:]
+            }
+        }
+    
+    def _serialize_agents(self) -> List[Dict[str, Any]]:
+        """Serializa los agentes"""
+        agents_data = []
+        
+        for agent in self.agents:
+            agent_data = {
+                'id': agent.id,
+                'type': agent.__class__.__name__,
+                'omega': agent.omega,
+                'reputation': agent.reputation,
+                'specialization': list(agent.specialization) if hasattr(agent, 'specialization') else [],
+                'learning_rate': agent.learning_rate
+            }
+            
+            # Datos específicos de TAEC
+            if isinstance(agent, ClaudeTAECAgent):
+                agent_data['taec_data'] = {
+                    'evolution_count': agent.evolution_count,
+                    'evolution_memory': list(agent.evolution_memory.history)[-100:]
+                }
+            
+            agents_data.append(agent_data)
+        
+        return agents_data
+    
+    async def predict_evolution(self) -> Dict[str, Any]:
+        """Predice evolución futura del sistema"""
+        return await self.predictor.predict(
+            self.graph,
+            self.agents,
+            self.simulation_state
+        )
+    
+    async def export_data(self) -> Dict[str, Any]:
+        """Exporta datos de la simulación"""
+        return {
+            'metadata': {
+                'version': '4.0.0',
+                'export_time': time.time(),
+                'step_count': self.step_count,
+                'runtime': time.time() - self.start_time
+            },
+            'graph': await self._serialize_graph(),
+            'agents': self._serialize_agents(),
+            'statistics': self._calculate_statistics()
+        }
+    
+    def _calculate_statistics(self) -> Dict[str, Any]:
+        """Calcula estadísticas de la simulación"""
+        return {
+            'graph': {
+                'total_nodes': len(self.graph.nodes),
+                'total_edges': sum(
+                    len(n.connections_out) 
+                    for n in self.graph.nodes.values()
+                ),
+                'avg_node_state': np.mean([n.state for n in self.graph.nodes.values()]) if self.graph.nodes else 0,
+                'clusters': len(self.graph.cluster_index)
+            },
+            'agents': {
+                'total': len(self.agents),
+                'active': sum(1 for a in self.agents if a.omega > 0),
+                'avg_omega': np.mean([a.omega for a in self.agents]) if self.agents else 0,
+                'avg_reputation': np.mean([a.reputation for a in self.agents]) if self.agents else 0
+            },
+            'evolution': {
+                'total_evolutions': sum(
+                    a.evolution_count 
+                    for a in self.agents 
+                    if isinstance(a, ClaudeTAECAgent)
+                )
+            }
+        }
+    
+    def get_detailed_status(self) -> Dict[str, Any]:
+        """Obtiene estado detallado de la simulación"""
+        return {
+            'running': self.is_running,
+            'paused': self.is_paused,
+            'phase': self.simulation_state.phase,
+            'step_count': self.step_count,
+            'runtime': time.time() - self.start_time,
+            'statistics': self._calculate_statistics(),
+            'performance': self.performance_monitor.get_stats()
+        }
+    
+    async def _handle_node_created(self, event: Event):
+        """Handler para creación de nodos"""
+        # Broadcast a clientes
+        if self.api_server:
+            self.api_server.broadcast_event(event)
+    
+    async def _handle_agent_evolved(self, event: Event):
+        """Handler para evolución de agentes"""
+        # Log importante
+        logger.info(f"Agent evolution: {event.data}")
+        
+        # Broadcast
+        if self.api_server:
+            self.api_server.broadcast_event(event)
+    
+    async def _handle_critical_error(self, event: Event):
+        """Handler para errores críticos"""
+        logger.error(f"CRITICAL ERROR: {event.data}")
+        
+        # Intentar recuperación
+        if self.config.get('auto_recovery', True):
+            logger.info("Attempting auto-recovery...")
+            # Pausar simulación
+            self.pause()
+            
+            # Crear checkpoint de emergencia
+            await self.create_checkpoint('emergency')
+            
+            # Notificar
+            if self.api_server:
+                self.api_server.broadcast_event(event)
+
+# === CLASES DE SOPORTE ===
+@dataclass
+class SimulationState:
+    """Estado de la simulación"""
+    phase: str = 'initialization'  # initialization, running, paused, stopped
+    last_checkpoint: Optional[str] = None
+    performance_history: deque = field(default_factory=lambda: deque(maxlen=10000))
+    error_count: int = 0
+    warning_count: int = 0
+
+class PerformanceMonitor:
+    """Monitor de rendimiento del sistema"""
+    
+    def __init__(self):
+        self.metrics = defaultdict(lambda: {
+            'count': 0,
+            'total_time': 0,
+            'min_time': float('inf'),
+            'max_time': 0
+        })
+    
+    @contextmanager
+    def measure(self, operation: str):
+        """Mide tiempo de operación"""
+        start = time.time()
+        try:
+            yield
+        finally:
+            duration = time.time() - start
+            self.metrics[operation]['count'] += 1
+            self.metrics[operation]['total_time'] += duration
+            self.metrics[operation]['min_time'] = min(
+                self.metrics[operation]['min_time'], 
+                duration
+            )
+            self.metrics[operation]['max_time'] = max(
+                self.metrics[operation]['max_time'], 
+                duration
+            )
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Obtiene estadísticas de rendimiento"""
+        stats = {}
+        
+        for operation, metrics in self.metrics.items():
+            if metrics['count'] > 0:
+                stats[operation] = {
+                    'count': metrics['count'],
+                    'avg_time': metrics['total_time'] / metrics['count'],
+                    'min_time': metrics['min_time'],
+                    'max_time': metrics['max_time'],
+                    'total_time': metrics['total_time']
+                }
+        
+        return stats
+
+class SimulationPredictor:
+    """Predictor ML para evolución del sistema"""
+    
+    def __init__(self):
+        self.model = self._build_model()
+        self.scaler = StandardScaler()
+        self.history_window = 100
+    
+    def _build_model(self):
+        """Construye modelo de predicción"""
+        return RandomForestClassifier(
+            n_estimators=100,
+            max_depth=10,
+            random_state=42
+        )
+    
+    async def predict(self, graph, agents, state) -> Dict[str, Any]:
+        """Predice evolución futura"""
+        # Extraer features
+        features = self._extract_features(graph, agents, state)
+        
+        # Predicciones (placeholder - necesita entrenamiento real)
+        predictions = {
+            'next_hour': {
+                'expected_nodes': len(graph.nodes) * 1.1,
+                'expected_health': 0.7,
+                'risk_level': 'medium'
+            },
+            'next_day': {
+                'expected_nodes': len(graph.nodes) * 1.5,
+                'expected_health': 0.8,
+                'risk_level': 'low'
+            },
+            'recommendations': [
+                'Increase agent omega regeneration rate',
+                'Focus on consolidation strategies',
+                'Monitor cluster fragmentation'
+            ]
+        }
+        
+        return predictions
+    
+    def _extract_features(self, graph, agents, state):
+        """Extrae features para predicción"""
+        features = []
+        
+        # Features del grafo
+        features.extend([
+            len(graph.nodes),
+            sum(len(n.connections_out) for n in graph.nodes.values()),
+            np.mean([n.state for n in graph.nodes.values()]) if graph.nodes else 0,
+            len(graph.cluster_index)
+        ])
+        
+        # Features de agentes
+        features.extend([
+            len(agents),
+            sum(1 for a in agents if a.omega > 0),
+            np.mean([a.omega for a in agents]) if agents else 0,
+            np.mean([a.reputation for a in agents]) if agents else 0
+        ])
+        
+        # Features de estado
+        features.extend([
+            state.error_count,
+            state.warning_count
+        ])
+        
+        return np.array(features).reshape(1, -1)
+
+# === FUNCIÓN PRINCIPAL ===
+async def main():
+    """Función principal del MSC Framework v4.0"""
+    parser = argparse.ArgumentParser(
+        description="MSC Framework v4.0 - Meta-cognitive Collective Synthesis with Claude"
+    )
+    
+    parser.add_argument('--config', type=str, help='Configuration file path')
+    parser.add_argument('--mode', choices=['simulation', 'api', 'both'], 
+                       default='both', help='Execution mode')
+    parser.add_argument('--api-host', default='0.0.0.0', help='API host')
+    parser.add_argument('--api-port', type=int, default=5000, help='API port')
+    parser.add_argument('--checkpoint', type=str, help='Load from checkpoint')
+    parser.add_argument('--claude-key', type=str, help='Claude API key')
     
     args = parser.parse_args()
-    final_config = load_config(args)
-    final_config['run_api'] = args.run_api
-    final_config['run_viewer'] = args.run_viewer if hasattr(args, 'run_viewer') else False
-    final_config['viewer_port'] = args.viewer_port if hasattr(args, 'viewer_port') else 8080
     
-    # Si se proporciona taec_runtime_path, úsalo para el repositorio de código
-    if hasattr(args, 'taec_runtime_path') and args.taec_runtime_path:
-        final_config['taec_runtime_path'] = args.taec_runtime_path
+    # Configurar Claude API key si se proporciona
+    if args.claude_key:
+        Config.CLAUDE_API_KEY = args.claude_key
     
-    simulation_runner = SimulationRunner(final_config)
-
-    # Iniciar la simulación
-    logging.info("Iniciando simulación...")
-    simulation_runner.start()
-
-    # Integrar el nuevo visualizador MSC Viewer
-    msc_viewer_server = None
-    if final_config.get('run_viewer', False) and MSC_VIEWER_AVAILABLE:
-        try:
-            logging.info("Initializing MSC Viewer...")
-            # Crear el adaptador de simulación con acceso directo al runner
-            sim_adapter = SimulationAdapter(simulation_runner)
-            # Guardar la referencia al adaptador en el simulador para actualizaciones
-            simulation_runner.sim_adapter = sim_adapter
-            
-            # Iniciar el adaptador
-            sim_adapter.current_step = simulation_runner.step_count
-            sim_adapter.start()
-            
-            # Iniciar el servidor de visualización
-            viewer_port = final_config.get('viewer_port', 8080)
-            msc_viewer_server = MSCViewerServer(host='localhost', port=viewer_port)
-            msc_viewer_server.start(simulation_runner=sim_adapter)
-            
-            logging.info(f"MSC Viewer started at http://localhost:{viewer_port}")
-        except Exception as e:
-            logging.error(f"Failed to start MSC Viewer: {e}")
-            msc_viewer_server = None
-    elif final_config.get('run_viewer', False):
-        logging.error("MSC Viewer requested but module not available")
-
-    time.sleep(2)
-    if final_config.get('run_api', False):
-        logging.info("Starting Flask+SocketIO server on http://127.0.0.1:5000")
-        log = logging.getLogger('werkzeug')
-        log.setLevel(logging.ERROR)
-        try:
-            socketio.run(app, host='127.0.0.1', port=5000, debug=False)
-        except KeyboardInterrupt:
-            logging.info("Ctrl+C detected. Stopping Flask API and simulation...")
-        finally:
-            if msc_viewer_server:
-                msc_viewer_server.stop()
-            simulation_runner.stop()
+    # Cargar configuración
+    if args.config:
+        with open(args.config, 'r') as f:
+            config = yaml.safe_load(f)
     else:
-        logging.info("Simulation running in background thread. Open http://localhost:8080 for visualization.")
-        logging.info("Press Ctrl+C to stop.")
-        try:
-            while simulation_runner.is_running:
-                time.sleep(0.5)
-                # Si el visualizador está activo, actualizar el adaptador
-                if msc_viewer_server and hasattr(simulation_runner, 'sim_adapter'):
-                    simulation_runner.sim_adapter.current_step = simulation_runner.step_count
-        except KeyboardInterrupt:
-            logging.info("KeyboardInterrupt detected. Stopping simulation...")
-            if msc_viewer_server:
-                msc_viewer_server.stop()
-            simulation_runner.stop()
+        config = get_default_config()
+    
+    # Añadir argumentos a config
+    config['api_host'] = args.api_host
+    config['api_port'] = args.api_port
+    config['load_checkpoint'] = args.checkpoint
+    
+    # Crear simulación
+    simulation = AdvancedSimulationRunner(config)
+    
+    # Esperar inicialización
+    await asyncio.sleep(2)
+    
+    try:
+        if args.mode in ['simulation', 'both']:
+            await simulation.start()
+            logger.info("Simulation started successfully")
+        
+        if args.mode == 'api':
+            # Solo API sin simulación
+            api_server = AdvancedAPIServer(simulation, config)
+            api_server.run(host=args.api_host, port=args.api_port)
+        
+        # Mantener ejecutando
+        while True:
+            await asyncio.sleep(1)
+            
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested...")
+    finally:
+        await simulation.stop()
+        logger.info("MSC Framework v4.0 shutdown complete")
+
+def get_default_config() -> Dict[str, Any]:
+    """Configuración por defecto"""
+    return {
+        # Simulación
+        'simulation_steps': 100000,
+        'step_delay': 0.1,
+        'checkpoint_interval': 1000,
+        'evolution_interval': 100,
+        'consensus_interval': 500,
+        
+        # Agentes
+        'agents': {
+            'claude_taec': 3
+        },
+        'initial_omega': 100.0,
+        'max_omega': 1000.0,
+        'omega_regeneration': 0.1,
+        'agent_rate_limit': 10,
+        
+        # Grafo
+        'node_features': 768,
+        'gnn_hidden': 128,
+        'gnn_output': 64,
+        'gnn_heads': 8,
+        'gnn_layers': 4,
+        'gnn_dropout': 0.1,
+        'gnn_learning_rate': 0.001,
+        
+        # Sistema
+        'max_concurrent_actions': 5,
+        'enable_api': True,
+        'auto_save': True,
+        'auto_recovery': True,
+        
+        # Cache y persistencia
+        'cache_size': 10000,
+        'cache_ttl': 3600,
+        
+        # Seguridad
+        'max_code_execution_time': 5.0,
+        'exploration_rate': 0.1
+    }
+
+if __name__ == "__main__":
+    # Configurar señales
+    def signal_handler(sig, frame):
+        logger.info("Signal received, shutting down...")
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Ejecutar
+    asyncio.run(main())

@@ -1,84 +1,363 @@
-# Archivo de configuración actualizado para MSC Simulation
+# MSC Framework v4.0 Configuration
+# Last Updated: 2024
 
-simulation_steps: 50           # Ejecutar 50 pasos (o indefinido si se omite)
-num_proposers: 2               # Número de Proposers
-num_evaluators: 4              # Número de Evaluators
-num_combiners: 1               # Número de Combiners
-step_delay: 0.05               # Retraso entre pasos (segundos)
-evaluator_learning_rate: 0.15  # Tasa de aprendizaje para evaluadores
-evaluator_decay_rate: 0.01     # Tasa de decaimiento para evaluadores
-combiner_compatibility_threshold: 0.7   # Umbral para la compatibilidad en combinadores
-combiner_similarity_threshold: 0.7        # Umbral de similitud adicional para combinadores
-gnn_hidden_dim: 16             # Dimensión oculta para la GNN
-gnn_embedding_dim: 8           # Dimensión del embedding final
-gnn_update_frequency: 10       # Frecuencia (pasos) para actualizar embeddings de la GNN
-summary_frequency: 50          # Frecuencia (pasos) para resumir métricas
-run_api: false                 # Ejecutar o no el servidor Flask API
-gnn_training_frequency: 50     # Frecuencia (pasos) para entrenar la GNN
-gnn_training_epochs: 5         # Épocas por iteración de entrenamiento de la GNN
-gnn_learning_rate: 0.01        # Tasa de aprendizaje para entrenamiento de la GNN
-initial_omega: 100.0           # Recurso inicial Ω para los agentes
-proposer_cost: 1.0             # Costo de acción para ProposerAgent
-evaluator_cost: 0.5            # Costo para EvaluatorAgent
-combiner_cost: 1.5             # Costo para CombinerAgent
-omega_regeneration_rate: 0.1   # Tasa de regeneración de Ω por agente cada paso
-evaluator_reward_factor: 2.0   # Factor de recompensa Ω para evaluadores
-evaluator_reward_threshold: 0.05  # Incremento mínimo en estado para recompensa en evaluadores
-proposer_reward_factor: 0.5    # Factor de recompensa Ω para proposers
-combiner_reward_factor: 1.0    # Factor de recompensa Ω para combinadores
-visualization_output_path: null      # Si se desea guardar visualización del grafo al finalizar
-metrics_log_path: null               # Ruta para guardar métricas globales en CSV
-num_bridging_agents: 1
-bridging_agent_cost: 2.0
-bridging_similarity_threshold: 0.75
-bridging_adjusted_threshold: 0.65
-knowledge_fetcher_cost: 2.5
-num_knowledge_fetchers: 1
-horizonscanner_cost: 3.0
-horizonscanner_psi_reward: 0.05
-num_horizon_scanners: 1
-epistemic_validator_cost: 2.0
-epistemic_validator_omega_reward: 0.05
-epistemic_validator_psi_reward: 0.01
-num_epistemic_validators: 1
-technogenesis_cost: 2.5
-technogenesis_omega_reward: 0.05
-technogenesis_psi_reward: 0.01
-num_technogenesis_agents: 1
-num_inspectors: 1
-num_police: 1
-num_coordinators: 1
-num_repair: 1
-num_master: 1
-num_students: 1
-num_scientists: 1
-num_storage: 1
-num_bank: 1
-num_merchant: 1
-num_miner: 1
-num_population_regulators: 1
-num_seeders: 1
-num_cluster_balancers: 1
-num_mediators: 1
-num_migration_agents: 1
-num_node_balancers: 1
-num_cluster_formers: 1
-num_perspective_agents: 1
-num_cultural_mirrors: 1
-num_synthesizer_agents: 1
-num_pattern_miner_agents: 1
-num_trend_detector_agents: 1
-num_chrono_agents: 1
-num_feedback_loop_agents: 1
-num_memory_adjuster_agents: 1
-num_global_metrics_agents: 1
-num_log_evaluator_agents: 1
-num_webcrawler_agents: 1
-num_rsslistener_agents: 1
-num_apicollector_agents: 1
-num_interface_agents: 1
-num_translator_agents: 1
-num_dataset_agents: 1
-num_autolabel_agents: 1
-num_realvsfiction_agents: 1
-num_sourceverifier_agents: 1
+# === GENERAL SETTINGS ===
+general:
+  project_name: "MSC Framework"
+  version: "4.0.0"
+  environment: "development"  # development, staging, production
+  debug: true
+  timezone: "UTC"
+
+# === SIMULATION SETTINGS ===
+simulation:
+  steps: 100000
+  step_delay: 0.1  # seconds between steps
+  checkpoint_interval: 1000  # steps between checkpoints
+  evolution_interval: 100  # steps between evolution phases
+  consensus_interval: 500  # steps between consensus phases
+  max_concurrent_actions: 5
+  auto_save: true
+  auto_recovery: true
+  performance_tracking: true
+  save_path: "./data/simulations"
+
+# === AGENT CONFIGURATION ===
+agents:
+  claude_taec: 3  # Number of Claude-TAEC agents
+  analytical_agents: 0  # Future: analytical specialists
+  creative_agents: 0   # Future: creative specialists
+  validator_agents: 0  # Future: validation specialists
+  
+agent_defaults:
+  initial_omega: 100.0
+  max_omega: 1000.0
+  omega_regeneration: 0.1  # per step per reputation point
+  agent_rate_limit: 10  # actions per minute
+  exploration_rate: 0.1  # epsilon for exploration vs exploitation
+  learning_rate: 0.001  # for agent neural networks
+  reputation_decay: 0.01  # daily reputation decay
+  memory_capacity: 1000  # action history size
+  
+# === GRAPH NEURAL NETWORK ===
+gnn:
+  node_features: 768  # dimension of node embeddings (matches sentence-transformers)
+  hidden_channels: 128
+  output_channels: 64
+  num_heads: 8  # attention heads for GAT
+  num_layers: 4
+  dropout: 0.1
+  learning_rate: 0.001
+  weight_decay: 0.01
+  scheduler_patience: 10
+  scheduler_factor: 0.5
+  batch_size: 64
+
+# === KNOWLEDGE GRAPH ===
+graph:
+  max_nodes: 100000
+  max_edges_per_node: 100
+  min_node_state: 0.01
+  max_node_state: 1.0
+  state_update_threshold: 0.001  # minimum change to update
+  embedding_model: "all-MiniLM-L6-v2"  # sentence-transformers model
+  embedding_cache_size: 10000
+  importance_recalc_interval: 100  # steps
+  
+# === CLAUDE API SETTINGS ===
+claude:
+  api_key: "${CLAUDE_API_KEY}"  # Use environment variable
+  model: "claude-3-sonnet-20240229"
+  max_tokens: 2000
+  temperature: 0.7
+  system_prompt_prefix: "You are an expert Python developer specializing in graph algorithms, multi-agent systems, and metaprogramming."
+  rate_limit: 50  # requests per minute
+  retry_attempts: 3
+  retry_delay: 2.0  # seconds
+  cache_ttl: 3600  # seconds
+  cache_enabled: true
+
+# === TAEC MODULE SETTINGS ===
+taec:
+  evolution_generations: 50
+  population_size: 100
+  mutation_rate: 0.1
+  crossover_rate: 0.7
+  elite_size: 10
+  fitness_threshold: 0.9
+  code_timeout: 5.0  # seconds for generated code execution
+  max_code_length: 10000  # characters
+  plugin_directory: "./plugins"
+  enable_quantum_optimization: true
+  enable_predictive_evolution: true
+
+# === SCED BLOCKCHAIN SETTINGS ===
+sced:
+  consensus_timeout: 30  # seconds
+  block_size: 1048576  # 1MB
+  max_transactions_per_block: 5000
+  validation_threshold: 0.7
+  min_validators: 3
+  reputation_weight: 0.6
+  stake_weight: 0.4
+  quantum_security_level: 256  # bits
+  zkp_security_parameter: 128
+  enable_smart_contracts: true
+
+# === SECURITY ===
+security:
+  max_code_execution_time: 5.0  # seconds
+  max_memory_per_execution: 100  # MB
+  allowed_imports:
+    - math
+    - random
+    - statistics
+    - itertools
+    - collections
+    - functools
+    - json
+    - re
+    - numpy
+    - networkx
+  forbidden_patterns:
+    - "__import__"
+    - "eval"
+    - "exec"
+    - "compile"
+    - "open"
+    - "file"
+    - "os."
+    - "sys."
+    - "subprocess"
+    - "importlib"
+    - "__builtins__"
+  enable_ast_validation: true
+  max_ast_complexity: 100
+
+# === CACHING ===
+cache:
+  local_size: 10000
+  local_ttl: 3600  # seconds
+  redis:
+    enabled: true
+    host: "${REDIS_HOST:-localhost}"
+    port: 6379
+    db: 0
+    password: "${REDIS_PASSWORD}"
+    max_connections: 50
+    decode_responses: true
+    socket_timeout: 5
+    connection_pool_kwargs:
+      max_connections: 100
+      retry_on_timeout: true
+
+# === DATABASE ===
+database:
+  postgres:
+    enabled: true
+    host: "${POSTGRES_HOST:-localhost}"
+    port: 5432
+    database: "${POSTGRES_DB:-msc_framework}"
+    user: "${POSTGRES_USER:-msc}"
+    password: "${POSTGRES_PASSWORD}"
+    pool_size: 20
+    max_overflow: 40
+    pool_timeout: 30
+    echo: false  # SQL logging
+
+# === API SERVER ===
+api:
+  enable: true
+  host: "0.0.0.0"
+  port: 5000
+  workers: 4  # number of worker processes
+  cors_origins: "*"  # Configure for production!
+  cors_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  cors_headers: ["Content-Type", "Authorization"]
+  rate_limits:
+    default: "1000 per hour"
+    strict: "100 per hour"
+    auth: "5 per minute"
+    evolution: "10 per hour"
+  jwt_expiration: 86400  # 24 hours in seconds
+  jwt_algorithm: "HS256"
+  enable_swagger: true
+  enable_graphql: false  # Future feature
+
+# === WEBSOCKET ===
+websocket:
+  enable: true
+  ping_interval: 10
+  ping_timeout: 30
+  max_message_size: 1048576  # 1MB
+  compression: true
+
+# === MONITORING ===
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+  sentry:
+    enabled: false  # Set to true in production
+    dsn: "${SENTRY_DSN}"
+    traces_sample_rate: 0.1
+    profiles_sample_rate: 0.1
+  logging:
+    level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    format: "colored"  # colored, json, standard
+    file_rotation: "daily"
+    max_file_size: "100MB"
+    backup_count: 7
+  performance_tracking: true
+  memory_profiling: false  # Enable only for debugging
+
+# === PERSISTENCE ===
+persistence:
+  enable_checkpoints: true
+  checkpoint_compression: true
+  checkpoint_format: "pickle"  # pickle, json, msgpack
+  backup_interval: 3600  # seconds
+  backup_retention_days: 30
+  data_directory: "./data"
+  checkpoint_directory: "./data/checkpoints"
+  backup_directory: "./data/backups"
+
+# === CLUSTERING & ANALYSIS ===
+clustering:
+  algorithm: "dbscan"  # dbscan, kmeans, hierarchical, spectral
+  dbscan:
+    eps: 0.3
+    min_samples: 3
+    metric: "cosine"
+  kmeans:
+    n_clusters: 10
+    n_init: 10
+    max_iter: 300
+  update_interval: 1000  # steps
+
+# === CONSENSUS MECHANISM ===
+consensus:
+  min_validators: 3
+  max_validators: 21
+  voting_weight: "reputation"  # reputation, stake, equal, hybrid
+  consensus_threshold: 0.67  # 2/3 majority
+  round_timeout: 30  # seconds
+  Byzantine_fault_tolerance: true
+  
+# === EVOLUTION STRATEGIES ===
+evolution:
+  strategies:
+    synthesis:
+      enabled: true
+      weight: 0.25
+      min_candidates: 2
+      max_candidates: 4
+      state_threshold: 0.6
+      similarity_threshold: 0.3
+    optimization:
+      enabled: true
+      weight: 0.20
+      focus: "connectivity"  # connectivity, state, balance, diversity
+      improvement_threshold: 0.1
+    innovation:
+      enabled: true
+      weight: 0.20
+      novelty_bonus: 2.0
+      max_innovations_per_cycle: 3
+      creativity_temperature: 0.8
+    exploration:
+      enabled: true
+      weight: 0.15
+      exploration_keywords:
+        - quantum_synthesis
+        - emergent_intelligence
+        - collective_consciousness
+        - meta_learning
+        - recursive_improvement
+        - semantic_convergence
+        - swarm_cognition
+        - epistemic_closure
+    consolidation:
+      enabled: true
+      weight: 0.10
+      isolation_threshold: 0.1
+      merge_threshold: 0.8
+    recovery:
+      enabled: true
+      weight: 0.10
+      health_threshold: 0.3
+      boost_amount: 0.1
+      max_boost_nodes: 10
+
+# === VISUALIZATION (TAECViz) ===
+visualization:
+  enabled: true
+  host: "localhost"
+  port: 8888
+  update_interval: 1.0  # seconds
+  max_graph_nodes_display: 1000
+  graph_3d:
+    enabled: true
+    layout: "force"  # force, kamada_kawai, spring, circular
+    node_size_factor: 10
+    edge_width_factor: 2
+    camera_distance: 100
+    enable_labels: true
+  graph_2d:
+    layout: "force"
+    charge_strength: -300
+    link_distance: 50
+    center_force: 0.1
+  timeline:
+    window_size: 1000
+    event_threshold: 10
+  quantum_viz:
+    enabled: true
+    coherence_threshold: 0.1
+  themes:
+    default: "dark"  # dark, light, auto
+    
+# === QUANTUM FEATURES ===
+quantum:
+  backend: "simulator"  # simulator, qiskit, cirq, aws_braket
+  num_qubits: 8
+  enable_error_correction: true
+  enable_entanglement_visualization: true
+  coherence_time: 1000  # arbitrary units
+  gate_error_rate: 0.001
+  measurement_error_rate: 0.01
+
+# === EXPERIMENTAL FEATURES ===
+experimental:
+  quantum_inspired_evolution: true
+  swarm_intelligence: false
+  federated_learning: false
+  blockchain_consensus: false
+  neuromorphic_computing: false
+  edge_computing: false
+  homomorphic_encryption: false
+  differential_privacy: false
+
+# === RESOURCE LIMITS ===
+resources:
+  max_memory_usage: "8GB"
+  max_cpu_cores: 8
+  gpu_enabled: true
+  gpu_memory_fraction: 0.8
+  enable_memory_profiling: false
+  garbage_collection_interval: 1000  # steps
+
+# === DEPLOYMENT ===
+deployment:
+  docker:
+    enable: true
+    image: "msc-framework:4.0"
+    registry: "${DOCKER_REGISTRY}"
+  kubernetes:
+    enable: false
+    namespace: "msc-framework"
+    replicas: 3
+  cloud:
+    provider: "aws"  # aws, gcp, azure
+    region: "${CLOUD_REGION:-us-east-1}"

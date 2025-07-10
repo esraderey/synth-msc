@@ -1,89 +1,509 @@
-# Marco de Síntesis Colectiva (MSC) / Collective Synthesis Framework (MSC)
+markdown<div align="center">
 
-[![Estado Construcción](https://img.shields.io/badge/build-passing-brightgreen)][![License](https://img.shields.io/badge/License-BUSL--1.1-lightgrey)](LICENSE) [[Contribuciones Bienvenidas](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md) **Un marco para la emergencia de soluciones complejas y conocimiento estructurado a través de inteligencia colectiva sintética.**
+# 🧠 MSC Framework v4.0
 
-## Resumen
+## Marco de Síntesis Colectiva / Collective Synthesis Framework
 
-El Marco de Síntesis Colectiva (MSC) es un proyecto de investigación y desarrollo que explora cómo la **inteligencia colectiva puede ir más allá de la clasificación o el consenso para realizar activamente la síntesis de conocimiento y la construcción de soluciones complejas**.
+[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/esraderey/synth-msc/releases)
+[![Python](https://img.shields.io/badge/python-3.8+-green.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-BUSL--1.1-lightgrey)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](docs/)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
 
-Proponemos un sistema donde agentes autónomos especializados (**Sintetizadores**) interactúan en un grafo dinámico (**Grafo de Síntesis**) que representa componentes de conocimiento y fragmentos de solución. A través de operaciones locales de **propuesta, evaluación, combinación y refutación**, guiadas por principios de **utilidad estimada y confianza**, el sistema busca generar estructuras emergentes (subgrafos) que representen soluciones coherentes, innovadoras y de alta calidad a problemas específicos.
+**Un framework revolucionario para la emergencia de inteligencia colectiva sintética mediante síntesis activa de conocimiento y auto-evolución cognitiva.**
 
-**Visión:** Crear sistemas de IA capaces de colaborar en la resolución de problemas complejos, el descubrimiento científico, el diseño de ingeniería y la innovación creativa de una manera más análoga a la colaboración humana experta, pero a la escala y velocidad de la computación.
+[Instalación](#-instalación) • [Características](#-características-principales) • [Documentación](#-documentación) • [Contribuir](#-contribuciones) • [Roadmap](#-roadmap)
 
-## Visión a Largo Plazo
+</div>
 
-Hemos esbozado una visión ambiciosa y detallada a largo plazo para MSC como una red descentralizada con un fuerte enfoque en la sostenibilidad y el impacto social, integrando conceptos de blockchain, DAO y el token $SYNTH.
+---
 
-➡️ Puedes leer la visión completa aquí: [**Documento de Visión (VISION.md)**](VISION.md)
+## 📋 Tabla de Contenidos
 
-## Autores
+- [Visión General](#-visión-general)
+- [Arquitectura](#-arquitectura)
+- [Características Principales](#-características-principales)
+- [Instalación](#-instalación)
+- [Uso Rápido](#-uso-rápido)
+- [Componentes](#-componentes)
+- [API Reference](#-api-reference)
+- [Configuración](#-configuración)
+- [Desarrollo](#-desarrollo)
+- [Roadmap](#-roadmap)
+- [Contribuciones](#-contribuciones)
+- [Licencia](#-licencia)
 
-* **esraderey** - Conceptualización, Dirección, Arquitectura y Desarrollo.
-* **Asistencia IA (Gemini / Synthia)** – Herramienta utilizada bajo dirección humana para acelerar la generación de código base y documentación. **No tiene coautoría ni derechos sobre este proyecto.**
+## 🎯 Visión General
 
-## Estado Actual del Proyecto
+El **MSC Framework** es un sistema de vanguardia que implementa inteligencia colectiva sintética a través de:
 
-Actualmente, el proyecto MSC se encuentra principalmente en la **Fase 1: Fundamentación Teórica y Simulación Avanzada**. Estamos refinando los modelos matemáticos, desarrollando simulaciones para validar las dinámicas centrales y explorando la teoría económica interna (ver Roadmap).
+- **🤖 Agentes Autónomos**: Sintetizadores especializados que colaboran en un grafo dinámico
+- **🧬 Auto-Evolución**: Sistema TAEC que mejora su propio código mediante IA
+- **🔗 Consenso Distribuido**: Blockchain epistémico con validación cuántica (SCED)
+- **📊 Visualización Avanzada**: Dashboard interactivo 3D en tiempo real (TAECViz)
 
-El código en este repositorio incluye una **implementación base de simulación en Python** diseñada para ilustrar los conceptos fundamentales (configurable vía `config.yaml` y argumentos CLI).
+### 🎯 Casos de Uso
 
-## Conceptos Clave
+- **Investigación en IA**: Exploración automática de arquitecturas y algoritmos
+- **Síntesis de Conocimiento**: Integración de literatura científica y descubrimientos
+- **Optimización Compleja**: Solución de problemas NP-hard mediante evolución
+- **Generación de Código**: Sistema que mejora su propia implementación
 
-* **Grafo de Síntesis (G'):** Grafo dirigido dinámico (nodos=`V'`, aristas=`E'`).
-* **Componente de Conocimiento (Nodo V'):** Unidad de info/solución con estado `sj`.
-* **Relación de Síntesis (Arista E'):** Conexión dirigida con utilidad `uij`.
-* **Estado del Nodo (`sj`):** Confianza/calidad estimada del nodo.
-* **Utilidad/Compatibilidad (`uij`):** Calidad/fuerza estimada de la relación.
-* **Sintetizador (Agente):** Realiza Operaciones de Síntesis (Proponer, Evaluar, Combinar, etc.).
-* **Métrica de Calidad de Solución (Φ):** Evalúa la calidad de soluciones emergentes.
+## 🏗️ Arquitectura
 
-## Modelo Económico Interno (Ψ y Ω)
+```mermaid
+graph TB
+    subgraph "MSC Core"
+        A[Knowledge Graph] --> B[GNN Processing]
+        B --> C[Agent System]
+        C --> D[Event Bus]
+    end
+    
+    subgraph "TAEC Module"
+        E[Code Evolution] --> F[Claude Integration]
+        F --> G[Quantum Memory]
+        G --> H[MSC-Lang Compiler]
+    end
+    
+    subgraph "SCED Blockchain"
+        I[Consensus Engine] --> J[Smart Contracts]
+        J --> K[ZK Proofs]
+        K --> L[Post-Quantum Crypto]
+    end
+    
+    subgraph "TAECViz"
+        M[3D Visualization] --> N[Real-time Analytics]
+        N --> O[WebSocket Server]
+        O --> P[Interactive Dashboard]
+    end
+    
+    C --> E
+    C --> I
+    D --> O
+✨ Características Principales
+🧠 Núcleo MSC
 
-(En diseño/simulación) Basado en:
-* **Reputación (Ψ - Psi):** Puntuación intransferible basada en calidad de contribuciones.
-* **Recurso Computacional/Atencional (Ω - Omega):** Recurso consumible para acciones, ganado por contribuciones valiosas.
+Grafo de Conocimiento Dinámico: Hasta 100k nodos con embeddings de 768D
+Graph Neural Networks: Arquitectura GAT multi-cabeza con 8 heads
+Sistema Multi-Agente: Agentes Claude-TAEC con aprendizaje por refuerzo
+Event Bus Asíncrono: Manejo de eventos con priorización y persistencia
 
-## Primeros Pasos (Simulación Base)
+🧬 TAEC - Auto-Evolución Cognitiva
 
-**Requisitos:**
-* Python 3.7+
-* PyYAML (`pip install -r requirements.txt`)
+MSC-Lang 3.0: Lenguaje propio con tipos, async/await y compilación JIT
+Evolución Cuántica: Algoritmos inspirados en computación cuántica
+Integración Claude: Generación automática de código y meta-razonamiento
+Sistema de Plugins: Arquitectura extensible para nuevas capacidades
 
-**Instalación y Ejecución:**
+🔗 SCED - Consenso Epistémico
 
-1.  Clonar: `git clone https://github.com/esraderey/synth-msc.git && cd synth-msc`
-2.  (Opcional) Entorno virtual: `python -m venv venv && source venv/bin/activate` (o `venv\Scripts\activate` en Win)
-3.  Instalar dependencias: `pip install -r requirements.txt`
-4.  Ejecutar (ejemplos):
-    * `python msc_simulation.py` (usa defaults internos)
-    * `python msc_simulation.py --config config.yaml` (usa archivo de configuración)
-    * `python msc_simulation.py --simulation_steps 50` (sobrescribe un parámetro)
+Blockchain Post-Cuántico: Preparado para era de computación cuántica
+Zero-Knowledge Proofs: Validación sin revelar información sensible
+Smart Contracts: Contratos para validación automática de conocimiento
+Sistema de Reputación: Multi-dimensional con decay temporal
 
-## Contribuciones
+📊 TAECViz - Visualización
 
-¡Las contribuciones son bienvenidas! Consulta `CONTRIBUTING.md` (*pendiente*) y el `CODE_OF_CONDUCT.md` (*pendiente*). Reporta errores o ideas en [Issues](https://github.com/esraderey/synth-msc/issues).
+Visualización 3D/2D: Three.js y D3.js para grafos interactivos
+Dashboard en Tiempo Real: Métricas, alertas y análisis predictivo
+Visualización Cuántica: Estados, entrelazamiento y coherencia
+Command Palette: Control total del sistema desde el navegador
 
-## Roadmap del Proyecto
+🚀 Instalación
+Requisitos Previos
 
-1.  ✅ **Fase 1:** Fundamentación Teórica y Simulación Avanzada.
-2.   ✅ **Fase 2 (Parcial):** Núcleo (Simulador Base + Configuración Externa).
-3.   EN PROGRESO **Fase 3:** Economía (Ψ, Ω), Especialización Agentes, Mejoras Evaluación/Visualización.
-4.   FUTURO **Fase 4:** Expansión Dominio, Escalabilidad.
-5.   FUTURO (VISIÓN) **Fase 5:** Descentralización (MSC Network), Ecosistema Abierto. (Ver [VISION.md](VISION.md))
+Python 3.8+ (3.10+ recomendado)
+16GB RAM mínimo (32GB recomendado)
+GPU NVIDIA (opcional pero recomendado)
+Redis 6.0+
+PostgreSQL 13+
+Node.js 18+ (para desarrollo frontend)
 
-## Documentación Adicional
+Instalación Rápida
+bash# Clonar repositorio
+git clone https://github.com/esraderey/synth-msc.git
+cd synth-msc
 
-* **Visión Detallada:** [VISION.md](VISION.md)
-* **Whitepaper:** (*Próximamente*)
-* **Documentación de API:** (*Próximamente*)
+# Crear entorno virtual
+python -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
 
-## Licencia
+# Instalar dependencias
+pip install -r requirements.txt
 
-Este proyecto se distribuye bajo la **Business Source License 1.1 (BUSL-1.1)**.
-El uso, modificación y distribución están permitidos para fines no comerciales, de investigación y experimentación según los términos especificados.
-**Todo uso comercial antes del 16 de Abril de 2029 requiere permiso explícito del autor.** Después de esa fecha, el proyecto estará disponible bajo la Licencia MIT.
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales
 
-Ver el archivo [`LICENSE`](LICENSE) para los términos completos.
+# Inicializar base de datos
+python scripts/init_db.py
 
-## Cita 
-Si utilizas este trabajo en tu investigación, por favor cita:esraderey, & Synth . (2025). Marco de Síntesis Colectiva (MSC): Un Framework para Inteligencia Colectiva Sintética.
+# Ejecutar
+python msc_simulation.py --config config.yaml
+Instalación con Docker
+bash# Construir imagen
+docker build -t msc-framework:4.0 .
+
+# Ejecutar con docker-compose
+docker-compose up -d
+Instalación Completa (con todas las características)
+bash# Instalar dependencias del sistema
+sudo apt-get update
+sudo apt-get install -y python3-dev build-essential redis-server postgresql
+
+# Instalar CUDA para GPU (opcional)
+# Seguir guía en: https://developer.nvidia.com/cuda-downloads
+
+# Clonar y configurar
+git clone https://github.com/esraderey/synth-msc.git
+cd synth-msc
+
+# Crear entorno con conda (recomendado)
+conda create -n msc python=3.10
+conda activate msc
+
+# Instalar PyTorch con GPU
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+
+# Instalar otras dependencias
+pip install -r requirements.txt
+
+# Configurar servicios
+sudo systemctl start redis
+sudo systemctl start postgresql
+
+# Crear base de datos
+createdb msc_framework
+
+# Migrar esquemas
+alembic upgrade head
+
+# Configurar Claude API
+export CLAUDE_API_KEY="tu-api-key"
+
+# Ejecutar con todas las características
+python msc_simulation.py --config config.yaml --enable-all
+💻 Uso Rápido
+Ejemplo Básico
+pythonimport asyncio
+from msc_framework import MSCFramework
+
+async def main():
+    # Crear framework con configuración
+    config = {
+        'agents': {'claude_taec': 3},
+        'claude_api_key': 'tu-api-key',
+        'enable_viz': True
+    }
+    
+    framework = MSCFramework(config)
+    await framework.initialize()
+    
+    # Añadir conocimiento inicial
+    node = await framework.add_knowledge(
+        content="Quantum computing principles",
+        keywords=["quantum", "computing", "qubits"]
+    )
+    
+    # Ejecutar evolución
+    result = await framework.evolve()
+    print(f"Evolution result: {result}")
+    
+    # Iniciar visualización
+    await framework.start_visualization()
+
+asyncio.run(main())
+Uso Avanzado con Plugins
+pythonfrom msc_framework import MSCFramework, PluginInterface
+
+class CustomAnalyzer(PluginInterface):
+    def get_capabilities(self):
+        return {'provides': ['custom_analysis']}
+    
+    async def process(self, context):
+        # Tu lógica personalizada
+        return {'analysis': 'results'}
+
+# Registrar plugin
+framework.register_plugin('custom_analyzer', CustomAnalyzer())
+🔧 Componentes
+MSC Core (msc-framework-v4.py)
+
+Clases principales:
+
+AdvancedCollectiveSynthesisGraph: Grafo principal
+ClaudeTAECAgent: Agentes inteligentes
+AdvancedGNN: Red neuronal de grafos
+
+
+
+TAEC Module (Taec V 3.0.py)
+
+Clases principales:
+
+TAECv3Module: Módulo principal de evolución
+MSCLang3Compiler: Compilador del lenguaje
+QuantumEvolutionEngine: Motor de evolución cuántica
+
+
+
+SCED Blockchain (sced v3.py)
+
+Clases principales:
+
+SCEDBlockchain: Blockchain principal
+PostQuantumCrypto: Criptografía post-cuántica
+ZKPSystem: Sistema de pruebas de conocimiento cero
+
+
+
+TAECViz (Taecviz v.2.0 .py)
+
+Clases principales:
+
+TAECVizApplication: Aplicación de visualización
+WebSocketHandler: Comunicación en tiempo real
+
+
+
+📚 API Reference
+REST API Endpoints
+bash# Sistema
+GET  /api/system/health          # Estado del sistema
+GET  /api/system/metrics         # Métricas Prometheus
+
+# Grafo
+GET  /api/graph/status          # Estado del grafo
+GET  /api/graph/nodes           # Lista de nodos (paginada)
+POST /api/graph/nodes           # Crear nodo
+GET  /api/graph/nodes/:id       # Detalles de nodo
+POST /api/graph/edges           # Crear conexión
+
+# Agentes
+GET  /api/agents                # Lista de agentes
+GET  /api/agents/:id            # Detalles de agente
+POST /api/agents/:id/act        # Trigger acción
+
+# Simulación
+GET  /api/simulation/status     # Estado de simulación
+POST /api/simulation/control    # Control (start/stop/pause)
+POST /api/simulation/checkpoint # Crear checkpoint
+
+# Análisis
+GET  /api/graph/analyze/centrality   # Análisis de centralidad
+GET  /api/graph/analyze/communities  # Detección de comunidades
+POST /api/graph/cluster              # Ejecutar clustering
+WebSocket Events
+javascript// Conectar
+ws = new WebSocket('ws://localhost:5000/ws');
+
+// Eventos disponibles
+ws.on('metrics_update', (data) => { /* métricas */ });
+ws.on('graph_update', (data) => { /* grafo */ });
+ws.on('evolution_update', (data) => { /* evolución */ });
+ws.on('alert', (data) => { /* alertas */ });
+
+// Comandos
+ws.send(JSON.stringify({
+    type: 'trigger_evolution',
+    params: {}
+}));
+Python API
+python# Importar componentes
+from msc_framework import (
+    MSCFramework,
+    ClaudeTAECAgent,
+    AdvancedKnowledgeComponent,
+    TAECv3Module
+)
+
+# Crear framework
+framework = MSCFramework(config)
+
+# Operaciones principales
+await framework.add_node(content, keywords)
+await framework.add_edge(source_id, target_id, utility)
+await framework.evolve_system()
+await framework.create_checkpoint(name)
+
+# Análisis
+health = framework.calculate_graph_health()
+centralities = await framework.analyze_centralities()
+communities = await framework.detect_communities()
+⚙️ Configuración
+Configuración Mínima
+yaml# config.minimal.yaml
+simulation:
+  steps: 1000
+  
+agents:
+  claude_taec: 1
+  
+claude:
+  api_key: "${CLAUDE_API_KEY}"
+  
+api:
+  enable: true
+  port: 5000
+Variables de Entorno
+bash# .env
+CLAUDE_API_KEY=your-api-key
+REDIS_URL=redis://localhost:6379
+DATABASE_URL=postgresql://user:pass@localhost/msc
+SENTRY_DSN=your-sentry-dsn  # Opcional
+Configuración por Ambiente
+bash# Desarrollo
+python msc_simulation.py --config config.dev.yaml
+
+# Producción
+python msc_simulation.py --config config.prod.yaml --workers 8
+🛠️ Desarrollo
+Estructura del Proyecto
+synth-msc/
+├── msc-framework-v4.py      # Core del framework
+├── sced v3.py               # Blockchain epistémico
+├── Taec V 3.0.py           # Auto-evolución
+├── Taecviz v.2.0 .py       # Visualización
+├── config.yaml             # Configuración principal
+├── requirements.txt        # Dependencias
+├── tests/                  # Tests unitarios
+├── docs/                   # Documentación
+├── scripts/                # Scripts de utilidad
+├── plugins/                # Plugins personalizados
+└── data/                   # Datos y checkpoints
+Testing
+bash# Ejecutar todos los tests
+pytest
+
+# Con cobertura
+pytest --cov=msc_framework
+
+# Tests específicos
+pytest tests/test_graph.py -v
+
+# Tests de integración
+pytest tests/integration/ -v
+Linting y Formato
+bash# Formatear código
+black .
+
+# Ordenar imports
+isort .
+
+# Linting
+flake8
+pylint msc_framework/
+
+# Type checking
+mypy msc_framework/
+Documentación
+bash# Generar documentación
+cd docs/
+make html
+
+# Ver documentación
+open _build/html/index.html
+📈 Roadmap
+✅ Fase 1: Fundamentos (Completada)
+
+ Arquitectura base del framework
+ Grafo de conocimiento con GNN
+ Sistema de agentes básico
+ Integración inicial con Claude
+
+✅ Fase 2: Core Avanzado (Completada)
+
+ TAEC con auto-evolución
+ SCED blockchain epistémico
+ TAECViz visualización
+ API REST y WebSockets
+
+🚧 Fase 3: Optimización (En Progreso)
+
+ Sistema económico (Ψ, Ω)
+ Especialización de agentes
+ Optimización de rendimiento
+ Tests exhaustivos
+ Documentación completa
+
+📅 Fase 4: Escalabilidad (Q2 2025)
+
+ Clustering distribuido
+ Sharding del grafo
+ Federación de instancias
+ SDK para desarrolladores
+
+🔮 Fase 5: Descentralización (Q4 2025)
+
+ P2P networking
+ Token $SYNTH
+ Governance DAO
+ Marketplace de plugins
+
+🚀 Fase 6: Ecosistema (2026)
+
+ Integración con otras IAs
+ APIs públicas
+ Aplicaciones específicas
+ Comunidad global
+
+🤝 Contribuciones
+¡Las contribuciones son bienvenidas! Por favor lee nuestras guías:
+
+CONTRIBUTING.md - Guía de contribución
+CODE_OF_CONDUCT.md - Código de conducta
+DEVELOPMENT.md - Guía de desarrollo
+
+Cómo Contribuir
+
+Fork el repositorio
+Crea tu rama (git checkout -b feature/AmazingFeature)
+Commit cambios (git commit -m 'Add AmazingFeature')
+Push a la rama (git push origin feature/AmazingFeature)
+Abre un Pull Request
+
+Áreas que Necesitan Ayuda
+
+🧪 Testing: Aumentar cobertura de tests
+📚 Documentación: Tutoriales y ejemplos
+🎨 UI/UX: Mejorar visualizaciones
+🔧 Optimización: Performance y escalabilidad
+🌐 i18n: Traducciones
+
+📄 Licencia
+Este proyecto está licenciado bajo la Business Source License 1.1 (BUSL-1.1).
+
+✅ Uso libre para investigación y desarrollo
+✅ Modificación y distribución no comercial permitida
+⚠️ Uso comercial requiere licencia hasta 2029
+✅ Transición a MIT License en Abril 2029
+
+Ver LICENSE para detalles completos.
+📖 Citación
+Si usas MSC Framework en tu investigación, por favor cita:
+msc.framework@gmail.com
+  author = {esraderey and Synth},
+  title = {MSC Framework: Marco de Síntesis Colectiva para Inteligencia Artificial},
+  year = {2025},
+  version = {4.0.0},
+  url = {https://github.com/esraderey/synth-msc}
+} 
+🙏 Agradecimientos
+
+Claude (Anthropic) - Por la integración de IA
+PyTorch Team - Por el framework de deep learning
+Open Source Community - Por las librerías base
+
+📞 Contacto
+
+Issues: GitHub Issues
+Discussions: GitHub Discussions
+Email: msc.framework@gmail.com
+Discord: [Próximamente]
+
+<div align="center">
+⬆ Volver arriba
+Hecho con ❤️ por esraderey & Synth
+</div>
+```
