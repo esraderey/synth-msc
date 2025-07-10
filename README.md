@@ -49,38 +49,40 @@ El **MSC Framework** es un sistema de vanguardia que implementa inteligencia col
 - **Síntesis de Conocimiento**: Integración de literatura científica y descubrimientos
 - **Optimización Compleja**: Solución de problemas NP-hard mediante evolución
 - **Generación de Código**: Sistema que mejora su propia implementación
-
-## 🏗️ Arquitectura
-
-```mermaid
+🏗️ Arquitectura
 graph TB
-    subgraph "MSC Core"
-        A[Knowledge Graph] --> B[GNN Processing]
-        B --> C[Agent System]
-        C --> D[Event Bus]
+    subgraph MSC["MSC Core Framework"]
+        A[Knowledge Graph<br/>100k nodes] --> B[GNN Processing<br/>GAT Multi-head]
+        B --> C[Agent System<br/>Claude-TAEC]
+        C --> D[Event Bus<br/>Async Priority Queue]
     end
     
-    subgraph "TAEC Module"
-        E[Code Evolution] --> F[Claude Integration]
-        F --> G[Quantum Memory]
-        G --> H[MSC-Lang Compiler]
+    subgraph TAEC["TAEC Evolution Module"]
+        E[Code Evolution<br/>Genetic Algorithms] --> F[Claude API<br/>Code Generation]
+        F --> G[Quantum Memory<br/>Hybrid Processing]
+        G --> H[MSC-Lang 3.0<br/>JIT Compiler]
     end
     
-    subgraph "SCED Blockchain"
-        I[Consensus Engine] --> J[Smart Contracts]
-        J --> K[ZK Proofs]
-        K --> L[Post-Quantum Crypto]
+    subgraph SCED["SCED Consensus Layer"]
+        I[Consensus Engine<br/>BFT Protocol] --> J[Smart Contracts<br/>Epistemic Validation]
+        J --> K[ZK Proofs<br/>Privacy Preserving]
+        K --> L[Post-Quantum<br/>Cryptography]
     end
     
-    subgraph "TAECViz"
-        M[3D Visualization] --> N[Real-time Analytics]
-        N --> O[WebSocket Server]
-        O --> P[Interactive Dashboard]
+    subgraph VIZ["TAECViz Dashboard"]
+        M[3D Graph Viz<br/>Three.js] --> N[Analytics<br/>ML Predictions]
+        N --> O[WebSocket<br/>Real-time Updates]
+        O --> P[Web Dashboard<br/>Interactive UI]
     end
     
-    C --> E
-    C --> I
-    D --> O
+    C -.->|evolve| E
+    C -.->|validate| I
+    D -.->|stream| O
+    
+    style MSC fill:#3B82F6,stroke:#1E40AF,stroke-width:2px,color:#fff
+    style TAEC fill:#10B981,stroke:#059669,stroke-width:2px,color:#fff
+    style SCED fill:#8B5CF6,stroke:#6D28D9,stroke-width:2px,color:#fff
+    style VIZ fill:#F59E0B,stroke:#D97706,stroke-width:2px,color:#fff
 ✨ Características Principales
 🧠 Núcleo MSC
 
