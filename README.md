@@ -16,9 +16,7 @@
 [Instalación](#-instalación) • [Características](#-características-principales) • [Documentación](#-documentación) • [Contribuir](#-contribuciones) • [Roadmap](#-roadmap)
 
 </div>
-
 ---
-
 ## 📋 Tabla de Contenidos
 
 - [Visión General](#-visión-general)
@@ -42,9 +40,7 @@ El **MSC Framework** es un sistema de vanguardia que implementa inteligencia col
 - **🧬 Auto-Evolución**: Sistema TAEC que mejora su propio código mediante IA
 - **🔗 Consenso Distribuido**: Blockchain epistémico con validación cuántica (SCED)
 - **📊 Visualización Avanzada**: Dashboard interactivo 3D en tiempo real (TAECViz)
-
 ### 🎯 Casos de Uso
-
 - **Investigación en IA**: Exploración automática de arquitecturas y algoritmos
 - **Síntesis de Conocimiento**: Integración de literatura científica y descubrimientos
 - **Optimización Compleja**: Solución de problemas NP-hard mediante evolución
@@ -56,155 +52,120 @@ flowchart TB
         GNN[GNN Processing]
         AS[Agent System]
         EB[Event Bus]
-        
         KG --> GNN
         GNN --> AS
         AS --> EB
     end
-    
     subgraph Evolution
         CE[Code Evolution]
         CI[Claude Integration]
         QM[Quantum Memory]
         MC[MSC-Lang Compiler]
-        
         CE --> CI
         CI --> QM
         QM --> MC
     end
-    
     subgraph Blockchain
         CO[Consensus]
         SC[Smart Contracts]
         ZK[ZK Proofs]
         PQ[Post-Quantum Crypto]
-        
         CO --> SC
         SC --> ZK
         ZK --> PQ
     end
-    
     subgraph Visualization
         V3[3D Visualization]
         RA[Real-time Analytics]
         WS[WebSocket Server]
         DA[Dashboard]
-        
         V3 --> RA
         RA --> WS
         WS --> DA
     end
-    
     AS --> CE
     AS --> CO
     EB --> WS
 🧠 Núcleo MSC
-
 Grafo de Conocimiento Dinámico: Hasta 100k nodos con embeddings de 768D
 Graph Neural Networks: Arquitectura GAT multi-cabeza con 8 heads
 Sistema Multi-Agente: Agentes Claude-TAEC con aprendizaje por refuerzo
 Event Bus Asíncrono: Manejo de eventos con priorización y persistencia
-
 🧬 TAEC - Auto-Evolución Cognitiva
-
 MSC-Lang 3.0: Lenguaje propio con tipos, async/await y compilación JIT
 Evolución Cuántica: Algoritmos inspirados en computación cuántica
 Integración Claude: Generación automática de código y meta-razonamiento
 Sistema de Plugins: Arquitectura extensible para nuevas capacidades
-
 🔗 SCED - Consenso Epistémico
-
 Blockchain Post-Cuántico: Preparado para era de computación cuántica
 Zero-Knowledge Proofs: Validación sin revelar información sensible
 Smart Contracts: Contratos para validación automática de conocimiento
 Sistema de Reputación: Multi-dimensional con decay temporal
-
 📊 TAECViz - Visualización
-
 Visualización 3D/2D: Three.js y D3.js para grafos interactivos
 Dashboard en Tiempo Real: Métricas, alertas y análisis predictivo
 Visualización Cuántica: Estados, entrelazamiento y coherencia
 Command Palette: Control total del sistema desde el navegador
-
 🚀 Instalación
 Requisitos Previos
-
 Python 3.8+ (3.10+ recomendado)
 16GB RAM mínimo (32GB recomendado)
 GPU NVIDIA (opcional pero recomendado)
 Redis 6.0+
 PostgreSQL 13+
 Node.js 18+ (para desarrollo frontend)
-
 Instalación Rápida
 bash# Clonar repositorio
 git clone https://github.com/esraderey/synth-msc.git
 cd synth-msc
-
 # Crear entorno virtual
 python -m venv venv
 source venv/bin/activate  # En Windows: venv\Scripts\activate
-
 # Instalar dependencias
 pip install -r requirements.txt
-
 # Configurar variables de entorno
 cp .env.example .env
 # Editar .env con tus credenciales
-
 # Inicializar base de datos
 python scripts/init_db.py
-
 # Ejecutar
 python msc_simulation.py --config config.yaml
 Instalación con Docker
 bash# Construir imagen
 docker build -t msc-framework:4.0 .
-
 # Ejecutar con docker-compose
 docker-compose up -d
 Instalación Completa (con todas las características)
 bash# Instalar dependencias del sistema
 sudo apt-get update
 sudo apt-get install -y python3-dev build-essential redis-server postgresql
-
 # Instalar CUDA para GPU (opcional)
 # Seguir guía en: https://developer.nvidia.com/cuda-downloads
-
 # Clonar y configurar
 git clone https://github.com/esraderey/synth-msc.git
 cd synth-msc
-
 # Crear entorno con conda (recomendado)
 conda create -n msc python=3.10
 conda activate msc
-
 # Instalar PyTorch con GPU
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-
 # Instalar otras dependencias
 pip install -r requirements.txt
-
 # Configurar servicios
 sudo systemctl start redis
 sudo systemctl start postgresql
-
 # Crear base de datos
 createdb msc_framework
-
 # Migrar esquemas
 alembic upgrade head
-
 # Configurar Claude API
 export CLAUDE_API_KEY="tu-api-key"
-
 # Ejecutar con todas las características
 python msc_simulation.py --config config.yaml --enable-all
 💻 Uso Rápido
 Ejemplo Básico
 pythonimport asyncio
 from msc_framework import MSCFramework
-
 async def main():
     # Crear framework con configuración
     config = {
@@ -212,7 +173,7 @@ async def main():
         'claude_api_key': 'tu-api-key',
         'enable_viz': True
     }
-    
+
     framework = MSCFramework(config)
     await framework.initialize()
     
