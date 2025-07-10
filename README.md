@@ -482,13 +482,12 @@ Este proyecto está licenciado bajo la Business Source License 1.1 (BUSL-1.1).
 Ver LICENSE para detalles completos.
 📖 Citación
 Si usas MSC Framework en tu investigación, por favor cita:
-msc.framework@gmail.com
   author = {esraderey and Synth},
   title = {MSC Framework: Marco de Síntesis Colectiva para Inteligencia Artificial},
   year = {2025},
   version = {4.0.0},
   url = {https://github.com/esraderey/synth-msc}
-} 
+}
 🙏 Agradecimientos
 
 Claude (Anthropic) - Por la integración de IA
@@ -499,11 +498,9 @@ Open Source Community - Por las librerías base
 
 Issues: GitHub Issues
 Discussions: GitHub Discussions
-Email: msc.framework@gmail.com
+Email:msc.framework@gmail.com
 Discord: [Próximamente]
-
 <div align="center">
 ⬆ Volver arriba
 Hecho con ❤️ por esraderey & Synth
 </div>
-```
