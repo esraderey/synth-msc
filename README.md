@@ -1,10 +1,10 @@
 <div align="center">
 
-![MSC Framework Banner](https://img.shields.io/badge/MSC_Framework-v4.0-blueviolet?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMiA3TDEyIDEyTDIyIDdMMTIgMloiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yIDEyTDEyIDE3TDIyIDEyIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz4KPHBhdGggZD0iTTIgMTdMMTIgMjJMMjIgMTciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4=)
+![MSC Framework Banner](https://img.shields.io/badge/MSC_Framework-v5.0-blueviolet?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMiA3TDEyIDEyTDIyIDdMMTIgMloiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yIDEyTDEyIDE3TDIyIDEyIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz4KPHBhdGggZD0iTTIgMTdMMTIgMjJMMjIgMTciIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4=)
 
-# 🧠 **MSC Framework v4.0**
+# 🧠 **MSC Framework v5.0**
 
-### **Marco de Síntesis Colectiva** | *Collective Synthesis Framework*
+### **Marco de Síntesis Colectiva con Entes Digitales** | *Collective Synthesis Framework with Digital Entities*
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-BUSL--1.1-orange?style=flat-square)](LICENSE)
@@ -15,7 +15,7 @@
 
 <h3>
   <b>Un framework revolucionario para la emergencia de inteligencia colectiva sintética</b><br>
-  <i>mediante síntesis activa de conocimiento y auto-evolución cognitiva</i>
+  <i>mediante síntesis activa de conocimiento, auto-evolución cognitiva y entes digitales autónomos</i>
 </h3>
 
 [**🚀 Instalación**](#-instalación) • [**✨ Características**](#-características-principales) • [**📚 Documentación**](#-documentación) • [**🤝 Contribuir**](#-contribuciones) • [**🗺️ Roadmap**](#-roadmap)
@@ -23,6 +23,32 @@
 ---
 
 </div>
+
+## 🆕 **Novedades en v5.0 - Digital Entities Edition**
+
+<div align="center">
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="https://img.icons8.com/fluency/96/000000/robot.png" width="60" height="60"><br>
+<b>🤖 Entes Digitales Autónomos</b><br>
+<sub>Entidades con personalidad, memoria y comportamiento emergente</sub>
+</td>
+<td align="center" width="33%">
+<img src="https://img.icons8.com/fluency/96/000000/family.png" width="60" height="60"><br>
+<b>👥 Ecosistema Evolutivo</b><br>
+<sub>Reproducción, herencia y evolución dirigida por fitness</sub>
+</td>
+<td align="center" width="33%">
+<img src="https://img.icons8.com/fluency/96/000000/brain.png" width="60" height="60"><br>
+<b>🧬 Comportamiento Generado por IA</b><br>
+<sub>Claude genera comportamientos únicos para cada ente</sub>
+</td>
+</tr>
+</table>
+</div>
+
+---
 
 ## 📑 **Tabla de Contenidos**
 
@@ -66,22 +92,27 @@
 <div align="center">
 <table>
 <tr>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/artificial-intelligence.png" width="60" height="60"><br>
 <b>🤖 Agentes Autónomos</b><br>
 <sub>Sintetizadores especializados que colaboran en un grafo dinámico</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/dna.png" width="60" height="60"><br>
 <b>🧬 Auto-Evolución</b><br>
 <sub>Sistema TAEC que mejora su propio código mediante IA</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
+<img src="https://img.icons8.com/fluency/96/000000/user-group-man-woman.png" width="60" height="60"><br>
+<b>👾 Entes Digitales</b><br>
+<sub>Entidades autónomas con personalidad y comportamiento emergente</sub>
+</td>
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/blockchain-technology.png" width="60" height="60"><br>
 <b>🔗 Consenso Distribuido</b><br>
 <sub>Blockchain epistémico con validación cuántica (SCED)</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/3d-scale.png" width="60" height="60"><br>
 <b>📊 Visualización 3D</b><br>
 <sub>Dashboard interactivo en tiempo real (TAECViz)</sub>
@@ -96,8 +127,10 @@
 |------|-------------|------------|
 | 🔬 **Investigación en IA** | Exploración automática de arquitecturas y algoritmos | • Descubrimiento acelerado<br>• Optimización continua |
 | 📚 **Síntesis de Conocimiento** | Integración de literatura científica y descubrimientos | • Conexiones emergentes<br>• Validación cruzada |
+| 👾 **Vida Artificial** | Ecosistema de entes digitales con evolución dirigida | • Comportamientos emergentes<br>• Inteligencia colectiva |
 | ⚡ **Optimización Compleja** | Solución de problemas NP-hard mediante evolución | • Soluciones novedosas<br>• Adaptación dinámica |
 | 💻 **Generación de Código** | Sistema que mejora su propia implementación | • Auto-mejora continua<br>• Evolución dirigida |
+| 🧠 **Simulación Social** | Modelado de interacciones complejas entre agentes | • Dinámicas emergentes<br>• Aprendizaje colectivo |
 
 ---
 
@@ -112,6 +145,13 @@ graph TB
         GNN[🧠 GNN Processing<br/>Multi-head GAT • 8 heads]
         AS[🤖 Agent System<br/>Claude-TAEC agents]
         EB[📡 Event Bus<br/>Async • Priority queue]
+    end
+    
+    subgraph "👾 Digital Entity Ecosystem"
+        EE[🌍 Entity Ecosystem<br/>Max 100 entities]
+        EG[🔮 Entity Generator<br/>Claude-powered]
+        EP[🧬 Evolution Engine<br/>Genetic algorithms]
+        EM[💭 Entity Memory<br/>Experiences & knowledge]
     end
     
     subgraph "🧬 Evolution Engine"
@@ -139,6 +179,14 @@ graph TB
     GNN --> AS
     AS --> EB
     AS --> CE
+    
+    KG --> EE
+    EE --> EG
+    EE --> EP
+    EE --> EM
+    EG --> CI
+    EP --> CE
+    
     CE --> CI
     CI --> QM
     QM --> MC
@@ -153,6 +201,7 @@ graph TB
     
     style KG fill:#f9f,stroke:#333,stroke-width:2px
     style AS fill:#bbf,stroke:#333,stroke-width:2px
+    style EE fill:#9f9,stroke:#333,stroke-width:2px
     style CE fill:#bfb,stroke:#333,stroke-width:2px
     style CO fill:#fbb,stroke:#333,stroke-width:2px
 ```
@@ -162,6 +211,43 @@ graph TB
 ---
 
 ## ✨ **Características Principales**
+
+### 👾 **Ecosistema de Entes Digitales** *(NUEVO en v5.0)*
+<details>
+<summary><b>Ver características de entes digitales</b></summary>
+
+| Componente | Especificaciones | Características |
+|------------|------------------|-----------------|
+| **Tipos de Entes** | • 8 tipos especializados<br>• Comportamientos únicos<br>• Roles complementarios | • Explorer<br>• Synthesizer<br>• Guardian<br>• Innovator<br>• Harmonizer<br>• Amplifier<br>• Architect<br>• Oracle |
+| **Sistema de Personalidad** | • 8 dimensiones<br>• Herencia genética<br>• Mutación adaptativa | • Curiosidad<br>• Creatividad<br>• Sociabilidad<br>• Estabilidad<br>• Asertividad<br>• Empatía<br>• Lógica<br>• Intuición |
+| **Memoria y Aprendizaje** | • Memoria experiencial<br>• Patrones de conocimiento<br>• Historial de interacciones | • 1000 experiencias<br>• Recuerdo contextual<br>• Aprendizaje social |
+| **Evolución Dirigida** | • Selección por fitness<br>• Reproducción sexual<br>• Herencia de conocimiento | • 30% presión selectiva<br>• Crossover genético<br>• Mutación adaptativa |
+
+#### 🧬 Ciclo de Vida de un Ente Digital
+
+```python
+# Ejemplo del ciclo de vida
+class DigitalEntityLifecycle:
+    async def birth(self):
+        """Nacimiento con personalidad y comportamiento únicos"""
+        self.personality = generate_personality(self.type)
+        self.behavior = await claude.generate_behavior(self)
+        
+    async def live(self):
+        """Ciclo de percepción-decisión-acción"""
+        perception = await self.perceive(environment)
+        decision = await self.decide(perception)
+        result = await self.execute(decision)
+        self.memory.add_experience(result)
+        
+    async def evolve(self):
+        """Reproducción y evolución"""
+        if self.fitness > threshold:
+            offspring = await self.reproduce(partner)
+            offspring.inherit_knowledge(self, partner)
+```
+
+</details>
 
 ### 🧠 **Núcleo MSC**
 <details>
@@ -181,21 +267,28 @@ graph TB
 <summary><b>Ver sistema de evolución</b></summary>
 
 ```python
-# Ejemplo de auto-evolución
+# Ejemplo de auto-evolución con entes digitales
 class TAECEvolution:
-    async def evolve_function(self, func):
-        # Analiza el código actual
-        analysis = await self.analyze_code(func)
+    async def evolve_entity_behavior(self, entity):
+        # Analiza el comportamiento actual
+        analysis = await self.analyze_behavior(entity)
         
         # Genera mejoras con Claude
-        improvements = await self.claude.suggest_improvements(analysis)
+        improvements = await self.claude.improve_entity_behavior(
+            entity.type, 
+            entity.personality,
+            analysis
+        )
         
-        # Aplica evolución cuántica
-        evolved_code = await self.quantum_evolve(func, improvements)
+        # Aplica evolución
+        evolved_behavior = await self.apply_evolution(
+            entity.behavior_code, 
+            improvements
+        )
         
         # Valida y despliega
-        if await self.validate(evolved_code):
-            return self.deploy(evolved_code)
+        if await self.validate(evolved_behavior):
+            entity.behavior_code = evolved_behavior
 ```
 
 </details>
@@ -207,9 +300,10 @@ class TAECEvolution:
 | Feature | Descripción | Tecnología |
 |---------|-------------|------------|
 | **Consenso** | Validación epistémica distribuida | PBFT + PoKnowledge |
-| **Smart Contracts** | Contratos para conocimiento | Solidity compatible |
+| **Smart Contracts** | Contratos para conocimiento y entes | Solidity compatible |
 | **Criptografía** | Resistente a computación cuántica | Lattice-based |
 | **ZK Proofs** | Validación sin revelar datos | zk-SNARKs |
+| **Entity Contracts** | Contratos para ciclo de vida de entes | ERC-721 inspired |
 
 </details>
 
@@ -226,6 +320,7 @@ class TAECEvolution:
 - Navegación fluida 60 FPS
 - Zoom semántico inteligente
 - Layouts automáticos Force-directed
+- **NUEVO**: Visualización de entes digitales
 
 </td>
 <td width="50%">
@@ -235,10 +330,18 @@ class TAECEvolution:
 - Dashboards customizables
 - Alertas inteligentes
 - Análisis predictivo ML
+- **NUEVO**: Métricas de ecosistema de entes
 
 </td>
 </tr>
 </table>
+
+#### 👾 Visualización de Entes Digitales
+- Representación 3D de cada ente
+- Trayectorias de movimiento
+- Redes de interacción social
+- Árbol genealógico evolutivo
+- Mapa de calor de actividad
 
 </details>
 
@@ -256,7 +359,7 @@ class TAECEvolution:
 - 🐍 Python 3.8+
 - 💾 16GB RAM
 - 💻 CPU 4 cores
-- 📦 10GB almacenamiento
+- 📦 15GB almacenamiento
 
 </td>
 <td width="50%">
@@ -265,7 +368,7 @@ class TAECEvolution:
 - 🐍 Python 3.10+
 - 💾 32GB RAM
 - 🎮 GPU NVIDIA (CUDA 11.8+)
-- 📦 50GB SSD almacenamiento
+- 📦 100GB SSD almacenamiento
 
 </td>
 </tr>
@@ -282,27 +385,27 @@ cd synth-msc
 python -m venv venv
 source venv/bin/activate  # En Windows: venv\Scripts\activate
 
-# 3️⃣ Instalar dependencias
+# 3️⃣ Instalar dependencias v5.0
 pip install -r requirements.txt
 
 # 4️⃣ Configurar
 cp .env.example .env
 # Editar .env con tus credenciales
 
-# 5️⃣ Inicializar y ejecutar
+# 5️⃣ Inicializar y ejecutar con entes digitales
 python scripts/init_db.py
-python msc_simulation.py --config config.yaml
+python MSC_Digital_Entities_Extension_v5.0.py --config config.yaml
 ```
 
 ### 🐳 **Instalación con Docker**
 
 ```bash
 # Opción A: Docker Compose (recomendado)
-docker-compose up -d
+docker-compose -f docker-compose.v5.yml up -d
 
 # Opción B: Docker manual
-docker build -t msc-framework:4.0 .
-docker run -d -p 5000:5000 --env-file .env msc-framework:4.0
+docker build -t msc-framework:5.0 .
+docker run -d -p 5000:5000 --env-file .env msc-framework:5.0
 ```
 
 <details>
@@ -320,8 +423,8 @@ conda create -n msc python=3.10
 conda activate msc
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 
-# Instalar framework
-pip install -r requirements-gpu.txt
+# Instalar framework con soporte para entes
+pip install -r requirements.txt
 
 # Verificar GPU
 python -c "import torch; print(f'GPU disponible: {torch.cuda.is_available()}')"
@@ -333,62 +436,68 @@ python -c "import torch; print(f'GPU disponible: {torch.cuda.is_available()}')"
 
 ## 💻 **Uso Rápido**
 
-### 🎯 **Ejemplo Básico**
+### 🎯 **Ejemplo Básico con Entes Digitales**
 
 ```python
 import asyncio
-from msc_framework import MSCFramework
+from msc_framework import ExtendedSimulationRunner
 
 async def main():
-    # 🚀 Inicializar framework
-    framework = MSCFramework({
+    # 🚀 Inicializar framework v5.0
+    config = {
         'agents': {'claude_taec': 3},
         'claude_api_key': 'tu-api-key',
-        'enable_viz': True
-    })
+        'enable_viz': True,
+        'enable_digital_entities': True,
+        'max_entities': 50,
+        'initial_entity_population': 10
+    }
     
-    await framework.initialize()
+    simulation = ExtendedSimulationRunner(config)
+    await simulation.start()
     
-    # 📚 Añadir conocimiento
-    node = await framework.add_knowledge(
-        content="Quantum computing principles",
-        keywords=["quantum", "computing", "qubits"]
-    )
+    # 👾 El ecosistema de entes se inicializa automáticamente
     
-    # 🧬 Ejecutar evolución
-    result = await framework.evolve()
-    print(f"Evolution result: {result}")
-    
-    # 📊 Visualizar
-    await framework.start_visualization()
-    # Abrir http://localhost:5000
+    # 📊 Monitorear ecosistema
+    while True:
+        status = simulation.get_detailed_status()
+        ecosystem = status.get('entity_ecosystem', {})
+        
+        print(f"Población: {ecosystem.get('population', 0)}")
+        print(f"Generación: {ecosystem.get('generation', 0)}")
+        print(f"Tipos: {ecosystem.get('types', {})}")
+        
+        await asyncio.sleep(10)
 
 asyncio.run(main())
 ```
 
-### 🔌 **Uso con Plugins**
+### 👾 **Interacción con Entes Digitales**
 
 ```python
-from msc_framework import MSCFramework, PluginInterface
+from msc_framework import DigitalEntity, EntityType, EntityPersonality
 
-class QuantumOptimizer(PluginInterface):
-    """Plugin personalizado para optimización cuántica"""
-    
-    def get_capabilities(self):
-        return {
-            'provides': ['quantum_optimization'],
-            'requires': ['quantum_memory']
-        }
-    
-    async def process(self, context):
-        # Tu lógica de optimización
-        quantum_state = context['quantum_memory'].get_state()
-        optimized = self.optimize(quantum_state)
-        return {'result': optimized}
+# Crear un ente personalizado
+personality = EntityPersonality(
+    curiosity=0.9,
+    creativity=0.8,
+    sociability=0.7,
+    stability=0.5
+)
 
-# Registrar y usar
-framework.register_plugin('quantum_opt', QuantumOptimizer())
-result = await framework.run_plugin('quantum_opt', data)
+# Generar ente con Claude
+entity = await ecosystem.generator.generate_entity(
+    entity_type=EntityType.EXPLORER,
+    context={'needs': ['exploration', 'innovation']}
+)
+
+# Observar comportamiento del ente
+perception = await entity.perceive(graph, other_entities)
+decision = await entity.decide(perception)
+result = await entity.execute_action(decision, graph, other_entities)
+
+print(f"Ente {entity.id} decidió: {decision}")
+print(f"Resultado: {result}")
 ```
 
 ---
@@ -400,6 +509,7 @@ result = await framework.run_plugin('quantum_opt', data)
 | Componente | Archivo | Descripción | LOC |
 |------------|---------|-------------|-----|
 | 🧠 **MSC Core** | `msc-framework-v4.py` | Framework principal | ~2,500 |
+| 👾 **Digital Entities** | `MSC_Digital_Entities_Extension_v5.0.py` | Ecosistema de entes | ~3,000 |
 | 🧬 **TAEC Module** | `Taec V 3.0.py` | Auto-evolución cognitiva | ~1,800 |
 | 🔗 **SCED Blockchain** | `sced v3.py` | Consenso epistémico | ~1,200 |
 | 📊 **TAECViz** | `Taecviz v.2.0 .py` | Visualización 3D | ~1,000 |
@@ -420,6 +530,17 @@ result = await framework.run_plugin('quantum_opt', data)
 GET  /api/system/health         # Estado del sistema
 GET  /api/system/metrics        # Métricas Prometheus
 POST /api/system/checkpoint     # Crear checkpoint
+```
+
+#### **Entes Digitales** *(NUEVO)*
+```http
+GET  /api/entities              # Lista de entes activos
+GET  /api/entities/{id}         # Detalles de un ente
+POST /api/entities/spawn        # Generar nuevo ente
+GET  /api/entities/stats        # Estadísticas del ecosistema
+GET  /api/entities/ecosystem    # Estado del ecosistema
+GET  /api/entities/genealogy    # Árbol genealógico
+POST /api/entities/evolve       # Forzar ciclo evolutivo
 ```
 
 #### **Grafo de Conocimiento**
@@ -445,6 +566,7 @@ GET  /api/agents/{id}/history   # Historial acciones
 GET  /api/analysis/centrality   # Análisis centralidad
 GET  /api/analysis/communities  # Detección comunidades
 POST /api/analysis/predict      # Predicciones ML
+GET  /api/analysis/entity-impact # Impacto de entes en el grafo
 ```
 
 </details>
@@ -455,23 +577,34 @@ POST /api/analysis/predict      # Predicciones ML
 // Conectar al servidor
 const ws = new WebSocket('ws://localhost:5000/ws');
 
-// Suscribirse a eventos
+// Suscribirse a eventos incluyendo entes
 ws.on('open', () => {
     ws.send(JSON.stringify({
         type: 'subscribe',
-        channels: ['metrics', 'evolution', 'alerts']
+        channels: [
+            'metrics', 
+            'evolution', 
+            'alerts',
+            'entity_births',      // NUEVO
+            'entity_deaths',      // NUEVO
+            'entity_interactions', // NUEVO
+            'entity_evolutions'   // NUEVO
+        ]
     }));
 });
 
-// Recibir actualizaciones
+// Recibir actualizaciones de entes
 ws.on('message', (data) => {
     const event = JSON.parse(data);
     switch(event.type) {
-        case 'metrics_update':
-            updateDashboard(event.data);
+        case 'entity_birth':
+            console.log(`Nuevo ente nacido: ${event.data.entity_id}`);
             break;
-        case 'evolution_complete':
-            showEvolutionResults(event.data);
+        case 'entity_interaction':
+            console.log(`Interacción entre entes: ${event.data}`);
+            break;
+        case 'ecosystem_milestone':
+            alert(`¡Hito alcanzado! ${event.data.description}`);
             break;
     }
 });
@@ -482,134 +615,176 @@ ws.on('message', (data) => {
 ```python
 from msc_framework import MSCClient
 
-# Cliente asíncrono
+# Cliente asíncrono con soporte para entes
 async with MSCClient('http://localhost:5000') as client:
-    # Operaciones CRUD
-    node = await client.create_node(
-        content="New discovery",
-        metadata={'importance': 0.9}
+    # Operaciones con entes digitales
+    ecosystem_status = await client.get_ecosystem_status()
+    
+    # Generar nuevo ente
+    new_entity = await client.spawn_entity(
+        entity_type='EXPLORER',
+        personality_traits={'curiosity': 0.9}
     )
     
-    # Análisis
-    centrality = await client.analyze_centrality()
-    communities = await client.detect_communities(
-        algorithm='louvain',
-        resolution=1.0
+    # Obtener genealogía
+    genealogy = await client.get_entity_genealogy(entity_id)
+    
+    # Forzar evolución
+    evolution_result = await client.trigger_evolution(
+        selection_pressure=0.3
     )
     
-    # Evolución
-    await client.trigger_evolution(
-        target='optimize_performance',
-        constraints={'max_time': 300}
-    )
+    # Análisis de impacto de entes
+    impact = await client.analyze_entity_impact()
 ```
 
 ---
 
 ## ⚙️ **Configuración**
 
-### 📝 **Archivo de Configuración**
+### 📝 **Archivo de Configuración v5.0**
 
 ```yaml
-# config.yaml
-simulation:
-  steps: 10000
-  checkpoint_interval: 1000
+# config.yaml - Digital Entities Edition
+general:
+  project_name: "MSC Framework - Digital Entities"
+  version: "5.0.0"
   
+simulation:
+  steps: 100000
+  entity_update_interval: 5
+  
+# NUEVO: Configuración de Entes Digitales
+digital_entities:
+  enabled: true
+  max_entities: 100
+  initial_population: 10
+  generation_threshold: 0.8
+  evolution_rate: 0.1
+  interaction_radius: 5
+  
+  entity_types:
+    explorer: 
+      weight: 0.20
+      initial_count: 2
+    synthesizer:
+      weight: 0.20
+      initial_count: 2
+    guardian:
+      weight: 0.15
+      initial_count: 1
+    # ... más tipos
+  
+  personality:
+    dimensions: 8
+    volatility: 0.05
+    mutation_rate: 0.1
+    
+  memory:
+    experience_capacity: 1000
+    collective_memory_size: 10000
+    
+  metabolism:
+    initial_energy: 100.0
+    base_consumption: 0.5
+    action_costs:
+      move: 1.0
+      create_node: 5.0
+      interact: 3.0
+      synthesize: 10.0
+  
+  evolution:
+    selection_pressure: 0.3
+    elite_fraction: 0.2
+    crossover_enabled: true
+    mutation_enabled: true
+    
 agents:
   claude_taec: 5
-  quantum_synthesizer: 3
-  consensus_validator: 2
-  
-performance:
-  batch_size: 32
-  learning_rate: 0.001
-  gpu_enabled: true
   
 visualization:
-  enable: true
-  port: 5000
-  update_interval: 100
-  
-blockchain:
-  consensus: "pbft"
-  block_time: 10
-  validators: 4
+  entity_visualization:
+    enabled: true
+    show_paths: true
+    show_interactions: true
+    personality_colors: true
 ```
 
 ### 🔐 **Variables de Entorno**
 
 ```bash
-# .env
+# .env - v5.0
 # API Keys
 CLAUDE_API_KEY=your-claude-api-key
-OPENAI_API_KEY=your-openai-key  # Opcional
 
 # Base de Datos
-DATABASE_URL=postgresql://user:pass@localhost/msc
+DATABASE_URL=postgresql://user:pass@localhost/msc_v5
 REDIS_URL=redis://localhost:6379
 
-# Seguridad
-SECRET_KEY=your-secret-key
-JWT_SECRET=your-jwt-secret
-
-# Monitoring
-SENTRY_DSN=your-sentry-dsn
-PROMETHEUS_ENDPOINT=http://localhost:9090
+# Entidades
+ENTITY_BEHAVIOR_CACHE=true
+ENTITY_EVOLUTION_ENABLED=true
+MAX_ENTITY_POPULATION=100
 
 # Desarrollo
 DEBUG=false
 LOG_LEVEL=INFO
+ENTITY_LOG_LEVEL=DEBUG
 ```
 
 ---
 
 ## 🛠️ **Desarrollo**
 
-### 📁 **Estructura del Proyecto**
+### 📁 **Estructura del Proyecto v5.0**
 
 ```
 synth-msc/
 ├── 📂 src/
 │   ├── 🧠 msc-framework-v4.py
+│   ├── 👾 MSC_Digital_Entities_Extension_v5.0.py
 │   ├── 🧬 Taec V 3.0.py
 │   ├── 🔗 sced v3.py
 │   └── 📊 Taecviz v.2.0 .py
 ├── 📂 tests/
 │   ├── test_core.py
 │   ├── test_evolution.py
+│   ├── test_entities.py         # NUEVO
 │   └── test_integration.py
 ├── 📂 docs/
 │   ├── api.md
 │   ├── architecture.md
+│   ├── digital_entities.md      # NUEVO
 │   └── tutorials/
 ├── 📂 plugins/
+│   ├── entity_behaviors/         # NUEVO
 │   └── examples/
-├── 📂 scripts/
-│   ├── init_db.py
-│   └── benchmark.py
-├── 📄 requirements.txt
-├── 📄 docker-compose.yml
+├── 📂 data/
+│   ├── entities/                 # NUEVO
+│   ├── checkpoints/
+│   └── backups/
+├── 📄 requirements.txt           # Actualizado para v5.0
+├── 📄 docker-compose.v5.yml      # NUEVO
 └── 📄 README.md
 ```
 
 ### 🧪 **Testing**
 
 ```bash
-# Ejecutar suite completa
+# Ejecutar suite completa incluyendo entes
 pytest
 
+# Tests específicos de entes digitales
+pytest tests/test_entities.py -v
+
+# Tests de rendimiento con población de entes
+pytest tests/benchmarks/test_entity_performance.py --benchmark-only
+
+# Tests de evolución
+pytest tests/test_entities.py::test_evolution_cycle -v
+
 # Con cobertura
-pytest --cov=msc_framework --cov-report=html
-
-# Tests específicos
-pytest tests/test_core.py::test_graph_creation -v
-
-# Tests de rendimiento
-pytest tests/benchmarks/ --benchmark-only
-
-# Tests de integración
-pytest tests/integration/ --integration
+pytest --cov=msc_framework --cov=digital_entities --cov-report=html
 ```
 
 ### 📊 **Métricas de Calidad**
@@ -618,10 +793,11 @@ pytest tests/integration/ --integration
 
 | Métrica | Valor | Objetivo |
 |---------|-------|----------|
-| 🧪 **Cobertura Tests** | ![Coverage](https://img.shields.io/badge/coverage-87%25-green) | >90% |
+| 🧪 **Cobertura Tests** | ![Coverage](https://img.shields.io/badge/coverage-85%25-green) | >90% |
 | 📏 **Complejidad** | ![Complexity](https://img.shields.io/badge/complexity-A-green) | A |
-| 🐛 **Bugs** | ![Bugs](https://img.shields.io/badge/bugs-3-yellow) | 0 |
+| 🐛 **Bugs** | ![Bugs](https://img.shields.io/badge/bugs-5-yellow) | 0 |
 | 🔒 **Seguridad** | ![Security](https://img.shields.io/badge/security-A+-green) | A+ |
+| 👾 **Entes Activos** | ![Entities](https://img.shields.io/badge/entities-stable-green) | Stable |
 
 </div>
 
@@ -638,6 +814,7 @@ pytest tests/integration/ --integration
 - ✅ **v2.0** - Integración de agentes Claude
 - ✅ **v3.0** - Sistema TAEC de auto-evolución
 - ✅ **v4.0** - Blockchain SCED y visualización TAECViz
+- ✅ **v5.0** - Ecosistema de entes digitales autónomos
 
 </details>
 
@@ -645,9 +822,10 @@ pytest tests/integration/ --integration
 
 | Feature | Progreso | ETA |
 |---------|----------|-----|
-| 💰 Sistema Económico (Ψ, Ω) | ![70%](https://progress-bar.dev/70) | Q1 2025 |
-| 🎯 Especialización de Agentes | ![45%](https://progress-bar.dev/45) | Q1 2025 |
-| ⚡ Optimización GPU | ![85%](https://progress-bar.dev/85) | Q1 2025 |
+| 🧠 Conciencia Colectiva de Entes | ![20%](https://progress-bar.dev/20) | Q2 2025 |
+| 🎮 Control Directo de Entes | ![35%](https://progress-bar.dev/35) | Q2 2025 |
+| 🌍 Múltiples Ecosistemas Conectados | ![15%](https://progress-bar.dev/15) | Q3 2025 |
+| 🎵 Comunicación Sonora entre Entes | ![10%](https://progress-bar.dev/10) | Q3 2025 |
 
 ### 🔮 **Futuro**
 
@@ -655,21 +833,21 @@ pytest tests/integration/ --integration
 timeline
     title Roadmap MSC Framework
     
-    Q2 2025 : Clustering Distribuido
-            : Sharding Automático
-            : SDK Público
+    Q2 2025 : Conciencia Colectiva
+            : API de Control de Entes
+            : Herramientas de Diseño de Comportamiento
     
-    Q3 2025 : P2P Networking
-            : Token $SYNTH
-            : Testnet Público
+    Q3 2025 : Multi-Ecosistemas
+            : Protocolo Inter-Entes
+            : Mercado de Comportamientos
     
-    Q4 2025 : Mainnet Launch
-            : DAO Governance
-            : Plugin Marketplace
+    Q4 2025 : Realidad Aumentada para Entes
+            : Integración con Mundos Virtuales
+            : SDK para Desarrolladores de Entes
     
-    2026    : Integración Multi-IA
-            : Aplicaciones Verticales
-            : Expansión Global
+    2026    : Entes con Capacidad de Razonamiento
+            : Federación de Ecosistemas
+            : Estándar Abierto para Vida Digital
 ```
 
 ---
@@ -687,37 +865,37 @@ timeline
 ### 📋 **Cómo Contribuir**
 
 1. **Fork** el repositorio
-2. **Crea** tu rama (`git checkout -b feature/AmazingFeature`)
-3. **Commit** cambios (`git commit -m 'Add AmazingFeature'`)
-4. **Push** a la rama (`git push origin feature/AmazingFeature`)
+2. **Crea** tu rama (`git checkout -b feature/NuevoTipoEnte`)
+3. **Commit** cambios (`git commit -m 'Add NuevoTipoEnte'`)
+4. **Push** a la rama (`git push origin feature/NuevoTipoEnte`)
 5. **Abre** un Pull Request
 
-### 🎯 **Áreas Prioritarias**
+### 🎯 **Áreas Prioritarias para v5.0**
 
 <table>
 <tr>
 <td width="25%" align="center">
 
-**🧪 Testing**<br>
-<sub>Aumentar cobertura<br>Tests E2E</sub>
+**👾 Comportamientos**<br>
+<sub>Nuevos tipos de entes<br>Comportamientos complejos</sub>
 
 </td>
 <td width="25%" align="center">
 
-**📚 Documentación**<br>
-<sub>Tutoriales<br>Ejemplos prácticos</sub>
+**🧠 IA de Entes**<br>
+<sub>Mejoras en decisión<br>Aprendizaje avanzado</sub>
 
 </td>
 <td width="25%" align="center">
 
-**🎨 UI/UX**<br>
-<sub>Dashboard mejorado<br>Visualizaciones</sub>
+**🎨 Visualización**<br>
+<sub>UI para entes<br>Interacción directa</sub>
 
 </td>
 <td width="25%" align="center">
 
 **⚡ Performance**<br>
-<sub>Optimización<br>Escalabilidad</sub>
+<sub>Optimización GPU<br>Paralelización</sub>
 
 </td>
 </tr>
@@ -766,23 +944,23 @@ timeline
 Si usas MSC Framework en tu investigación:
 
 ```bibtex
-@software{msc_framework,
+@software{msc_framework_v5,
   author = {esraderey and Synth},
-  title = {MSC Framework: Marco de Síntesis Colectiva para IA},
+  title = {MSC Framework v5.0: Marco de Síntesis Colectiva con Entes Digitales},
   year = {2025},
-  version = {4.0.0},
+  version = {5.0.0},
   url = {https://github.com/esraderey/synth-msc}
 }
 ```
 
 ---
 
-**⬆ [Volver arriba](#-msc-framework-v40)**
+**⬆ [Volver arriba](#-msc-framework-v50)**
 
 <br>
 
 Hecho con ❤️ por **esraderey** & **Synth**
 
-<sub>MSC Framework • 2025 • Construyendo el futuro de la IA colectiva</sub>
+<sub>MSC Framework v5.0 • 2025 • Dando vida a la inteligencia colectiva</sub>
 
 </div>
