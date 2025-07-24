@@ -1,6 +1,6 @@
-# MSC Framework Enhanced v4.0 - Requirements
-# Python 3.8+ required (3.10+ recommended)
-# Last Updated: 2024
+# MSC Framework Enhanced v5.0 - Digital Entities Edition Requirements
+# Python 3.8+ required (3.10+ recommended for best performance)
+# Last Updated: 2025
 
 # === CORE DEPENDENCIES ===
 # Async operations
@@ -8,9 +8,11 @@ aiohttp==3.9.3
 aiofiles==23.2.1
 aiodns==3.1.1
 asyncio==3.4.3
+aioprocessing==2.0.1  # NEW: Async multiprocessing for entities
 
 # Web Framework
 tornado==6.4  # For TAECViz
+starlette==0.35.1  # NEW: Alternative async framework
 
 # === DATA SCIENCE & ML ===
 numpy==1.26.3
@@ -20,6 +22,8 @@ scikit-learn==1.4.0
 matplotlib==3.8.2
 seaborn==0.13.1
 plotly==5.18.0
+bokeh==3.3.4  # Interactive visualizations
+altair==5.2.0  # Declarative visualization
 
 # === DEEP LEARNING ===
 # PyTorch (CPU version - for GPU use torch==2.1.2+cu118)
@@ -34,6 +38,11 @@ torch-sparse==0.6.18
 torch-cluster==1.6.3
 torch-spline-conv==1.2.2
 
+# === DIGITAL ENTITY SPECIFIC ===
+# Personality and Behavior
+personality-insights==1.0.0  # NEW: Personality analysis
+behaviorml==0.2.0  # NEW: Behavior modeling
+
 # === CLAUDE API ===
 anthropic==0.18.1
 
@@ -41,6 +50,13 @@ anthropic==0.18.1
 sentence-transformers==2.3.1
 transformers==4.37.2
 tokenizers==0.15.1
+spacy==3.7.2  # NEW: Advanced NLP for entity communication
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+
+# === GENETIC ALGORITHMS ===
+deap==1.4.1  # NEW: Distributed Evolutionary Algorithms
+geneticalgorithm2==6.8.6  # NEW: Genetic algorithm framework
+pymoo==0.6.1.1  # NEW: Multi-objective optimization
 
 # === WEB FRAMEWORK & API ===
 Flask==3.0.1
@@ -50,6 +66,8 @@ Flask-Limiter==3.5.1
 Flask-JWT-Extended==4.6.0
 python-socketio==5.11.0
 eventlet==0.35.1  # For SocketIO async mode
+channels==4.0.0  # NEW: Django channels for WebSocket
+channels-redis==4.1.0  # NEW: Redis channel layer
 
 # === AUTHENTICATION & SECURITY ===
 Authlib==1.3.0
@@ -65,11 +83,21 @@ asyncpg==0.29.0
 psycopg2-binary==2.9.9  # PostgreSQL adapter
 sqlalchemy==2.0.25  # ORM
 alembic==1.13.1  # Database migrations
+motor==3.3.2  # NEW: Async MongoDB driver
+aiocouch==3.0.0  # NEW: Async CouchDB driver
 
 # === GRAPH ANALYSIS ===
 networkx==3.2.1
 python-louvain==0.16  # Community detection
 igraph==0.11.3  # Alternative graph library
+graph-tool==2.58  # NEW: High-performance graph analysis
+networkit==11.0  # NEW: Large-scale network analysis
+
+# === AGENT & SWARM INTELLIGENCE ===
+mesa==2.1.5  # NEW: Agent-based modeling
+pyswarms==1.3.0  # NEW: Particle swarm optimization
+ACO-Pants==0.5.2  # NEW: Ant colony optimization
+neat-python==0.92  # NEW: NEAT genetic algorithm
 
 # === MONITORING & METRICS ===
 prometheus-client==0.19.0
@@ -77,6 +105,8 @@ sentry-sdk==1.40.0
 opentelemetry-api==1.22.0
 opentelemetry-sdk==1.22.0
 opentelemetry-instrumentation==0.43b0
+grafana-api==1.0.3  # NEW: Grafana integration
+datadog==0.47.0  # NEW: Datadog monitoring
 
 # === UTILITIES ===
 PyYAML==6.0.1
@@ -86,40 +116,63 @@ colorama==0.4.6  # Cross-platform colored output
 click==8.1.7  # CLI framework
 rich==13.7.0  # Rich text formatting
 tqdm==4.66.1  # Progress bars
+tabulate==0.9.0  # NEW: Pretty tables
+alive-progress==3.1.5  # NEW: Better progress bars
 
 # === SERIALIZATION ===
 msgpack==1.0.7  # Fast serialization
 orjson==3.9.12  # Fast JSON
 pickle5==0.0.12  # Backport of Python 3.8 pickle
 dill==0.3.8  # Extended pickling
+cloudpickle==3.0.0  # NEW: Distributed pickling
+bson==0.5.10  # NEW: Binary JSON
 
 # === CACHING ===
 diskcache==5.6.3  # Disk-based cache
 cachetools==5.3.2  # In-memory caching utilities
+aiocache==0.12.2  # Async caching
+cachew==0.11.0  # NEW: Smart caching
 
 # === VALIDATION ===
 pydantic==2.5.3  # Data validation
 marshmallow==3.20.2  # Object serialization/validation
 cerberus==1.3.5  # Lightweight validation
+schema==0.7.5  # NEW: Simple data validation
 
 # === ASYNC UTILITIES ===
 aioretry==5.0.2  # Async retry decorator
-aiocache==0.12.2  # Async caching
 aiolimiter==1.1.0  # Async rate limiting
+aiojobs==1.2.1  # NEW: Job scheduler for asyncio
+aiostream==0.5.2  # NEW: Async stream processing
+
+# === SIMULATION & MODELING ===
+simpy==4.1.1  # NEW: Discrete-event simulation
+gym==0.26.2  # NEW: RL environments
+stable-baselines3==2.2.1  # NEW: RL algorithms
+pettingzoo==1.24.3  # NEW: Multi-agent RL
+
+# === ENTITY MEMORY & STORAGE ===
+lmdb==1.4.1  # NEW: Lightning memory-mapped database
+plyvel==1.5.0  # NEW: LevelDB interface
+rocksdb==0.8.0rc2  # NEW: RocksDB interface
 
 # === QUANTUM COMPUTING (Optional) ===
 # qiskit==0.45.2  # IBM Quantum
 # cirq==1.3.0  # Google Quantum
 # amazon-braket-sdk==1.73.0  # AWS Quantum
+# pennylane==0.34.0  # NEW: Quantum ML
 
 # === POST-QUANTUM CRYPTOGRAPHY (Optional) ===
 # liboqs-python==0.8.0  # Open Quantum Safe
 # pqcrypto==0.1.0  # Post-quantum crypto
 
 # === VISUALIZATION EXTRAS ===
-bokeh==3.3.4  # Interactive visualizations
-altair==5.2.0  # Declarative visualization
 holoviews==1.18.1  # Data visualization
+panel==1.3.8  # NEW: Dashboard framework
+datashader==0.16.0  # NEW: Large data visualization
+vispy==0.14.1  # NEW: High-performance visualization
+pyvista==0.43.2  # NEW: 3D visualization
+trimesh==4.0.8  # NEW: 3D mesh processing
 
 # === PERFORMANCE & PROFILING ===
 numba==0.59.0  # JIT compilation
@@ -127,6 +180,15 @@ cython==3.0.8  # C extensions
 line-profiler==4.1.0  # Line-by-line profiling
 memory-profiler==0.61.0  # Memory profiling
 py-spy==0.3.14  # Sampling profiler
+scalene==1.5.38  # NEW: High-performance profiler
+austin-python==1.7.0  # NEW: Frame stack sampler
+
+# === PARALLEL & DISTRIBUTED ===
+ray==2.9.1  # NEW: Distributed computing
+dask==2024.1.0  # NEW: Parallel computing
+joblib==1.3.2  # Parallel processing
+multiprocess==0.70.15  # Better multiprocessing
+mpi4py==3.1.5  # NEW: MPI for Python
 
 # === TESTING ===
 pytest==8.0.0
@@ -136,6 +198,8 @@ pytest-mock==3.12.0
 pytest-timeout==2.2.0
 pytest-benchmark==4.0.0
 hypothesis==6.96.1  # Property-based testing
+pytest-xdist==3.5.0  # NEW: Distributed testing
+faker==22.2.0  # NEW: Fake data generation
 
 # === DEVELOPMENT TOOLS ===
 black==24.1.1  # Code formatter
@@ -145,62 +209,96 @@ pylint==3.0.3  # Advanced linter
 mypy==1.8.0  # Type checker
 bandit==1.7.6  # Security linter
 pre-commit==3.6.0  # Git hooks
+autopep8==2.0.4  # NEW: Auto code formatting
+vulture==2.10  # NEW: Dead code detection
 
 # === DOCUMENTATION ===
 sphinx==7.2.6  # Documentation generator
 sphinx-rtd-theme==2.0.0  # Read the Docs theme
 myst-parser==2.0.0  # Markdown support for Sphinx
 autodoc==0.5.0  # Auto documentation
+mkdocs==1.5.3  # NEW: Alternative docs
+mkdocs-material==9.5.6  # NEW: Material theme
 
-# === DISTRIBUTED COMPUTING (Optional) ===
-# ray==2.9.1  # Distributed computing
-# dask==2024.1.0  # Parallel computing
-# celery==5.3.4  # Distributed task queue
-
-# === JUPYTER SUPPORT (Optional) ===
-# jupyter==1.0.0
-# jupyterlab==4.0.10
-# notebook==7.0.7
-# ipywidgets==8.1.1
-
-# === OPTIMIZATION ===
-scipy-optimize==0.9  # Additional optimization algorithms
-optuna==3.5.0  # Hyperparameter optimization
-hyperopt==0.2.7  # Bayesian optimization
-
-# === TIME SERIES (Future Enhancement) ===
-# statsmodels==0.14.1
-# prophet==1.1.5
-# tslearn==0.6.3
+# === TIME SERIES ===
+statsmodels==0.14.1  # NEW: Statistical models
+prophet==1.1.5  # NEW: Time series forecasting
+tslearn==0.6.3  # NEW: Time series ML
+sktime==0.26.0  # NEW: Time series toolkit
 
 # === DEPLOYMENT ===
 gunicorn==21.2.0  # WSGI server
 uvicorn==0.27.0  # ASGI server
 supervisor==4.2.5  # Process manager
 python-daemon==3.0.1  # Daemonization
+circus==0.18.0  # NEW: Process watcher
 
 # === CONFIGURATION MANAGEMENT ===
 hydra-core==1.3.2  # Configuration framework
 omegaconf==2.3.0  # Flexible configuration
+python-decouple==3.8  # NEW: Config separation
 
 # === LOGGING ENHANCEMENTS ===
 loguru==0.7.2  # Advanced logging
 structlog==24.1.0  # Structured logging
+python-json-logger==2.0.7  # NEW: JSON logging
+sentry-dramatiq==0.3.3  # NEW: Task queue integration
 
 # === SYSTEM MONITORING ===
 psutil==5.9.8  # System and process utilities
 gputil==1.4.0  # GPU monitoring
+nvidia-ml-py==12.535.133  # NEW: NVIDIA GPU monitoring
+distro==1.9.0  # NEW: OS distribution info
 
 # === API CLIENTS ===
 httpx==0.26.0  # Modern HTTP client
 websocket-client==1.7.0  # WebSocket client
+grpcio==1.60.0  # NEW: gRPC support
+grpcio-tools==1.60.0  # NEW: gRPC tools
 
 # === COMPRESSION ===
 zstandard==0.22.0  # Fast compression
 lz4==4.3.3  # Very fast compression
+brotli==1.1.0  # NEW: Brotli compression
+snappy==0.7.1  # NEW: Snappy compression
+
+# === ENTITY BEHAVIOR LIBRARIES ===
+transitions==0.9.0  # NEW: State machines
+behaviour==0.1.0  # NEW: Behavior trees
+pybrain3==0.3.3  # NEW: Neural network library
+pyevolve==0.6  # NEW: Genetic algorithms
+
+# === NATURAL LANGUAGE ===
+nltk==3.8.1  # NEW: Natural Language Toolkit
+textblob==0.18.0  # NEW: Text processing
+gensim==4.3.2  # NEW: Topic modeling
+langchain==0.1.4  # NEW: LLM framework
 
 # === MISCELLANEOUS ===
 python-dateutil==2.8.2  # Date utilities
 pytz==2024.1  # Timezone support
 humanize==4.9.0  # Human-friendly formatting
 tenacity==8.2.3  # Retry library
+more-itertools==10.2.0  # NEW: Additional itertools
+toolz==0.12.0  # NEW: Functional utilities
+funcy==2.0  # NEW: Functional helpers
+bidict==0.22.1  # NEW: Bidirectional dict
+frozendict==2.4.0  # NEW: Immutable dict
+sortedcontainers==2.4.0  # NEW: Sorted collections
+
+# === JUPYTER SUPPORT (Optional) ===
+# jupyter==1.0.0
+# jupyterlab==4.0.10
+# notebook==7.0.7
+# ipywidgets==8.1.1
+# nbconvert==7.14.2  # NEW: Notebook conversion
+
+# === ENTITY VISUALIZATION ===
+pygraphviz==1.12  # NEW: Graphviz interface
+pydot==2.0.0  # NEW: Dot language
+graphviz==0.20.1  # NEW: Graphviz rendering
+
+# === AUDIO GENERATION (Future entities) ===
+# pydub==0.25.1  # NEW: Audio manipulation
+# librosa==0.10.1  # NEW: Audio analysis
+# soundfile==0.12.1  # NEW: Audio I/O

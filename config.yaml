@@ -1,10 +1,10 @@
-# MSC Framework v4.0 Configuration
-# Last Updated: 2024
+# MSC Framework v5.0 Configuration - Digital Entities Edition
+# Last Updated: 2025
 
 # === GENERAL SETTINGS ===
 general:
-  project_name: "MSC Framework"
-  version: "4.0.0"
+  project_name: "MSC Framework - Digital Entities"
+  version: "5.0.0"
   environment: "development"  # development, staging, production
   debug: true
   timezone: "UTC"
@@ -16,11 +16,102 @@ simulation:
   checkpoint_interval: 1000  # steps between checkpoints
   evolution_interval: 100  # steps between evolution phases
   consensus_interval: 500  # steps between consensus phases
+  entity_update_interval: 5  # steps between entity ecosystem updates
   max_concurrent_actions: 5
   auto_save: true
   auto_recovery: true
   performance_tracking: true
   save_path: "./data/simulations"
+
+# === DIGITAL ENTITIES CONFIGURATION ===
+digital_entities:
+  enabled: true
+  max_entities: 100  # Maximum number of concurrent entities
+  initial_population: 10  # Starting population size
+  generation_threshold: 0.8  # Knowledge threshold for entity generation
+  evolution_rate: 0.1  # Rate of evolutionary change
+  interaction_radius: 5  # Node distance for entity interactions
+  spontaneous_generation_prob: 0.01  # Base probability of new entity creation
+  
+  # Entity Types Distribution
+  entity_types:
+    explorer: 
+      weight: 0.20
+      initial_count: 2
+    synthesizer:
+      weight: 0.20
+      initial_count: 2
+    guardian:
+      weight: 0.15
+      initial_count: 1
+    innovator:
+      weight: 0.15
+      initial_count: 1
+    harmonizer:
+      weight: 0.10
+      initial_count: 1
+    amplifier:
+      weight: 0.10
+      initial_count: 1
+    architect:
+      weight: 0.05
+      initial_count: 1
+    oracle:
+      weight: 0.05
+      initial_count: 1
+  
+  # Personality Configuration
+  personality:
+    dimensions: 8  # Number of personality dimensions
+    volatility: 0.05  # Rate of personality change
+    mutation_rate: 0.1  # Rate for evolutionary mutations
+    inheritance_ratio: 0.5  # Parent influence in offspring
+    
+  # Memory System
+  memory:
+    experience_capacity: 1000  # Max experiences per entity
+    collective_memory_size: 10000  # Shared memory pool
+    consolidation_interval: 1000  # Steps between memory consolidation
+    knowledge_decay_rate: 0.001  # Rate of knowledge forgetting
+    
+  # Energy and Metabolism
+  metabolism:
+    initial_energy: 100.0
+    max_energy: 100.0
+    base_consumption: 0.5  # Energy per step
+    age_factor: 0.001  # Additional consumption per age unit
+    regeneration_rate: 0.3  # Energy recovery from satisfaction
+    action_costs:
+      wait: 0.1
+      move: 1.0
+      create_node: 5.0
+      create_edge: 2.0
+      interact: 3.0
+      synthesize: 10.0
+      analyze: 2.0
+      strengthen: 4.0
+      
+  # Evolution Engine
+  evolution:
+    selection_pressure: 0.3  # Fraction eliminated each generation
+    elite_fraction: 0.2  # Top performers preserved
+    crossover_enabled: true
+    mutation_enabled: true
+    fitness_components:
+      influence: 0.3
+      efficiency: 0.2
+      exploration: 0.2
+      creativity: 0.2
+      social: 0.1
+    max_age: 10000  # Maximum entity lifespan
+    
+  # Behavior Generation
+  behavior_generation:
+    claude_temperature: 0.8  # Creativity in behavior generation
+    max_behavior_tokens: 3000
+    behavior_cache_enabled: true
+    validation_enabled: true
+    fallback_behaviors: true  # Use defaults if generation fails
 
 # === AGENT CONFIGURATION ===
 agents:
@@ -63,6 +154,7 @@ graph:
   embedding_model: "all-MiniLM-L6-v2"  # sentence-transformers model
   embedding_cache_size: 10000
   importance_recalc_interval: 100  # steps
+  entity_node_tracking: true  # Track nodes created by entities
   
 # === CLAUDE API SETTINGS ===
 claude:
@@ -70,12 +162,19 @@ claude:
   model: "claude-3-sonnet-20240229"
   max_tokens: 2000
   temperature: 0.7
-  system_prompt_prefix: "You are an expert Python developer specializing in graph algorithms, multi-agent systems, and metaprogramming."
+  system_prompt_prefix: "You are an expert Python developer specializing in graph algorithms, multi-agent systems, metaprogramming, and emergent AI behaviors."
   rate_limit: 50  # requests per minute
   retry_attempts: 3
   retry_delay: 2.0  # seconds
   cache_ttl: 3600  # seconds
   cache_enabled: true
+  
+  # Entity-specific Claude settings
+  entity_generation:
+    enabled: true
+    max_tokens: 3000
+    temperature: 0.8  # Higher for more creative entities
+    behavior_prompt_template: "Create sophisticated autonomous behavior for digital entities"
 
 # === TAEC MODULE SETTINGS ===
 taec:
@@ -90,6 +189,7 @@ taec:
   plugin_directory: "./plugins"
   enable_quantum_optimization: true
   enable_predictive_evolution: true
+  enable_entity_evolution: true  # New: evolve digital entities
 
 # === SCED BLOCKCHAIN SETTINGS ===
 sced:
@@ -103,6 +203,7 @@ sced:
   quantum_security_level: 256  # bits
   zkp_security_parameter: 128
   enable_smart_contracts: true
+  enable_entity_contracts: true  # Smart contracts for entities
 
 # === SECURITY ===
 security:
@@ -119,6 +220,7 @@ security:
     - re
     - numpy
     - networkx
+    - torch  # For entity neural networks
   forbidden_patterns:
     - "__import__"
     - "eval"
@@ -133,11 +235,13 @@ security:
     - "__builtins__"
   enable_ast_validation: true
   max_ast_complexity: 100
+  entity_sandbox_enabled: true  # Additional sandboxing for entity code
 
 # === CACHING ===
 cache:
   local_size: 10000
   local_ttl: 3600  # seconds
+  entity_behavior_cache_size: 1000  # Cache for generated behaviors
   redis:
     enabled: true
     host: "${REDIS_HOST:-localhost}"
@@ -164,6 +268,13 @@ database:
     max_overflow: 40
     pool_timeout: 30
     echo: false  # SQL logging
+  
+  # Entity-specific tables
+  entity_tables:
+    enabled: true
+    track_lineage: true  # Track entity genealogy
+    store_behaviors: true  # Store successful behaviors
+    store_memories: true  # Persist entity memories
 
 # === API SERVER ===
 api:
@@ -179,10 +290,20 @@ api:
     strict: "100 per hour"
     auth: "5 per minute"
     evolution: "10 per hour"
+    entity_spawn: "20 per hour"  # Limit entity creation
   jwt_expiration: 86400  # 24 hours in seconds
   jwt_algorithm: "HS256"
   enable_swagger: true
   enable_graphql: false  # Future feature
+  
+  # New entity endpoints
+  entity_endpoints:
+    enabled: true
+    list_entities: "/api/entities"
+    entity_details: "/api/entities/{id}"
+    spawn_entity: "/api/entities/spawn"
+    entity_stats: "/api/entities/stats"
+    ecosystem_status: "/api/entities/ecosystem"
 
 # === WEBSOCKET ===
 websocket:
@@ -191,6 +312,13 @@ websocket:
   ping_timeout: 30
   max_message_size: 1048576  # 1MB
   compression: true
+  
+  # Entity event channels
+  entity_channels:
+    births: "entity_births"
+    deaths: "entity_deaths"
+    interactions: "entity_interactions"
+    evolutions: "entity_evolutions"
 
 # === MONITORING ===
 monitoring:
@@ -198,19 +326,32 @@ monitoring:
     enabled: true
     port: 9090
     path: "/metrics"
+    
+    # Entity-specific metrics
+    entity_metrics:
+      population_gauge: true
+      birth_counter: true
+      death_counter: true
+      interaction_histogram: true
+      fitness_distribution: true
+      
   sentry:
     enabled: false  # Set to true in production
     dsn: "${SENTRY_DSN}"
     traces_sample_rate: 0.1
     profiles_sample_rate: 0.1
+    
   logging:
     level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     format: "colored"  # colored, json, standard
     file_rotation: "daily"
     max_file_size: "100MB"
     backup_count: 7
+    entity_log_level: "INFO"  # Separate logging for entities
+    
   performance_tracking: true
   memory_profiling: false  # Enable only for debugging
+  entity_profiling: true  # Profile entity performance
 
 # === PERSISTENCE ===
 persistence:
@@ -222,6 +363,14 @@ persistence:
   data_directory: "./data"
   checkpoint_directory: "./data/checkpoints"
   backup_directory: "./data/backups"
+  entity_directory: "./data/entities"  # Entity-specific data
+  
+  # Entity persistence
+  entity_persistence:
+    save_behaviors: true
+    save_memories: true
+    save_genealogy: true
+    compression: "zstd"  # Better compression for entity data
 
 # === CLUSTERING & ANALYSIS ===
 clustering:
@@ -235,6 +384,7 @@ clustering:
     n_init: 10
     max_iter: 300
   update_interval: 1000  # steps
+  entity_aware: true  # Consider entity positions in clustering
 
 # === CONSENSUS MECHANISM ===
 consensus:
@@ -244,6 +394,7 @@ consensus:
   consensus_threshold: 0.67  # 2/3 majority
   round_timeout: 30  # seconds
   Byzantine_fault_tolerance: true
+  entity_voting_enabled: true  # Entities can participate in consensus
   
 # === EVOLUTION STRATEGIES ===
 evolution:
@@ -255,17 +406,22 @@ evolution:
       max_candidates: 4
       state_threshold: 0.6
       similarity_threshold: 0.3
+      entity_boost: 1.2  # Boost when entities involved
+      
     optimization:
       enabled: true
       weight: 0.20
       focus: "connectivity"  # connectivity, state, balance, diversity
       improvement_threshold: 0.1
+      
     innovation:
       enabled: true
       weight: 0.20
       novelty_bonus: 2.0
       max_innovations_per_cycle: 3
       creativity_temperature: 0.8
+      entity_innovation_bonus: 1.5
+      
     exploration:
       enabled: true
       weight: 0.15
@@ -278,11 +434,15 @@ evolution:
         - semantic_convergence
         - swarm_cognition
         - epistemic_closure
+        - digital_entities
+        - autonomous_evolution
+        
     consolidation:
       enabled: true
       weight: 0.10
       isolation_threshold: 0.1
       merge_threshold: 0.8
+      
     recovery:
       enabled: true
       weight: 0.10
@@ -297,6 +457,15 @@ visualization:
   port: 8888
   update_interval: 1.0  # seconds
   max_graph_nodes_display: 1000
+  
+  # Entity visualization
+  entity_visualization:
+    enabled: true
+    show_paths: true  # Show entity movement paths
+    show_interactions: true  # Visualize entity interactions
+    personality_colors: true  # Color entities by personality
+    influence_size: true  # Size by influence score
+    
   graph_3d:
     enabled: true
     layout: "force"  # force, kamada_kawai, spring, circular
@@ -304,19 +473,26 @@ visualization:
     edge_width_factor: 2
     camera_distance: 100
     enable_labels: true
+    entity_layer: true  # Separate layer for entities
+    
   graph_2d:
     layout: "force"
     charge_strength: -300
     link_distance: 50
     center_force: 0.1
+    
   timeline:
     window_size: 1000
     event_threshold: 10
+    track_entities: true  # Show entity events in timeline
+    
   quantum_viz:
     enabled: true
     coherence_threshold: 0.1
+    
   themes:
     default: "dark"  # dark, light, auto
+    entity_theme: "neon"  # Special theme for entities
     
 # === QUANTUM FEATURES ===
 quantum:
@@ -327,32 +503,36 @@ quantum:
   coherence_time: 1000  # arbitrary units
   gate_error_rate: 0.001
   measurement_error_rate: 0.01
+  entity_quantum_states: true  # Entities can have quantum properties
 
 # === EXPERIMENTAL FEATURES ===
 experimental:
   quantum_inspired_evolution: true
-  swarm_intelligence: false
+  swarm_intelligence: true  # Now enabled with entities
   federated_learning: false
   blockchain_consensus: false
-  neuromorphic_computing: false
+  neuromorphic_computing: true  # For entity brains
   edge_computing: false
   homomorphic_encryption: false
   differential_privacy: false
+  digital_consciousness: true  # Emergent entity consciousness
+  collective_entity_mind: true  # Shared entity intelligence
 
 # === RESOURCE LIMITS ===
 resources:
-  max_memory_usage: "8GB"
+  max_memory_usage: "16GB"  # Increased for entities
   max_cpu_cores: 8
   gpu_enabled: true
   gpu_memory_fraction: 0.8
   enable_memory_profiling: false
   garbage_collection_interval: 1000  # steps
+  entity_memory_limit: "2GB"  # Memory allocated to entity ecosystem
 
 # === DEPLOYMENT ===
 deployment:
   docker:
     enable: true
-    image: "msc-framework:4.0"
+    image: "msc-framework:5.0"
     registry: "${DOCKER_REGISTRY}"
   kubernetes:
     enable: false
@@ -361,3 +541,22 @@ deployment:
   cloud:
     provider: "aws"  # aws, gcp, azure
     region: "${CLOUD_REGION:-us-east-1}"
+
+# === DIGITAL ENTITY ECOSYSTEM ===
+ecosystem:
+  milestones:
+    first_generation: 1
+    century_milestone: 100  # 100 entities created
+    longevity_milestone: 5000  # Entity age milestone
+    diversity_milestone: 8  # All entity types present
+    
+  events:
+    enable_notifications: true
+    webhook_url: "${ECOSYSTEM_WEBHOOK}"
+    discord_notifications: true
+    
+  statistics:
+    track_genealogy: true
+    population_snapshots: true
+    interaction_network: true
+    knowledge_flow: true
