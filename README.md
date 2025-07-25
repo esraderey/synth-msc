@@ -29,30 +29,35 @@
 <div align="center">
 <table>
 <tr>
-<td align="center" width="20%">
+<td align="center" width="16%">
 <img src="https://img.icons8.com/fluency/96/000000/code.png" width="60" height="60"><br>
 <b>📝 MSC-Lang 2.0</b><br>
 <sub>Lenguaje completo con compilador, AST y optimizaciones</sub>
 </td>
-<td align="center" width="20%">
+<td align="center" width="16%">
 <img src="https://img.icons8.com/fluency/96/000000/console.png" width="60" height="60"><br>
 <b>🖥️ OTAEC Terminal</b><br>
 <sub>Gemelo de optimización con terminal interactiva y VM</sub>
 </td>
-<td align="center" width="20%">
+<td align="center" width="16%">
 <img src="https://img.icons8.com/fluency/96/000000/virtual-machine.png" width="60" height="60"><br>
 <b>🔧 VM de Ejecución</b><br>
 <sub>Máquina virtual segura para código optimizado</sub>
 </td>
-<td align="center" width="20%">
+<td align="center" width="16%">
 <img src="https://img.icons8.com/fluency/96/000000/optimization.png" width="60" height="60"><br>
 <b>⚡ Multi-Optimización</b><br>
 <sub>Algoritmos genéticos, PSO, cuánticos y más</sub>
 </td>
-<td align="center" width="20%">
+<td align="center" width="16%">
 <img src="https://img.icons8.com/fluency/96/000000/dna.png" width="60" height="60"><br>
 <b>🧬 TAEC-DE v2.0</b><br>
 <sub>Entes digitales con consciencia cuántica</sub>
+</td>
+<td align="center" width="16%">
+<img src="https://img.icons8.com/fluency/96/000000/globe.png" width="60" height="60"><br>
+<b>🌐 OSCED v1.0</b><br>
+<sub>Blockchain con mundo virtual 3D</sub>
 </td>
 </tr>
 </table>
@@ -72,6 +77,13 @@
   - VM especializada para entes
   - Optimización de ecosistemas
   - Debugging interactivo
+- **🌐 OSCED v1.0**: Blockchain gemela de SCED para entidades digitales con:
+  - Mundo virtual 3D de 1000x1000x100 unidades
+  - Física realista y territorios reclamables
+  - Sistema económico basado en energía/conocimiento
+  - Edificios constructibles (nodos de conocimiento, centros comunitarios)
+  - Validadores especializados en comportamiento
+  - Puente bidireccional con SCED principal
 - **🔧 Máquina Virtual**: VM segura con conjunto de instrucciones para ejecución controlada de código
 - **⚛️ Memoria Cuántica v2**: Sistema mejorado con capas, entrelazamiento avanzado y operaciones cuánticas
 - **🧬 TAEC v3.0**: Motor de auto-evolución con compilador integrado y generación de código mejorada
@@ -123,42 +135,47 @@
 <div align="center">
 <table>
 <tr>
-<td align="center" width="12%">
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/artificial-intelligence.png" width="50" height="50"><br>
 <b>🤖 Agentes</b><br>
 <sub>Claude-TAEC</sub>
 </td>
-<td align="center" width="12%">
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/dna.png" width="50" height="50"><br>
 <b>🧬 TAEC v3</b><br>
 <sub>Auto-evolución</sub>
 </td>
-<td align="center" width="12%">
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/console.png" width="50" height="50"><br>
 <b>🖥️ OTAEC</b><br>
 <sub>Optimización</sub>
 </td>
-<td align="center" width="12%">
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/user-group-man-woman.png" width="50" height="50"><br>
 <b>👾 Entes v2</b><br>
 <sub>Digitales</sub>
 </td>
-<td align="center" width="12%">
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/terminal.png" width="50" height="50"><br>
 <b>💻 OTAEC-DE</b><br>
 <sub>Terminal Entes</sub>
 </td>
-<td align="center" width="12%">
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/quantum.png" width="50" height="50"><br>
 <b>⚛️ Cuántica</b><br>
 <sub>Memoria v2</sub>
 </td>
-<td align="center" width="12%">
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/blockchain-technology.png" width="50" height="50"><br>
 <b>🔗 SCED</b><br>
 <sub>Blockchain</sub>
 </td>
-<td align="center" width="12%">
+<td align="center" width="11%">
+<img src="https://img.icons8.com/fluency/96/000000/globe.png" width="50" height="50"><br>
+<b>🌐 OSCED</b><br>
+<sub>Mundo 3D</sub>
+</td>
+<td align="center" width="11%">
 <img src="https://img.icons8.com/fluency/96/000000/3d-scale.png" width="50" height="50"><br>
 <b>📊 TAECViz</b><br>
 <sub>Visualización</sub>
@@ -178,6 +195,7 @@
 | 🧬 **Evolución de Sistemas** | Auto-mejora con TAEC v3.0 y compilador | • Evolución de código<br>• Métricas detalladas<br>• Versionado automático |
 | ⚡ **Optimización Compleja** | Múltiples algoritmos en OTAEC + análisis de entes | • PSO, Genético, Cuántico<br>• Benchmarking integrado<br>• Profiling avanzado |
 | 🔒 **Computación Segura** | Ejecución en VM con niveles de seguridad | • Sandboxing completo<br>• Auditoría detallada<br>• Control granular |
+| 🌍 **Mundos Virtuales** | Blockchain con mundo 3D para entes con OSCED | • Territorios reclamables<br>• Física realista<br>• Economía integrada |
 | 🎮 **Simulación Avanzada** | Ecosistemas de entes digitales autónomos | • 8+ tipos de entes<br>• Comportamientos evolucionables<br>• Análisis en tiempo real |
 
 ---
@@ -200,6 +218,13 @@ graph TB
         TDE[🧬 TAEC-DE v2.0<br/>ML Evolution • JIT]
         ODE[💻 OTAEC-DE<br/>Analysis Terminal]
         QCC[⚛️ Quantum Consciousness<br/>Collective Memory]
+    end
+    
+    subgraph "🌐 OSCED Virtual World"
+        VW[🗺️ Virtual World<br/>1000x1000x100 3D]
+        OSB[🔗 OSCED Blockchain<br/>Entity-optimized]
+        VAL[👁️ Validators<br/>Behavior specialists]
+        ECO[💰 Economy<br/>Energy & Knowledge]
     end
     
     subgraph "⚛️ TAEC v3.0 System"
@@ -247,6 +272,12 @@ graph TB
     EE --> ODE
     TDE <--> ODE
     
+    EE --> VW
+    VW --> OSB
+    OSB --> VAL
+    VW --> ECO
+    OSB <--> CO
+    
     AS --> MSC
     MSC --> QVM
     QVM --> CEE
@@ -278,6 +309,8 @@ graph TB
     style EE fill:#9f9,stroke:#333,stroke-width:2px
     style TDE fill:#ff9,stroke:#333,stroke-width:2px
     style ODE fill:#f99,stroke:#333,stroke-width:2px
+    style VW fill:#9ff,stroke:#333,stroke-width:2px
+    style OSB fill:#f9f,stroke:#333,stroke-width:2px
     style MSC fill:#ff9,stroke:#333,stroke-width:2px
     style OT fill:#f99,stroke:#333,stroke-width:2px
     style CE fill:#bfb,stroke:#333,stroke-width:2px
@@ -520,6 +553,118 @@ Type 'h' for help, 'q' to quit debugger
 
 </details>
 
+### 🌐 **OSCED - Open SCED for Digital Entities** *(NUEVO en v5.2)*
+<details>
+<summary><b>Ver blockchain con mundo virtual 3D</b></summary>
+
+| Componente | Especificaciones | Características |
+|------------|------------------|-----------------|
+| **Mundo Virtual 3D** | • 1000x1000x100 unidades<br>• Chunks de 100x100<br>• 8 tipos de terreno<br>• Física con gravedad | • Generación procedural<br>• Clima dinámico<br>• Eventos globales<br>• Ciclo día/noche |
+| **Blockchain Específica** | • Bloques cada 5 segundos<br>• Consenso especializado<br>• Gas dinámico<br>• Puente con SCED | • 10 tipos de transacciones<br>• Validadores especializados<br>• Smart contracts de entes<br>• Cross-chain transfers |
+| **Sistema Económico** | • Energía como moneda<br>• Conocimiento comerciable<br>• Materiales de construcción<br>• Territorios con valor | • Costos dinámicos<br>• Recompensas por interacción<br>• Economía emergente<br>• Trading P2P |
+| **Construcciones** | • Nodos de conocimiento<br>• Centros comunitarios<br>• Generadores de energía<br>• Estructuras personalizadas | • Sistema de niveles<br>• Mantenimiento requerido<br>• Beneficios pasivos<br>• Interacciones especiales |
+| **Validadores de Entes** | • Análisis de comportamiento<br>• Validación de interacciones<br>• Monitoreo económico<br>• Física del mundo | • ML para detección<br>• Reputación dinámica<br>• Especialización única<br>• Consenso multi-criterio |
+
+#### 🗺️ Tipos de Terreno en OSCED
+
+```python
+class TerrainType(Enum):
+    PLAINS = auto()        # Llanuras básicas
+    FOREST = auto()        # Bosques con recursos
+    MOUNTAIN = auto()      # Montañas difíciles
+    WATER = auto()         # Cuerpos de agua
+    DESERT = auto()        # Desiertos áridos
+    CRYSTAL_FIELD = auto() # Zonas de alta energía
+    VOID = auto()          # Zonas peligrosas
+    NEXUS = auto()         # Puntos de conexión interdimensional
+```
+
+#### 🏗️ Ejemplo de Construcción en OSCED
+
+```python
+# Centro comunitario en el mundo virtual
+community_center = CommunityCenter(
+    position=Vector3D(x=500, y=500, z=10),
+    owner="EXPLORER_001"
+)
+
+# Características del centro
+- Máximo 50 miembros
+- Sistema de reputación interno
+- Recursos compartidos
+- Reglas comunitarias votables
+- Beneficios para miembros:
+  * Distribución de recursos
+  * Protección colectiva
+  * Intercambio de conocimiento
+  * Bonificaciones de evolución
+```
+
+#### 🔄 Transacciones Especializadas de OSCED
+
+```python
+# Reclamar territorio
+territory_tx = OSCEDTransaction(
+    type=OSCEDTransactionType.TERRITORY_CLAIM,
+    sender=entity_id,
+    data={
+        'chunk_coords': [5, 7, 0],
+        'claim_type': 'permanent',
+        'development_plan': 'knowledge_hub'
+    },
+    world_position=Vector3D(500, 700, 0),
+    gas=5000  # Alto costo por ser permanente
+)
+
+# Crear edificio
+building_tx = OSCEDTransaction(
+    type=OSCEDTransactionType.BUILDING_CREATE,
+    sender=entity_id,
+    data={
+        'building_type': 'knowledge_node',
+        'position': {'x': 520, 'y': 720, 'z': 5},
+        'materials_used': 50
+    },
+    validation_scores={
+        'physics': 0.95,
+        'economy': 0.88,
+        'world_state': 0.92
+    }
+)
+```
+
+#### 🌍 Sesión en el Mundo OSCED
+
+```
+[OSCED World] Entity EXPLORER_001 spawned at (432.5, 678.2, 5.0)
+[OSCED World] Weather changed: Energy flux increased by 20%
+[OSCED World] EXPLORER_001 discovered CRYSTAL_FIELD at chunk (4,6)
+[OSCED World] +200 Energy collected from crystal resonance
+
+[OSCED Blockchain] Block #1247 mined by validator_behavior_analysis
+  - 5 entity movements validated
+  - 2 territory claims processed
+  - 1 building created
+  - Gas used: 8,450
+
+[OSCED World] Community "Nexus Researchers" formed at (500, 500)
+  - Founder: SYNTHESIZER_042
+  - Initial members: 3
+  - Shared resources: 500 energy, 200 knowledge
+
+[OSCED Event] Knowledge Rain in progress!
+  - Random knowledge distribution across 10 chunks
+  - Entities in affected areas gain bonus concepts
+
+[OSCED Bridge] Cross-chain transfer initiated
+  - From: OSCED entity GUARDIAN_007
+  - To: SCED main chain
+  - Payload: 50 knowledge tokens + evolution data
+  - Status: Pending validation
+```
+
+</details>
+
 ### ⚛️ **Memoria Virtual Cuántica v2** *(Mejorada en v5.2)*
 <details>
 <summary><b>Ver sistema de memoria cuántica mejorado</b></summary>
@@ -651,6 +796,9 @@ python otaec_optimization_twin.py --security standard
 
 # 8️⃣ O ejecutar OTAEC Digital Entities
 python otaec_digital_entities.py --no-sync
+
+# 9️⃣ O ejecutar OSCED Virtual World
+python osced_virtual_world.py
 ```
 
 ### 🐳 **Instalación con Docker**
@@ -694,12 +842,14 @@ from Taec_V_3_0 import TAECAdvancedModule
 from otaec_optimization_twin import OTAECOptimizer
 from otaec_digital_entities import OTAECDigitalEntities
 from TAEC_Msc_Digital_Enties import TAECDigitalEntitiesV2
+from osced_virtual_world import OSCEDIntegratedSystem
 print(f'PyTorch: {torch.__version__}')
 print(f'CUDA: {torch.cuda.is_available()}')
 print('TAEC v3.0: OK')
 print('OTAEC: OK')
 print('OTAEC-DE: OK')
 print('TAEC-DE v2.0: OK')
+print('OSCED: OK')
 "
 ```
 
@@ -855,6 +1005,64 @@ async def digital_entities_example():
     print(report)
 
 asyncio.run(digital_entities_example())
+```
+
+### 🌐 **Ejemplo con OSCED Virtual World**
+
+```python
+from osced_virtual_world import OSCEDIntegratedSystem, OSCEDTransactionType, Vector3D
+
+async def osced_world_example():
+    # Crear sistema OSCED integrado
+    osced_system = OSCEDIntegratedSystem(
+        sced_main=None,  # Opcional: conectar con SCED principal
+        claude_client=None
+    )
+    
+    # Iniciar sistema (spawn 20 entidades iniciales)
+    await osced_system.start()
+    
+    # Obtener una entidad del ecosistema
+    entity = list(osced_system.entity_ecosystem.entities.values())[0]
+    
+    # 1. Reclamar territorio
+    chunk_coords = (5, 7, 0)
+    territory_tx = OSCEDTransaction(
+        type=OSCEDTransactionType.TERRITORY_CLAIM,
+        sender=entity.id,
+        data={'chunk_coords': chunk_coords}
+    )
+    
+    success = await osced_system.osced_blockchain.process_entity_transaction(territory_tx)
+    print(f"Territory claimed: {success}")
+    
+    # 2. Construir un nodo de conocimiento
+    build_position = Vector3D(x=520, y=720, z=5)
+    success = await osced_system.create_building(
+        entity_id=entity.id,
+        building_type='knowledge_node',
+        position=build_position
+    )
+    print(f"Knowledge node built: {success}")
+    
+    # 3. Explorar el mundo
+    world_state = osced_system.virtual_world
+    print(f"World size: {world_state.size}")
+    print(f"Active entities: {len(world_state.entity_positions)}")
+    print(f"Weather: {world_state.weather}")
+    
+    # 4. Ver eventos globales
+    for event in list(world_state.global_events)[-5:]:
+        print(f"[{event['timestamp']:.1f}] {event['type']}: {event.get('description', '')}")
+    
+    # 5. Métricas del sistema integrado
+    print(f"\nOSCED Metrics:")
+    print(f"  Blocks created: {osced_system.metrics['blocks_created']}")
+    print(f"  Territories owned: {osced_system.metrics['world_chunks_owned']}")
+    print(f"  Buildings: {osced_system.metrics['buildings_created']}")
+    print(f"  Communities: {osced_system.metrics['communities_formed']}")
+
+asyncio.run(osced_world_example())
 ```
 
 ### 🖥️ **Uso de OTAEC Terminal**
@@ -1070,6 +1278,7 @@ print("Synthesis completed with state:", result.state);
 | 🖥️ **OTAEC** | `otaec_optimization_twin.py` | Terminal y optimización | ~3,500 |
 | 👾 **TAEC-DE v2.0** | `TAEC_Msc_Digital_Enties.py` | Sistema ultra-avanzado de entes | ~5,000 |
 | 💻 **OTAEC-DE** | `otaec_digital_entities.py` | Terminal para gestión de entes | ~3,800 |
+| 🌐 **OSCED** | `osced_virtual_world.py` | Blockchain con mundo virtual 3D | ~2,800 |
 | 🔗 **SCED Blockchain** | `sced v3.py` | Consenso epistémico | ~1,200 |
 | 📊 **TAECViz** | `Taecviz v.2.0 .py` | Visualización 3D | ~1,000 |
 
@@ -1145,6 +1354,20 @@ GET  /api/mscl/ast              # Obtener AST
 POST /api/mscl/optimize         # Optimizar código
 ```
 
+#### **OSCED Virtual World** *(NUEVO)*
+```http
+POST /api/osced/spawn                # Spawn entidad en mundo 3D
+GET  /api/osced/world/chunk/{x}/{y}  # Obtener chunk del mundo
+POST /api/osced/claim/territory      # Reclamar territorio
+POST /api/osced/build                # Construir edificio
+GET  /api/osced/entity/{id}/position # Posición de entidad
+POST /api/osced/entity/move          # Mover entidad
+GET  /api/osced/economy/balances     # Balances de recursos
+POST /api/osced/community/create     # Crear comunidad
+GET  /api/osced/events               # Eventos globales del mundo
+POST /api/osced/bridge/transfer      # Transfer OSCED<->SCED
+```
+
 #### **Entes Digitales**
 ```http
 GET  /api/entities              # Lista de entes activos
@@ -1186,7 +1409,10 @@ ws.on('open', () => {
             'otaec_status',     // NUEVO: Estado OTAEC
             'entity_behavior',  // NUEVO: Comportamientos de entes
             'collective_consciousness', // NUEVO: Consciencia colectiva
-            'ecosystem_metrics' // NUEVO: Métricas del ecosistema
+            'ecosystem_metrics', // NUEVO: Métricas del ecosistema
+            'osced_world',      // NUEVO: Eventos del mundo OSCED
+            'osced_economy',    // NUEVO: Economía OSCED
+            'osced_buildings'   // NUEVO: Construcciones OSCED
         ]
     }));
 });
@@ -1213,6 +1439,15 @@ ws.on('message', (data) => {
         case 'collective_sync':
             console.log(`Collective coherence: ${event.data.coherence}`);
             break;
+        case 'osced_territory_claimed':
+            console.log(`Territory claimed at chunk ${event.data.chunk_coords} by ${event.data.entity_id}`);
+            break;
+        case 'osced_building_created':
+            console.log(`${event.data.building_type} built at ${event.data.position}`);
+            break;
+        case 'osced_world_event':
+            console.log(`World Event: ${event.data.type} - ${event.data.description}`);
+            break;
     }
 });
 ```
@@ -1225,6 +1460,7 @@ from Taec_V_3_0 import TAECAdvancedModule
 from otaec_optimization_twin import OTAECOptimizer
 from TAEC_Msc_Digital_Enties import TAECDigitalEntitiesV2
 from otaec_digital_entities import OTAECDigitalEntities
+from osced_virtual_world import OSCEDIntegratedSystem, OSCEDTransaction
 
 # Cliente completo v5.2
 async with MSCClient('http://localhost:5000') as client:
@@ -1324,11 +1560,42 @@ async with MSCClient('http://localhost:5000') as client:
         }
     )
     
-    # Sugerencias de mejora
-    suggestions = await client.otaec_de.get_improvement_suggestions(entity_id)
-    for suggestion in suggestions:
-        print(f"- {suggestion['area']}: {suggestion['suggestion']}")
-        print(f"  Impact: {suggestion['impact']}, Difficulty: {suggestion['difficulty']}")
+    # === OSCED Virtual World Operations ===
+    
+    # Spawn entidad en mundo 3D
+    spawn_result = await client.osced.spawn_entity(
+        entity_id,
+        position={'x': 500, 'y': 500, 'z': 10}
+    )
+    
+    # Reclamar territorio
+    claim_result = await client.osced.claim_territory(
+        entity_id,
+        chunk_coords=[5, 5, 0],
+        claim_type='permanent'
+    )
+    
+    # Construir edificio
+    building = await client.osced.build(
+        entity_id,
+        building_type='knowledge_node',
+        position={'x': 550, 'y': 550, 'z': 5},
+        materials=50
+    )
+    
+    # Obtener estado del mundo
+    world_state = await client.osced.get_world_state()
+    print(f"Entities in world: {world_state['entity_count']}")
+    print(f"Weather: {world_state['weather']}")
+    print(f"Global events: {world_state['recent_events']}")
+    
+    # Transferencia cross-chain OSCED<->SCED
+    bridge_tx = await client.osced.bridge_transfer(
+        from_chain='OSCED',
+        to_chain='SCED',
+        entity_id=entity_id,
+        payload={'knowledge': 50, 'evolution_data': {...}}
+    )
 ```
 
 ---
@@ -1467,6 +1734,40 @@ digital_entities:
     interaction_logging: true
     taec_sync_interval: 30
     
+# === OSCED Virtual World Configuration ===
+osced:
+  enabled: true
+  
+  # Blockchain Settings
+  block_time: 5                       # segundos
+  min_validators: 5
+  consensus_timeout: 10
+  
+  # Virtual World
+  world_size: [1000, 1000, 100]       # x, y, z
+  chunk_size: 100
+  gravity: -9.8
+  time_scale: 60                      # 1 min real = 1 hora virtual
+  
+  # Economy
+  base_energy_cost: 0.1
+  territory_claim_cost: 100
+  building_cost: 50
+  interaction_reward: 1
+  
+  # Entity Validators
+  validator_specializations:
+    - behavior_analysis
+    - interaction_validation
+    - evolution_tracking
+    - economy_monitoring
+    - world_physics
+    
+  # SCED-OSCED Bridge
+  bridge_sync_interval: 60            # segundos
+  cross_chain_fee: 0.01
+  bridge_enabled: true
+    
 # === Visualization ===
 visualization:
   taec_viz:
@@ -1514,6 +1815,15 @@ OTAEC_DE_SYNC_ENABLED=true
 ENTITY_BEHAVIOR_CACHE_SIZE=1000
 QUANTUM_CONSCIOUSNESS_SYNC_INTERVAL=10
 
+# OSCED Virtual World
+OSCED_ENABLED=true
+OSCED_WORLD_SEED=42
+OSCED_MAX_CHUNKS=10000
+OSCED_PHYSICS_THREADS=4
+OSCED_ECONOMY_INITIAL_SUPPLY=1000000
+OSCED_BRIDGE_HOST=localhost
+OSCED_BRIDGE_PORT=9997
+
 # Paths
 DATA_DIR=./data
 WORKSPACE_DIR=./workspace
@@ -1541,6 +1851,7 @@ synth-msc/
 │   ├── 🖥️ otaec_optimization_twin.py    # OTAEC
 │   ├── 👾 TAEC_Msc_Digital_Enties.py    # NUEVO: TAEC-DE v2.0
 │   ├── 💻 otaec_digital_entities.py     # NUEVO: OTAEC-DE
+│   ├── 🌐 osced_virtual_world.py        # NUEVO: OSCED
 │   ├── 🔗 sced v3.py
 │   └── 📊 Taecviz v.2.0 .py
 ├── 📂 mscl/                             # MSC-Lang 2.0
@@ -1552,10 +1863,15 @@ synth-msc/
 │   ├── instructions.py
 │   ├── memory.py
 │   └── execution.py
-├── 📂 behaviors/                        # NUEVO: Comportamientos
+├── 📂 behaviors/                        # Comportamientos
 │   ├── templates/
 │   ├── compiled/
 │   └── evolved/
+├── 📂 osced/                            # NUEVO: OSCED World
+│   ├── world_data/
+│   ├── terrain_generation/
+│   ├── buildings/
+│   └── validators/
 ├── 📂 tests/
 │   ├── test_core.py
 │   ├── test_evolution.py
@@ -1566,19 +1882,22 @@ synth-msc/
 │   ├── test_mscl_compiler.py
 │   ├── test_taec_de_v2.py              # NUEVO
 │   ├── test_otaec_de.py                # NUEVO
+│   ├── test_osced.py                   # NUEVO
 │   └── test_integration.py
 ├── 📂 benchmarks/
 │   ├── vm_performance.py
 │   ├── optimization_suite.py
 │   ├── memory_stress.py
 │   ├── entity_behavior_bench.py         # NUEVO
-│   └── collective_consciousness_bench.py # NUEVO
+│   ├── collective_consciousness_bench.py # NUEVO
+│   └── osced_world_bench.py             # NUEVO
 ├── 📂 examples/
 │   ├── mscl_examples/
 │   ├── otaec_scripts/
 │   ├── taec_templates/
 │   ├── entity_behaviors/                # NUEVO
-│   └── ecosystem_scenarios/             # NUEVO
+│   ├── ecosystem_scenarios/             # NUEVO
+│   └── osced_worlds/                    # NUEVO
 ├── 📄 requirements.txt
 ├── 📄 docker-compose.v5.2.yml
 └── 📄 README.md
@@ -1604,6 +1923,9 @@ pytest tests/test_taec_de_v2.py -v
 
 # Tests de OTAEC Digital Entities
 pytest tests/test_otaec_de.py -v
+
+# Tests de OSCED Virtual World
+pytest tests/test_osced.py -v
 
 # Benchmarks de rendimiento
 pytest benchmarks/ --benchmark-only
@@ -1645,7 +1967,7 @@ pytest --cov=. --cov-report=html --cov-report=term
 - ✅ **v4.0** - Blockchain SCED y visualización TAECViz
 - ✅ **v5.0** - Ecosistema de entes digitales autónomos
 - ✅ **v5.1** - TAEC Digital con memoria cuántica y tipos emergentes
-- ✅ **v5.2** - TAEC v3.0 con MSC-Lang 2.0, OTAEC, TAEC-DE v2.0 y OTAEC-DE
+- ✅ **v5.2** - TAEC v3.0 con MSC-Lang 2.0, OTAEC, TAEC-DE v2.0, OTAEC-DE y OSCED Virtual World
 
 </details>
 
@@ -1658,6 +1980,7 @@ pytest --cov=. --cov-report=html --cov-report=term
 | 🎮 IDE para MSC-Lang | ![25%](https://progress-bar.dev/25) | Q3 2025 |
 | 🧠 Compilación a WebAssembly | ![10%](https://progress-bar.dev/10) | Q4 2025 |
 | 🌍 Ecosistema Global de Entes | ![20%](https://progress-bar.dev/20) | Q4 2025 |
+| 🏗️ Constructor Visual de Mundos | ![5%](https://progress-bar.dev/5) | Q1 2026 |
 
 ### 🔮 **Futuro**
 
@@ -1669,21 +1992,25 @@ timeline
             : OTAEC Cloud Mode
             : Debugger Visual
             : Entity Marketplace
+            : OSCED Multiverse
     
     Q3 2025 : MSC-Lang 3.0 Complete
             : IDE con Autocompletado
             : Distributed OTAEC
             : Global Entity Network
+            : Cross-World Bridges
     
     Q4 2025 : WebAssembly Target
             : Mobile Runtime
             : Quantum Hardware Support
             : Entity-to-Entity Economy
+            : Persistent Virtual Worlds
     
     2026    : MSC OS - Operating System
             : Universal Compute Platform
             : AGI Integration Layer
             : Autonomous Entity Civilization
+            : Metaverse Federation
 ```
 
 ---
@@ -1710,25 +2037,31 @@ timeline
 
 <table>
 <tr>
-<td width="25%" align="center">
+<td width="20%" align="center">
 
 **📝 MSC-Lang**<br>
 <sub>Sistema de tipos<br>Optimizaciones</sub>
 
 </td>
-<td width="25%" align="center">
+<td width="20%" align="center">
 
 **🖥️ OTAEC**<br>
 <sub>Más algoritmos<br>GUI nativa</sub>
 
 </td>
-<td width="25%" align="center">
+<td width="20%" align="center">
 
 **👾 Digital Entities**<br>
 <sub>Nuevos tipos<br>Comportamientos complejos</sub>
 
 </td>
-<td width="25%" align="center">
+<td width="20%" align="center">
+
+**🌐 OSCED**<br>
+<sub>Más terrenos<br>Física avanzada</sub>
+
+</td>
+<td width="20%" align="center">
 
 **🔧 Herramientas**<br>
 <sub>IDE completo<br>Debugger visual</sub>
@@ -1797,6 +2130,6 @@ Si usas MSC Framework en tu investigación:
 
 Hecho con ❤️ por **esraderey** & **Synth**
 
-<sub>MSC Framework v5.2 • 2025 • La evolución continúa con compilador completo, gemelo de optimización y ecosistemas de entes ultra-avanzados</sub>
+<sub>MSC Framework v5.2 • 2025 • La evolución continúa con compilador completo, gemelo de optimización, ecosistemas de entes ultra-avanzados y mundos virtuales blockchain</sub>
 
 </div>
