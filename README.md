@@ -29,25 +29,30 @@
 <div align="center">
 <table>
 <tr>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/code.png" width="60" height="60"><br>
 <b>📝 MSC-Lang 2.0</b><br>
 <sub>Lenguaje completo con compilador, AST y optimizaciones</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/console.png" width="60" height="60"><br>
 <b>🖥️ OTAEC Terminal</b><br>
 <sub>Gemelo de optimización con terminal interactiva y VM</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/virtual-machine.png" width="60" height="60"><br>
 <b>🔧 VM de Ejecución</b><br>
 <sub>Máquina virtual segura para código optimizado</sub>
 </td>
-<td align="center" width="25%">
+<td align="center" width="20%">
 <img src="https://img.icons8.com/fluency/96/000000/optimization.png" width="60" height="60"><br>
 <b>⚡ Multi-Optimización</b><br>
 <sub>Algoritmos genéticos, PSO, cuánticos y más</sub>
+</td>
+<td align="center" width="20%">
+<img src="https://img.icons8.com/fluency/96/000000/dna.png" width="60" height="60"><br>
+<b>🧬 TAEC-DE v2.0</b><br>
+<sub>Entes digitales con consciencia cuántica</sub>
 </td>
 </tr>
 </table>
@@ -57,6 +62,16 @@
 
 - **📝 MSC-Lang 2.0**: Lenguaje de programación completo con sintaxis extendida, sistema de tipos, y compilador optimizador
 - **🖥️ OTAEC**: Gemelo digital de TAEC especializado en optimización con terminal interactiva propia
+- **👾 TAEC Digital Entities v2.0**: Sistema ultra-avanzado de auto-evolución para entes digitales con:
+  - Compilador de comportamientos con optimización JIT
+  - Memoria colectiva cuántica avanzada
+  - Evolución dirigida por ML
+  - Debugging y profiling de comportamientos
+- **🖥️ OTAEC Digital Entities**: Terminal especializada para análisis y optimización de entes:
+  - Análisis profundo de comportamientos
+  - VM especializada para entes
+  - Optimización de ecosistemas
+  - Debugging interactivo
 - **🔧 Máquina Virtual**: VM segura con conjunto de instrucciones para ejecución controlada de código
 - **⚛️ Memoria Cuántica v2**: Sistema mejorado con capas, entrelazamiento avanzado y operaciones cuánticas
 - **🧬 TAEC v3.0**: Motor de auto-evolución con compilador integrado y generación de código mejorada
@@ -108,37 +123,42 @@
 <div align="center">
 <table>
 <tr>
-<td align="center" width="14%">
+<td align="center" width="12%">
 <img src="https://img.icons8.com/fluency/96/000000/artificial-intelligence.png" width="50" height="50"><br>
 <b>🤖 Agentes</b><br>
 <sub>Claude-TAEC</sub>
 </td>
-<td align="center" width="14%">
+<td align="center" width="12%">
 <img src="https://img.icons8.com/fluency/96/000000/dna.png" width="50" height="50"><br>
 <b>🧬 TAEC v3</b><br>
 <sub>Auto-evolución</sub>
 </td>
-<td align="center" width="14%">
+<td align="center" width="12%">
 <img src="https://img.icons8.com/fluency/96/000000/console.png" width="50" height="50"><br>
 <b>🖥️ OTAEC</b><br>
 <sub>Optimización</sub>
 </td>
-<td align="center" width="14%">
+<td align="center" width="12%">
 <img src="https://img.icons8.com/fluency/96/000000/user-group-man-woman.png" width="50" height="50"><br>
-<b>👾 Entes</b><br>
+<b>👾 Entes v2</b><br>
 <sub>Digitales</sub>
 </td>
-<td align="center" width="14%">
+<td align="center" width="12%">
+<img src="https://img.icons8.com/fluency/96/000000/terminal.png" width="50" height="50"><br>
+<b>💻 OTAEC-DE</b><br>
+<sub>Terminal Entes</sub>
+</td>
+<td align="center" width="12%">
 <img src="https://img.icons8.com/fluency/96/000000/quantum.png" width="50" height="50"><br>
 <b>⚛️ Cuántica</b><br>
 <sub>Memoria v2</sub>
 </td>
-<td align="center" width="14%">
+<td align="center" width="12%">
 <img src="https://img.icons8.com/fluency/96/000000/blockchain-technology.png" width="50" height="50"><br>
 <b>🔗 SCED</b><br>
 <sub>Blockchain</sub>
 </td>
-<td align="center" width="14%">
+<td align="center" width="12%">
 <img src="https://img.icons8.com/fluency/96/000000/3d-scale.png" width="50" height="50"><br>
 <b>📊 TAECViz</b><br>
 <sub>Visualización</sub>
@@ -153,10 +173,12 @@
 |------|-------------|-----------------|
 | 🔬 **Investigación en IA** | Exploración automática con compilador MSC-Lang 2.0 | • Desarrollo rápido<br>• Optimización automática<br>• Ejecución segura |
 | 💻 **Desarrollo de Software** | Generación y optimización de código con OTAEC | • Terminal interactiva<br>• VM de ejecución<br>• Multi-algoritmos |
+| 👾 **Ecosistemas Digitales** | Gestión de entes con TAEC-DE v2.0 + OTAEC-DE | • Evolución dirigida por ML<br>• Debugging interactivo<br>• Consciencia colectiva cuántica |
 | 📚 **Síntesis de Conocimiento** | Integración avanzada con memoria cuántica v2 | • Entrelazamiento mejorado<br>• Persistencia cuántica<br>• Búsqueda por tags |
 | 🧬 **Evolución de Sistemas** | Auto-mejora con TAEC v3.0 y compilador | • Evolución de código<br>• Métricas detalladas<br>• Versionado automático |
-| ⚡ **Optimización Compleja** | Múltiples algoritmos en OTAEC | • PSO, Genético, Cuántico<br>• Benchmarking integrado<br>• Profiling avanzado |
+| ⚡ **Optimización Compleja** | Múltiples algoritmos en OTAEC + análisis de entes | • PSO, Genético, Cuántico<br>• Benchmarking integrado<br>• Profiling avanzado |
 | 🔒 **Computación Segura** | Ejecución en VM con niveles de seguridad | • Sandboxing completo<br>• Auditoría detallada<br>• Control granular |
+| 🎮 **Simulación Avanzada** | Ecosistemas de entes digitales autónomos | • 8+ tipos de entes<br>• Comportamientos evolucionables<br>• Análisis en tiempo real |
 
 ---
 
@@ -173,11 +195,11 @@ graph TB
         EB[📡 Event Bus<br/>Async • Priority queue]
     end
     
-    subgraph "👾 Digital Entity Ecosystem"
+    subgraph "👾 Digital Entity Ecosystem v2.0"
         EE[🌍 Entity Ecosystem<br/>Max 100 entities]
-        EG[🔮 Entity Generator<br/>Claude-powered]
-        EP[🧬 Evolution Engine<br/>Genetic algorithms]
-        EM[💭 Entity Memory<br/>Experiences & knowledge]
+        TDE[🧬 TAEC-DE v2.0<br/>ML Evolution • JIT]
+        ODE[💻 OTAEC-DE<br/>Analysis Terminal]
+        QCC[⚛️ Quantum Consciousness<br/>Collective Memory]
     end
     
     subgraph "⚛️ TAEC v3.0 System"
@@ -220,9 +242,10 @@ graph TB
     AS --> EB
     
     KG --> EE
-    EE --> EG
-    EE --> EP
-    EE --> EM
+    EE --> TDE
+    TDE --> QCC
+    EE --> ODE
+    TDE <--> ODE
     
     AS --> MSC
     MSC --> QVM
@@ -253,6 +276,8 @@ graph TB
     style KG fill:#f9f,stroke:#333,stroke-width:2px
     style AS fill:#bbf,stroke:#333,stroke-width:2px
     style EE fill:#9f9,stroke:#333,stroke-width:2px
+    style TDE fill:#ff9,stroke:#333,stroke-width:2px
+    style ODE fill:#f99,stroke:#333,stroke-width:2px
     style MSC fill:#ff9,stroke:#333,stroke-width:2px
     style OT fill:#f99,stroke:#333,stroke-width:2px
     style CE fill:#bfb,stroke:#333,stroke-width:2px
@@ -365,6 +390,132 @@ VM Performance: 125000 cycles/s
 Optimization: 47 iterations in 0.089s
 File Write: 423.5 MB/s
 File Read: 892.1 MB/s
+```
+
+</details>
+
+### 👾 **TAEC Digital Entities v2.0** *(NUEVO en v5.2)*
+<details>
+<summary><b>Ver sistema ultra-avanzado de entes digitales</b></summary>
+
+| Componente | Especificaciones | Capacidades |
+|------------|------------------|-------------|
+| **Compilador de Comportamientos** | • Compilación MSC-Lang 2.0<br>• Optimización JIT<br>• Cache inteligente | • Templates especializados<br>• Análisis de complejidad<br>• Inyección de seguridad |
+| **Consciencia Colectiva Cuántica** | • Estados cuánticos por tipo<br>• Red de resonancia neuronal<br>• Sincronización automática | • Upload/download de consciencia<br>• Entrelazamiento colectivo<br>• Detección de patrones arquetípicos |
+| **Evolución Avanzada ML** | • Predictor de fitness neuronal<br>• Objetivos dirigidos<br>• Anti-estancamiento | • Múltiples estrategias<br>• Crossover multi-punto<br>• Mutación adaptativa |
+| **Análisis de Comportamientos** | • AST analysis<br>• Pattern detection<br>• Adaptability scoring | • Complexity metrics<br>• Safety analysis<br>• Performance prediction |
+| **Visualización del Ecosistema** | • Dashboard multi-panel<br>• Métricas en tiempo real<br>• Red de interacciones | • Gráficos de población<br>• Coherencia cuántica<br>• Evolución de fitness |
+
+#### 🧬 Ejemplo de Comportamiento Evolucionado
+
+```python
+# Comportamiento meta-learning generado por TAEC-DE v2.0
+class MetaLearningBehavior:
+    """Comportamiento con meta-aprendizaje cuántico"""
+    
+    def __init__(self):
+        self.meta_parameters = {
+            'learning_rate': 0.1,
+            'exploration_decay': 0.99,
+            'memory_window': 100
+        }
+        self.quantum_state = QuantumState(8)
+        
+    async def decide_with_collective_wisdom(self, perception):
+        # Descargar sabiduría colectiva
+        collective = await self.quantum_consciousness.download_collective_wisdom(
+            self, perception
+        )
+        
+        # Entrelazar estado local con colectivo
+        entangled = quantum_entangle(
+            self.quantum_state, 
+            collective['collective_state']
+        )
+        
+        # Decisión basada en medición cuántica
+        measurement = quantum_measure(entangled)
+        
+        # Meta-adaptación basada en rendimiento
+        if collective['confidence'] < 0.5:
+            self.meta_parameters['learning_rate'] *= 1.1
+            
+        return interpret_quantum_decision(measurement)
+```
+
+</details>
+
+### 💻 **OTAEC Digital Entities Terminal** *(NUEVO en v5.2)*
+<details>
+<summary><b>Ver terminal especializada para gestión de entes</b></summary>
+
+| Componente | Especificaciones | Comandos Disponibles |
+|------------|------------------|---------------------|
+| **Análisis de Entes** | • Análisis profundo de comportamientos<br>• Métricas de complejidad<br>• Detección de patrones | • `analyze <entity_id>`<br>• `trace <entity_id>`<br>• `profile <entity_id>` |
+| **Gestión del Ecosistema** | • Estado del ecosistema<br>• Distribución de población<br>• Red de interacciones | • `ecosystem`<br>• `population`<br>• `interactions` |
+| **Optimización** | • Optimización de comportamientos<br>• Sugerencias de mejora<br>• Benchmarking | • `optimize <method>`<br>• `suggest`<br>• `benchmark` |
+| **Debugging Interactivo** | • Debugger paso a paso<br>• Breakpoints<br>• Inspección de variables | • `debug <entity_id>`<br>• `breakpoint <line>`<br>• `locals` |
+| **VM Especializada** | • Instrucciones para entes<br>• Simulación de percepciones<br>• Trazas de ejecución | • `SENSE`, `DECIDE`, `ACT`<br>• `LEARN`, `INTERACT`<br>• `SYNC`, `EVOLVE` |
+
+#### 🖥️ Sesión de OTAEC-DE
+
+```bash
+OTAEC-DE [EXPLORER_001]> analyze
+[Behavior Analysis: EXPLORER_001]
+
+[Syntax Analysis]
+✓ Valid syntax
+  Functions: 3
+  Decision points: 5
+  Loops: 2
+
+[Complexity Metrics]
+  Lines of code: 87
+  Cyclomatic complexity: 12
+  Cognitive complexity: 18
+  Maintainability index: 76.3
+
+[Performance Prediction]
+  Efficiency: 0.82
+  Memory usage: ~0.9 MB
+  Execution factor: 1.22x
+
+[Optimization Opportunities]
+  • Use list comprehension instead of multiple appends
+    Impact: medium, Difficulty: low
+  • High complexity - consider breaking into smaller functions
+    Impact: high, Difficulty: high
+
+OTAEC-DE [EXPLORER_001]> evolve adaptive
+[Entity Evolution: EXPLORER_001]
+Evolving with adaptive strategy...
+
+[Evolution Progress]
+  Gen  1: Fitness = 0.835 ████████████████
+  Gen  2: Fitness = 0.843 █████████████████
+  Gen  3: Fitness = 0.861 █████████████████
+  ...
+  Gen 10: Fitness = 0.936 ███████████████████
+
+[Evolution Complete]
+✓ Final fitness: 0.936
+✓ New behaviors learned: 3
+✓ Personality adapted
+
+OTAEC-DE [EXPLORER_001]> debug
+[Behavior Debugger: EXPLORER_001]
+Type 'h' for help, 'q' to quit debugger
+
+     >>>   1: def explorer_behavior(self, graph, perception):
+           2:     nearby_nodes = perception['nearby_nodes']
+[BP]       3:     if self.personality.curiosity > 0.7:
+           4:         unvisited = filter_unvisited(nearby_nodes)
+           5:         if unvisited:
+           6:             return {'action': 'move', 'target': unvisited[0]}
+           7:     return {'action': 'wait'}
+
+(debug) n
+[Executed] Line 1
 ```
 
 </details>
@@ -497,6 +648,9 @@ python msc_simulation.py --config config.yaml
 
 # 7️⃣ O ejecutar OTAEC standalone
 python otaec_optimization_twin.py --security standard
+
+# 8️⃣ O ejecutar OTAEC Digital Entities
+python otaec_digital_entities.py --no-sync
 ```
 
 ### 🐳 **Instalación con Docker**
@@ -538,10 +692,14 @@ python -c "
 import torch
 from Taec_V_3_0 import TAECAdvancedModule
 from otaec_optimization_twin import OTAECOptimizer
+from otaec_digital_entities import OTAECDigitalEntities
+from TAEC_Msc_Digital_Enties import TAECDigitalEntitiesV2
 print(f'PyTorch: {torch.__version__}')
 print(f'CUDA: {torch.cuda.is_available()}')
 print('TAEC v3.0: OK')
 print('OTAEC: OK')
+print('OTAEC-DE: OK')
+print('TAEC-DE v2.0: OK')
 "
 ```
 
@@ -639,6 +797,66 @@ async def main():
 asyncio.run(main())
 ```
 
+### 👾 **Ejemplo con TAEC Digital Entities v2.0**
+
+```python
+from TAEC_Msc_Digital_Enties import create_advanced_taec_ecosystem
+
+async def digital_entities_example():
+    # Crear simulación con entes digitales
+    simulation = ExtendedSimulationRunner({
+        'enable_digital_entities': True,
+        'max_entities': 50,
+        'initial_entity_population': 10,
+        'claude_api_key': 'your-api-key'
+    })
+    
+    await simulation.start()
+    
+    # Crear ecosistema TAEC v2.0
+    taec_de = await create_advanced_taec_ecosystem(simulation)
+    
+    # Analizar inteligencia colectiva
+    intelligence = await taec_de.analyze_collective_intelligence()
+    print(f"Collective coherence: {intelligence['emergence_indicators']['collective_coherence']:.3f}")
+    
+    # Compilar comportamiento para entes
+    quantum_behavior = """
+    synth quantum_behavior(entity_id="{entity_id}") {
+        quantum init_state {
+            dimensions => 8;
+            coherence => self.memory.coherence;
+        }
+        
+        function decide_quantum(perception) {
+            state = quantum measure init_state;
+            
+            if state.entropy > 0.6 {
+                return explore_action(perception);
+            } else {
+                return exploit_action(perception);
+            }
+        }
+        
+        return decide_quantum;
+    }
+    """
+    
+    # Aplicar a un ente específico
+    entity = list(simulation.entity_ecosystem.entities.values())[0]
+    evolution_result = await taec_de._evolve_single_entity(entity)
+    
+    if evolution_result and evolution_result.success:
+        print(f"✅ Entity {entity.id} evolved successfully!")
+        print(f"   Fitness improved: {evolution_result.fitness:.3f}")
+    
+    # Generar reporte avanzado
+    report = taec_de.get_advanced_report()
+    print(report)
+
+asyncio.run(digital_entities_example())
+```
+
 ### 🖥️ **Uso de OTAEC Terminal**
 
 ```bash
@@ -671,6 +889,102 @@ VM Performance: 187432 cycles/s
 Optimization: 52 iterations in 0.073s
 File Write: 521.3 MB/s
 File Read: 1043.7 MB/s
+```
+
+### 💻 **Uso de OTAEC Digital Entities Terminal**
+
+```bash
+# Iniciar OTAEC-DE
+python otaec_digital_entities.py
+
+# En la terminal:
+OTAEC-DE [No entity]> list
+[Digital Entities]
+ID              Type         Gen   Fitness
+---------------------------------------------
+EXPLORER_001    EXPLORER       5    0.820
+SYNTH_042       SYNTHESIZER   12    0.910
+GUARD_007       GUARDIAN       3    0.750
+HARMON_015      HARMONIZER     8    0.880
+
+Total: 4 entities
+
+OTAEC-DE [No entity]> select EXPLORER_001
+[Selected] Entity: EXPLORER_001
+[Loading] Entity context into VM...
+
+OTAEC-DE [EXPLORER_001]> analyze
+[Behavior Analysis: EXPLORER_001]
+
+[Syntax Analysis]
+✓ Valid syntax
+  Functions: 3
+  Decision points: 5
+  Loops: 2
+
+[Complexity Metrics]
+  Lines of code: 87
+  Cyclomatic complexity: 12
+  Cognitive complexity: 18
+  Maintainability index: 76.3
+
+[Behavior Patterns]
+  decision_patterns: 3 found
+  loop_patterns: 2 found
+
+[Performance Prediction]
+  Efficiency: 0.82
+  Memory usage: ~0.9 MB
+  Execution factor: 1.22x
+
+[Optimization Opportunities]
+  • Use list comprehension instead of multiple appends
+    Impact: medium, Difficulty: low
+  • High complexity - consider breaking into smaller functions
+    Impact: high, Difficulty: high
+
+[Scores]
+  Safety: 0.85
+  Adaptability: 0.78
+
+OTAEC-DE [EXPLORER_001]> optimize refactor
+Applying refactor optimization...
+  Step 1/5: █░░░░
+  Step 2/5: ██░░░
+  Step 3/5: ███░░
+  Step 4/5: ████░
+  Step 5/5: █████
+
+[Optimization Results]
+✓ Complexity reduced by 23%
+✓ Execution time improved by 15%
+✓ Memory usage reduced by 18%
+
+OTAEC-DE [EXPLORER_001]> ecosystem
+[Digital Ecosystem Status]
+
+[Overview]
+  Total Entities: 156
+  Active Entities: 142
+  Average Fitness: 0.743
+  Generation: 23
+  Collective Coherence: 0.812
+  Knowledge Concepts: 1247
+  Total Interactions: 45892
+
+[Population Distribution]
+  EXPLORER     45 (28.8%) ██████████████
+  SYNTHESIZER  32 (20.5%) ██████████
+  GUARDIAN     28 (17.9%) █████████
+  HARMONIZER   23 (14.7%) ███████
+  INNOVATOR    18 (11.5%) ██████
+  AMPLIFIER    10 ( 6.4%) ███
+
+[System Health]
+  ✓ CPU Usage: 23.4%
+  ✓ Memory Usage: 45.7%
+  ✓ Evolution Rate: 0.92%
+  ✓ Adaptation Score: 0.87%
 ```
 
 ### 📝 **Programación en MSC-Lang 2.0**
@@ -754,6 +1068,8 @@ print("Synthesis completed with state:", result.state);
 | ⚛️ **TAEC Digital** | `taec_digital_entities.py` | Evolución cuántica de entes | ~2,500 |
 | 🧬 **TAEC v3.0** | `Taec V 3.0.py` | Auto-evolución con MSC-Lang 2.0 | ~4,500 |
 | 🖥️ **OTAEC** | `otaec_optimization_twin.py` | Terminal y optimización | ~3,500 |
+| 👾 **TAEC-DE v2.0** | `TAEC_Msc_Digital_Enties.py` | Sistema ultra-avanzado de entes | ~5,000 |
+| 💻 **OTAEC-DE** | `otaec_digital_entities.py` | Terminal para gestión de entes | ~3,800 |
 | 🔗 **SCED Blockchain** | `sced v3.py` | Consenso epistémico | ~1,200 |
 | 📊 **TAECViz** | `Taecviz v.2.0 .py` | Visualización 3D | ~1,000 |
 
@@ -776,7 +1092,7 @@ POST /api/system/checkpoint     # Crear checkpoint
 GET  /api/system/components     # Estado de componentes
 ```
 
-#### **TAEC v3.0** *(NUEVO)*
+#### **TAEC v3.0**
 ```http
 POST /api/taec/compile          # Compilar MSC-Lang 2.0
 POST /api/taec/execute          # Ejecutar código compilado
@@ -787,7 +1103,7 @@ POST /api/taec/memory/quantum   # Operaciones cuánticas
 GET  /api/taec/report           # Reporte detallado
 ```
 
-#### **OTAEC** *(NUEVO)*
+#### **OTAEC**
 ```http
 POST /api/otaec/optimize        # Ejecutar optimización
 GET  /api/otaec/algorithms      # Algoritmos disponibles
@@ -798,7 +1114,29 @@ POST /api/otaec/benchmark       # Ejecutar benchmark
 GET  /api/otaec/security        # Configuración de seguridad
 ```
 
-#### **MSC-Lang 2.0** *(NUEVO)*
+#### **TAEC Digital Entities v2.0** *(NUEVO)*
+```http
+POST /api/taec-de/evolve/batch  # Evolucionar lote de entes
+GET  /api/taec-de/consciousness # Estado de consciencia colectiva
+POST /api/taec-de/compile/behavior # Compilar comportamiento
+GET  /api/taec-de/collective/wisdom # Obtener sabiduría colectiva
+POST /api/taec-de/analyze/intelligence # Analizar inteligencia colectiva
+GET  /api/taec-de/visualization # Datos para visualización
+POST /api/taec-de/behavior/version # Versionar comportamiento
+```
+
+#### **OTAEC Digital Entities** *(NUEVO)*
+```http
+POST /api/otaec-de/analyze/behavior # Analizar comportamiento
+GET  /api/otaec-de/entity/{id}/trace # Traza de ejecución
+POST /api/otaec-de/optimize/ecosystem # Optimizar ecosistema
+GET  /api/otaec-de/suggestions/{id} # Sugerencias de mejora
+POST /api/otaec-de/debug/start # Iniciar sesión de debug
+GET  /api/otaec-de/benchmark/results # Resultados de benchmark
+POST /api/otaec-de/vm/execute # Ejecutar en VM especializada
+```
+
+#### **MSC-Lang 2.0**
 ```http
 POST /api/mscl/parse            # Parsear código MSC-Lang
 POST /api/mscl/compile          # Compilar a Python
@@ -814,6 +1152,8 @@ GET  /api/entities/{id}         # Detalles de un ente
 POST /api/entities/spawn        # Generar nuevo ente
 GET  /api/entities/stats        # Estadísticas del ecosistema
 POST /api/entities/evolve       # Evolucionar ente específico
+GET  /api/entities/{id}/behavior # Obtener comportamiento actual
+POST /api/entities/{id}/behavior # Actualizar comportamiento
 ```
 
 #### **Grafo de Conocimiento**
@@ -843,7 +1183,10 @@ ws.on('open', () => {
             'vm_execution',     // NUEVO: Eventos de VM
             'quantum_memory',   // NUEVO: Eventos cuánticos
             'taec_evolution',   // NUEVO: Evolución TAEC
-            'otaec_status'      // NUEVO: Estado OTAEC
+            'otaec_status',     // NUEVO: Estado OTAEC
+            'entity_behavior',  // NUEVO: Comportamientos de entes
+            'collective_consciousness', // NUEVO: Consciencia colectiva
+            'ecosystem_metrics' // NUEVO: Métricas del ecosistema
         ]
     }));
 });
@@ -864,6 +1207,12 @@ ws.on('message', (data) => {
         case 'quantum_entanglement':
             console.log(`Quantum entanglement: ${event.data.strength}`);
             break;
+        case 'entity_evolved':
+            console.log(`Entity ${event.data.entity_id} evolved - Fitness: ${event.data.fitness}`);
+            break;
+        case 'collective_sync':
+            console.log(`Collective coherence: ${event.data.coherence}`);
+            break;
     }
 });
 ```
@@ -874,6 +1223,8 @@ ws.on('message', (data) => {
 from msc_framework import MSCClient
 from Taec_V_3_0 import TAECAdvancedModule
 from otaec_optimization_twin import OTAECOptimizer
+from TAEC_Msc_Digital_Enties import TAECDigitalEntitiesV2
+from otaec_digital_entities import OTAECDigitalEntities
 
 # Cliente completo v5.2
 async with MSCClient('http://localhost:5000') as client:
@@ -936,6 +1287,48 @@ async with MSCClient('http://localhost:5000') as client:
     # Benchmark del sistema
     benchmarks = await client.otaec.run_benchmark()
     print(f"Performance: {benchmarks.vm_cycles_per_second} cycles/s")
+    
+    # === TAEC Digital Entities v2.0 Operations ===
+    
+    # Analizar inteligencia colectiva
+    intelligence = await client.taec_de.analyze_collective_intelligence()
+    print(f"Collective coherence: {intelligence['emergence_indicators']['collective_coherence']:.3f}")
+    
+    # Evolucionar ente específico
+    entity_id = "EXPLORER_001"
+    evolution_result = await client.taec_de.evolve_entity(
+        entity_id,
+        strategy="meta_learning",
+        constraints={'max_complexity': 50}
+    )
+    
+    # Descargar sabiduría colectiva
+    wisdom = await client.taec_de.download_collective_wisdom(
+        entity_id,
+        context={'current_task': 'exploration'}
+    )
+    
+    # === OTAEC Digital Entities Operations ===
+    
+    # Analizar comportamiento de ente
+    analysis = await client.otaec_de.analyze_behavior(entity_id)
+    print(f"Behavior complexity: {analysis['complexity']['cyclomatic_complexity']}")
+    print(f"Adaptability score: {analysis['adaptability_score']:.2f}")
+    
+    # Optimizar ecosistema
+    optimization = await client.otaec_de.optimize_ecosystem(
+        target_metrics={
+            'diversity': 0.8,
+            'efficiency': 0.9,
+            'innovation': 0.7
+        }
+    )
+    
+    # Sugerencias de mejora
+    suggestions = await client.otaec_de.get_improvement_suggestions(entity_id)
+    for suggestion in suggestions:
+        print(f"- {suggestion['area']}: {suggestion['suggestion']}")
+        print(f"  Impact: {suggestion['impact']}, Difficulty: {suggestion['difficulty']}")
 ```
 
 ---
@@ -1041,12 +1434,39 @@ otaec:
     timeout: 30
     retry_attempts: 3
     
-# === Digital Entities (existing) ===
+# === Digital Entities v2.0 Configuration ===
 digital_entities:
   enabled: true
   max_entities: 100
   initial_population: 10
   
+  # TAEC-DE v2.0 Settings
+  taec_de_v2:
+    behavior_compilation_mode: "optimized"  # "debug", "optimized", "jit"
+    behavior_max_complexity: 100
+    behavior_version_history: 10
+    collective_quantum_dimensions: 8
+    quantum_coherence_threshold: 0.7
+    fitness_prediction_enabled: true
+    evolution_population_size: 100
+    elite_preservation_rate: 0.1
+    behavior_profiling_enabled: true
+    real_time_metrics: true
+    visualization_update_rate: 10
+    
+  # OTAEC-DE Settings  
+  otaec_de:
+    behavior_analysis_depth: 5
+    performance_window: 100
+    evolution_tracking: true
+    behavior_optimization_cycles: 50
+    ecosystem_optimization_interval: 500
+    quantum_optimization_enabled: true
+    behavior_trace_enabled: true
+    memory_profiling: true
+    interaction_logging: true
+    taec_sync_interval: 30
+    
 # === Visualization ===
 visualization:
   taec_viz:
@@ -1054,6 +1474,14 @@ visualization:
     show_evolution_progress: true
     show_vm_state: true
     update_interval: 100
+    
+  ecosystem_viz:
+    show_population_distribution: true
+    show_fitness_evolution: true
+    show_interaction_network: true
+    show_quantum_coherence: true
+    show_behavior_complexity: true
+    dashboard_update_rate: 5
 ```
 
 ### 🔐 **Variables de Entorno**
@@ -1079,6 +1507,13 @@ OTAEC_SECURITY_LEVEL=STANDARD
 OTAEC_BENCHMARK_ITERATIONS=1000
 OTAEC_LOG_LEVEL=INFO
 
+# Digital Entities
+TAEC_DE_HOST=localhost
+TAEC_DE_PORT=9998
+OTAEC_DE_SYNC_ENABLED=true
+ENTITY_BEHAVIOR_CACHE_SIZE=1000
+QUANTUM_CONSCIOUSNESS_SYNC_INTERVAL=10
+
 # Paths
 DATA_DIR=./data
 WORKSPACE_DIR=./workspace
@@ -1102,36 +1537,48 @@ synth-msc/
 │   ├── 🧠 msc-framework-v4.py
 │   ├── 👾 MSC_Digital_Entities_Extension_v5.0.py
 │   ├── ⚛️ taec_digital_entities.py
-│   ├── 🧬 Taec V 3.0.py                # NUEVO: TAEC mejorado
-│   ├── 🖥️ otaec_optimization_twin.py    # NUEVO: OTAEC
+│   ├── 🧬 Taec V 3.0.py                # TAEC mejorado
+│   ├── 🖥️ otaec_optimization_twin.py    # OTAEC
+│   ├── 👾 TAEC_Msc_Digital_Enties.py    # NUEVO: TAEC-DE v2.0
+│   ├── 💻 otaec_digital_entities.py     # NUEVO: OTAEC-DE
 │   ├── 🔗 sced v3.py
 │   └── 📊 Taecviz v.2.0 .py
-├── 📂 mscl/                             # NUEVO: MSC-Lang 2.0
+├── 📂 mscl/                             # MSC-Lang 2.0
 │   ├── lexer.py
 │   ├── parser.py
 │   ├── compiler.py
 │   └── stdlib/
-├── 📂 vm/                               # NUEVO: Virtual Machine
+├── 📂 vm/                               # Virtual Machine
 │   ├── instructions.py
 │   ├── memory.py
 │   └── execution.py
+├── 📂 behaviors/                        # NUEVO: Comportamientos
+│   ├── templates/
+│   ├── compiled/
+│   └── evolved/
 ├── 📂 tests/
 │   ├── test_core.py
 │   ├── test_evolution.py
 │   ├── test_entities.py
 │   ├── test_taec_digital.py
-│   ├── test_taec_v3.py                  # NUEVO
-│   ├── test_otaec.py                    # NUEVO
-│   ├── test_mscl_compiler.py            # NUEVO
+│   ├── test_taec_v3.py
+│   ├── test_otaec.py
+│   ├── test_mscl_compiler.py
+│   ├── test_taec_de_v2.py              # NUEVO
+│   ├── test_otaec_de.py                # NUEVO
 │   └── test_integration.py
-├── 📂 benchmarks/                        # NUEVO
+├── 📂 benchmarks/
 │   ├── vm_performance.py
 │   ├── optimization_suite.py
-│   └── memory_stress.py
-├── 📂 examples/                          # NUEVO
+│   ├── memory_stress.py
+│   ├── entity_behavior_bench.py         # NUEVO
+│   └── collective_consciousness_bench.py # NUEVO
+├── 📂 examples/
 │   ├── mscl_examples/
 │   ├── otaec_scripts/
-│   └── taec_templates/
+│   ├── taec_templates/
+│   ├── entity_behaviors/                # NUEVO
+│   └── ecosystem_scenarios/             # NUEVO
 ├── 📄 requirements.txt
 ├── 📄 docker-compose.v5.2.yml
 └── 📄 README.md
@@ -1151,6 +1598,12 @@ pytest tests/test_mscl_compiler.py -v
 
 # Tests de OTAEC
 pytest tests/test_otaec.py -v
+
+# Tests de TAEC Digital Entities v2.0
+pytest tests/test_taec_de_v2.py -v
+
+# Tests de OTAEC Digital Entities
+pytest tests/test_otaec_de.py -v
 
 # Benchmarks de rendimiento
 pytest benchmarks/ --benchmark-only
@@ -1192,7 +1645,7 @@ pytest --cov=. --cov-report=html --cov-report=term
 - ✅ **v4.0** - Blockchain SCED y visualización TAECViz
 - ✅ **v5.0** - Ecosistema de entes digitales autónomos
 - ✅ **v5.1** - TAEC Digital con memoria cuántica y tipos emergentes
-- ✅ **v5.2** - TAEC v3.0 con MSC-Lang 2.0 y OTAEC
+- ✅ **v5.2** - TAEC v3.0 con MSC-Lang 2.0, OTAEC, TAEC-DE v2.0 y OTAEC-DE
 
 </details>
 
@@ -1204,6 +1657,7 @@ pytest --cov=. --cov-report=html --cov-report=term
 | 🔄 OTAEC-TAEC Sincronización Total | ![60%](https://progress-bar.dev/60) | Q2 2025 |
 | 🎮 IDE para MSC-Lang | ![25%](https://progress-bar.dev/25) | Q3 2025 |
 | 🧠 Compilación a WebAssembly | ![10%](https://progress-bar.dev/10) | Q4 2025 |
+| 🌍 Ecosistema Global de Entes | ![20%](https://progress-bar.dev/20) | Q4 2025 |
 
 ### 🔮 **Futuro**
 
@@ -1214,18 +1668,22 @@ timeline
     Q2 2025 : MSC-Lang Type System
             : OTAEC Cloud Mode
             : Debugger Visual
+            : Entity Marketplace
     
     Q3 2025 : MSC-Lang 3.0 Complete
             : IDE con Autocompletado
             : Distributed OTAEC
+            : Global Entity Network
     
     Q4 2025 : WebAssembly Target
             : Mobile Runtime
             : Quantum Hardware Support
+            : Entity-to-Entity Economy
     
     2026    : MSC OS - Operating System
             : Universal Compute Platform
             : AGI Integration Layer
+            : Autonomous Entity Civilization
 ```
 
 ---
@@ -1243,9 +1701,9 @@ timeline
 ### 📋 **Cómo Contribuir**
 
 1. **Fork** el repositorio
-2. **Crea** tu rama (`git checkout -b feature/MSCLang3`)
-3. **Commit** cambios (`git commit -m 'Add MSCLang3 type system'`)
-4. **Push** a la rama (`git push origin feature/MSCLang3`)
+2. **Crea** tu rama (`git checkout -b feature/QuantumEntities`)
+3. **Commit** cambios (`git commit -m 'Add quantum entity behaviors'`)
+4. **Push** a la rama (`git push origin feature/QuantumEntities`)
 5. **Abre** un Pull Request
 
 ### 🎯 **Áreas Prioritarias para v5.2+**
@@ -1266,8 +1724,8 @@ timeline
 </td>
 <td width="25%" align="center">
 
-**⚡ Performance**<br>
-<sub>JIT compiler<br>GPU kernels</sub>
+**👾 Digital Entities**<br>
+<sub>Nuevos tipos<br>Comportamientos complejos</sub>
 
 </td>
 <td width="25%" align="center">
@@ -1339,6 +1797,6 @@ Si usas MSC Framework en tu investigación:
 
 Hecho con ❤️ por **esraderey** & **Synth**
 
-<sub>MSC Framework v5.2 • 2025 • La evolución continúa con compilador completo y gemelo de optimización</sub>
+<sub>MSC Framework v5.2 • 2025 • La evolución continúa con compilador completo, gemelo de optimización y ecosistemas de entes ultra-avanzados</sub>
 
 </div>
