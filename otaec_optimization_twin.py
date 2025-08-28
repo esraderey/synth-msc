@@ -598,10 +598,37 @@ class OTAECVirtualMachine:
         if func_id in self.optimization_functions:
             # Ejecutar optimización compleja
             func = self.optimization_functions[func_id]
-            # Aquí podrías implementar diferentes algoritmos
-            self.registers['AX'] = 1  # Placeholder
+            
+            # Obtener parámetros de la pila
+            params = []
+            param_count = self.registers['CX']  # Número de parámetros en CX
+            for _ in range(min(param_count, 10)):  # Límite de seguridad
+                if self.stack:
+                    params.append(self.stack.pop())
+            
+            try:
+                # Ejecutar la función de optimización
+                result = func(*params)
+                
+                # Almacenar resultado
+                if isinstance(result, (int, float)):
+                    self.registers['AX'] = int(result) & 0xFFFF  # Parte baja
+                    self.registers['DX'] = (int(result) >> 16) & 0xFFFF  # Parte alta
+                else:
+                    # Si es un resultado complejo, almacenar en heap
+                    heap_addr = len(self.heap)
+                    self.heap[heap_addr] = result
+                    self.registers['AX'] = heap_addr
+                    self.registers['DX'] = 0  # Indicador de que está en heap
+                
+                self.flags['ZF'] = False  # Success
+            except Exception as e:
+                logger.error(f"Optimization function error: {e}")
+                self.registers['AX'] = 0xFFFF  # Error code
+                self.flags['ZF'] = True  # Error flag
         else:
             self.registers['AX'] = 0
+            self.flags['ZF'] = True  # Function not found
     
     def register_optimization_function(self, name: str, func: Callable):
         """Registra una función de optimización"""

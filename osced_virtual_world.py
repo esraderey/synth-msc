@@ -32,16 +32,61 @@ import threading
 import queue
 
 # Importar componentes base
-from sced_v3 import (
-    SCEDBlockchain, Transaction, TransactionType, ExtendedEpistemicVector,
-    ConsensusLevel, ValidationStrength, SCEDCryptoEngine, ZKPSystem,
-    SmartContract, PostQuantumCrypto
-)
+try:
+    # Importar con el nombre correcto del archivo
+    import sys
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("sced_v3", "sced v3.py")
+    sced_v3 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sced_v3)
+    
+    # Extraer las clases necesarias
+    SCEDBlockchain = sced_v3.SCEDBlockchain
+    Transaction = sced_v3.Transaction
+    TransactionType = sced_v3.TransactionType
+    ExtendedEpistemicVector = sced_v3.ExtendedEpistemicVector
+    ConsensusLevel = sced_v3.ConsensusLevel
+    ValidationStrength = sced_v3.ValidationStrength
+    SCEDCryptoEngine = sced_v3.SCEDCryptoEngine
+    ZKPSystem = sced_v3.ZKPSystem
+    SmartContract = sced_v3.SmartContract
+    PostQuantumCrypto = sced_v3.PostQuantumCrypto
+except ImportError as e:
+    logging.warning(f"No se pudo importar sced v3.py: {e}")
+    # Definir clases stub
+    class SCEDBlockchain: pass
+    class Transaction: pass
+    class TransactionType: pass
+    class ExtendedEpistemicVector: pass
+    class ConsensusLevel: pass
+    class ValidationStrength: pass
+    class SCEDCryptoEngine: pass
+    class ZKPSystem: pass
+    class SmartContract: pass
+    class PostQuantumCrypto: pass
 
-from MSC_Digital_Entities_Extension import (
-    DigitalEntity, EntityType, EntityPersonality, EntityMemory,
-    DigitalEntityEcosystem, EntityGenerator
-)
+try:
+    # Importar con el nombre correcto del archivo
+    spec2 = importlib.util.spec_from_file_location("MSC_Digital_Entities_Extension", "MSC_Digital_Entities_Extension v5.0.py")
+    msc_entities = importlib.util.module_from_spec(spec2)
+    spec2.loader.exec_module(msc_entities)
+    
+    # Extraer las clases necesarias
+    DigitalEntity = msc_entities.DigitalEntity
+    EntityType = msc_entities.EntityType
+    EntityPersonality = msc_entities.EntityPersonality
+    EntityMemory = msc_entities.EntityMemory
+    DigitalEntityEcosystem = msc_entities.DigitalEntityEcosystem
+    EntityGenerator = msc_entities.EntityGenerator
+except ImportError as e:
+    logging.warning(f"No se pudo importar MSC_Digital_Entities_Extension: {e}")
+    # Definir clases stub
+    class DigitalEntity: pass
+    class EntityType: pass
+    class EntityPersonality: pass
+    class EntityMemory: pass
+    class DigitalEntityEcosystem: pass
+    class EntityGenerator: pass
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -677,9 +722,19 @@ class EntityBehaviorValidator:
 # === TRANSACCIONES OSCED ===
 
 @dataclass
-class OSCEDTransaction(Transaction):
+class OSCEDTransaction:
     """Transacción específica de OSCED"""
-    type: OSCEDTransactionType
+    tx_id: str
+    tx_type: OSCEDTransactionType
+    sender: str
+    data: Dict[str, Any]
+    epistemic_vector: Any  # ExtendedEpistemicVector
+    signature: bytes
+    timestamp: float = field(default_factory=time.time)
+    nonce: int = 0
+    gas_limit: int = 1000000
+    gas_price: float = 0.0001
+    # Campos específicos de OSCED
     world_position: Optional[Vector3D] = None
     entity_state: Optional[Dict[str, Any]] = None
     validation_scores: Dict[str, float] = field(default_factory=dict)

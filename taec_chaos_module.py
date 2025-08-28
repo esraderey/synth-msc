@@ -31,6 +31,16 @@ import pickle
 import zlib
 import ast
 import re
+try:
+    import networkx as nx
+except ImportError:
+    # Mock simple para tests
+    class MockGraph:
+        def __init__(self):
+            self.nodes = {}
+        def add_node(self, node, **attrs):
+            self.nodes[node] = attrs
+    nx = type('nx', (), {'Graph': MockGraph})
 import os
 from typing import Dict, List, Optional, Tuple, Any, Set, Union, Callable
 from dataclasses import dataclass, field
@@ -39,12 +49,39 @@ from enum import Enum, auto
 from abc import ABC, abstractmethod
 
 # Importar componentes del TAEC Enhanced
-from taec_enhanced_module import (
-    MSCLTokenType, MSCLToken, MSCLLexer, MSCLParser,
-    MSCLCompiler, MSCLCodeGenerator, SemanticAnalyzer,
-    QuantumState, QuantumMemoryCell, QuantumVirtualMemory,
-    CodeEvolutionEngine
-)
+# Importación corregida - usar nombres de archivos reales
+try:
+    from TAEC_Msc_Digital_Enties import (
+        MSCLTokenType, MSCLToken, MSCLLexer, MSCLParser,
+        MSCLCompiler, MSCLCodeGenerator, SemanticAnalyzer,
+        QuantumState, QuantumMemoryCell, QuantumVirtualMemory,
+        CodeEvolutionEngine
+    )
+except ImportError as e:
+    logging.warning(f"No se pudo importar TAEC_Msc_Digital_Enties: {e}")
+    # Definir clases stub para evitar errores
+    class MSCLTokenType:
+        pass
+    class MSCLToken:
+        pass
+    class MSCLLexer:
+        pass
+    class MSCLParser:
+        pass
+    class MSCLCompiler:
+        pass
+    class MSCLCodeGenerator:
+        pass
+    class SemanticAnalyzer:
+        pass
+    class QuantumState:
+        pass
+    class QuantumMemoryCell:
+        pass
+    class QuantumVirtualMemory:
+        pass
+    class CodeEvolutionEngine:
+        pass
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -321,15 +358,41 @@ class CodeChaosSeed:
 
 # === MEMORIA CUÁNTICA CAÓTICA ===
 
-class ChaoticQuantumMemoryCell(QuantumMemoryCell):
+class SimpleQuantumState:
+    """Estado cuántico simple para uso en las celdas de memoria"""
+    def __init__(self, dimensions: int):
+        self.dimensions = dimensions
+        self.amplitudes = np.zeros(dimensions, dtype=complex)
+        self.amplitudes[0] = 1.0  # Estado base
+    
+    def normalize(self):
+        """Normaliza el estado cuántico"""
+        norm = np.linalg.norm(self.amplitudes)
+        if norm > 0:
+            self.amplitudes /= norm
+    
+    def apply_gate(self, gate_matrix):
+        """Aplica una compuerta cuántica"""
+        if gate_matrix.shape[0] == self.dimensions:
+            self.amplitudes = gate_matrix @ self.amplitudes
+        else:
+            # Para compuertas de 2 qubits en sistemas mayores
+            self.amplitudes[:2] = gate_matrix @ self.amplitudes[:2]
+        self.normalize()
+
+class ChaoticQuantumMemoryCell:
     """Celda de memoria cuántica con dinámicas caóticas"""
     
     def __init__(self, address: str, dimensions: int = 2):
-        super().__init__(address, dimensions)
+        self.address = address
+        self.dimensions = dimensions
+        self.quantum_state = SimpleQuantumState(dimensions)
         self.chaos_state = np.random.randn(3) * 0.1
         self.attractor_trajectory = deque(maxlen=1000)
         self.chaos_math = ChaosMathematics()
         self.bifurcation_parameter = 3.57  # Cerca del caos
+        self.lock = threading.RLock()  # Para thread safety
+        self.coherence = 1.0  # Coherencia cuántica
         
     def evolve_chaotically(self, dt: float = 0.01):
         """Evoluciona el estado cuántico con influencia caótica"""
@@ -384,11 +447,12 @@ class ChaoticQuantumMemoryCell(QuantumMemoryCell):
         
         self.quantum_state.normalize()
 
-class ChaoticQuantumVirtualMemory(QuantumVirtualMemory):
+class ChaoticQuantumVirtualMemory:
     """Memoria virtual cuántica con propiedades caóticas"""
     
     def __init__(self, quantum_dimensions: int = 4):
-        super().__init__(quantum_dimensions)
+        self.quantum_dimensions = quantum_dimensions
+        self.lock = threading.RLock()  # Para thread safety
         self.chaos_cells: Dict[str, ChaoticQuantumMemoryCell] = {}
         self.global_chaos_state = np.random.randn(4)  # Estado hipercaótico
         self.chaos_math = ChaosMathematics()
@@ -400,6 +464,25 @@ class ChaoticQuantumVirtualMemory(QuantumVirtualMemory):
             'rossler_a': 0.2,
             'intermittency_epsilon': 0.01
         }
+        
+        # Contextos de memoria
+        self.contexts = {}
+        self.current_context = "main"
+        
+        # Grafo de entrelazamiento
+        self.entanglement_graph = nx.Graph()
+    
+    def create_context(self, name: str):
+        """Crea un nuevo contexto de memoria"""
+        if name not in self.contexts:
+            self.contexts[name] = {}
+    
+    def switch_context(self, name: str):
+        """Cambia al contexto especificado"""
+        if name in self.contexts:
+            self.current_context = name
+        else:
+            raise ValueError(f"Context {name} does not exist")
     
     def allocate_chaotic_quantum(self, address: str, 
                                 dimensions: Optional[int] = None) -> ChaoticQuantumMemoryCell:
@@ -508,11 +591,10 @@ class ChaoticQuantumVirtualMemory(QuantumVirtualMemory):
 
 # === MOTOR DE EVOLUCIÓN CAÓTICA DE CÓDIGO ===
 
-class ChaoticCodeEvolutionEngine(CodeEvolutionEngine):
+class ChaoticCodeEvolutionEngine:
     """Motor de evolución de código con dinámicas caóticas"""
     
     def __init__(self):
-        super().__init__()
         self.chaos_math = ChaosMathematics()
         self.chaos_seeds: List[CodeChaosSeed] = []
         self.bifurcation_history = []
@@ -779,12 +861,13 @@ class ChaoticCodeEvolutionEngine(CodeEvolutionEngine):
 
 # === COMPILADOR MSC-LANG CAÓTICO ===
 
-class ChaoticMSCLCompiler(MSCLCompiler):
+class ChaoticMSCLCompiler:
     """Compilador MSC-Lang con extensiones caóticas"""
     
     def __init__(self, optimize: bool = True, debug: bool = False, 
                  chaos_level: float = 0.3):
-        super().__init__(optimize, debug)
+        self.optimize = optimize
+        self.debug = debug
         self.chaos_level = chaos_level
         self.chaos_math = ChaosMathematics()
         self.chaos_state = np.random.randn(3) * 0.1

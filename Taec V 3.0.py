@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 TAEC Advanced Module Enhanced v2.0 - Sistema de Auto-Evolución Cognitiva Mejorado
 Características principales:

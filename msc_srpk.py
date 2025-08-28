@@ -95,12 +95,79 @@ class SRPKGraph:
                 self.embedding_model = torch.load(model_path)
                 logging.info(f"Loaded code embedding model from {model_path}")
             else:
-                # Simplified dummy model for demonstration
-                self.embedding_model = lambda x: torch.randn(768)  # Simulated embedding
-                logging.info("Using dummy code embedding model")
+                # Intentar cargar sentence-transformers
+                try:
+                    from sentence_transformers import SentenceTransformer
+                    # Usar un modelo específico para código
+                    self.embedding_model = SentenceTransformer('microsoft/codebert-base')
+                    logging.info("Using CodeBERT embedding model")
+                except ImportError:
+                    # Si no está disponible, usar un modelo simple basado en TF-IDF
+                    logging.warning("sentence-transformers not available, using TF-IDF based embeddings")
+                    self.embedding_model = self._create_tfidf_embedder()
         except Exception as e:
             logging.error(f"Failed to load embedding model: {e}")
-            self.embedding_model = lambda x: torch.randn(768)
+            # Fallback a embeddings basados en hash
+            self.embedding_model = self._create_hash_embedder()
+    
+    def _create_tfidf_embedder(self):
+        """Crea un embedder basado en TF-IDF para código"""
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        import numpy as np
+        
+        # Vocabulario común en código
+        code_vocabulary = ['def', 'class', 'import', 'return', 'if', 'else', 'for', 'while',
+                          'try', 'except', 'self', 'init', 'get', 'set', 'add', 'remove',
+                          'update', 'delete', 'create', 'process', 'handle', 'validate']
+        
+        vectorizer = TfidfVectorizer(
+            max_features=768,  # Mismo tamaño que BERT
+            token_pattern=r'\b\w+\b',
+            lowercase=True,
+            vocabulary=code_vocabulary
+        )
+        
+        # Función wrapper para mantener la interfaz
+        def embed(text):
+            if isinstance(text, list):
+                text = ' '.join(text)
+            try:
+                # Fit y transform en un solo texto
+                vec = vectorizer.fit_transform([text])
+                # Pad o truncate a 768 dimensiones
+                embedding = vec.toarray()[0]
+                if len(embedding) < 768:
+                    embedding = np.pad(embedding, (0, 768 - len(embedding)))
+                return torch.tensor(embedding[:768], dtype=torch.float32)
+            except:
+                return torch.randn(768)
+        
+        return embed
+    
+    def _create_hash_embedder(self):
+        """Crea un embedder basado en hash para código"""
+        import hashlib
+        import numpy as np
+        
+        def embed(text):
+            if isinstance(text, list):
+                text = ' '.join(text)
+            
+            # Crear hash del texto
+            hash_obj = hashlib.sha256(text.encode('utf-8'))
+            hash_bytes = hash_obj.digest()
+            
+            # Convertir a vector de floats
+            # Usar los bytes del hash para generar números pseudo-aleatorios
+            np.random.seed(int.from_bytes(hash_bytes[:4], 'big'))
+            embedding = np.random.randn(768)
+            
+            # Normalizar
+            embedding = embedding / np.linalg.norm(embedding)
+            
+            return torch.tensor(embedding, dtype=torch.float32)
+        
+        return embed
 
     def analyze_code_file(self, file_path):
         """Analiza un archivo de código y extrae nodos de conocimiento."""

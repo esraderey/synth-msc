@@ -284,7 +284,7 @@ def print_next_steps():
         print("   source venv/bin/activate")
     
     print("\n2. Run the framework:")
-    print("   python msc_framework_enhanced.py")
+    print("   python msc_simulation.py")
     
     print("\n3. Access the web interface:")
     print("   http://localhost:5000")
@@ -308,8 +308,8 @@ def main():
         sys.exit(1)
     
     # Check if we're in the right directory
-    if not os.path.exists("msc_framework_enhanced.py"):
-        print_colored("Error: msc_framework_enhanced.py not found", Colors.FAIL)
+    if not os.path.exists("msc_simulation.py"):
+        print_colored("Error: msc_simulation.py not found", Colors.FAIL)
         print("Please run this script from the MSC Framework directory")
         sys.exit(1)
     

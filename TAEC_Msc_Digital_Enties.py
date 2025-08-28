@@ -12,7 +12,26 @@ Mejoras v2.0:
 - Sistema de versionado de comportamientos
 """
 
-from MSC_Digital_Entities_Extension import *
+# Evitar importación circular - usar importación tardía
+try:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("MSC_Digital_Entities_Extension", "MSC_Digital_Entities_Extension v5.0.py")
+    msc_entities_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(msc_entities_module)
+    
+    # Importar todo el namespace
+    globals().update({k: v for k, v in msc_entities_module.__dict__.items() if not k.startswith('_')})
+except Exception as e:
+    import logging
+    logging.warning(f"No se pudo importar MSC_Digital_Entities_Extension: {e}")
+    # Definir clases mínimas necesarias
+    class DigitalEntity: pass
+    class EntityType: pass
+    class EntityPersonality: pass
+    class EntityMemory: pass
+    class DigitalEntityEcosystem: pass
+    class EntityBehavior: pass
+    class EntityCommunication: pass
 from typing import Dict, List, Optional, Tuple, Any, Union, Callable, Set
 import torch
 import torch.nn as nn
@@ -45,13 +64,51 @@ import concurrent.futures
 from datetime import datetime, timedelta
 
 # Importar componentes del TAEC v3.0
-from Taec_V_3_0 import (
-    MSCLTokenType, MSCLToken, MSCLLexer, MSCLParser,
-    MSCLASTNode, Program, FunctionDef, ClassDef,
-    SemanticAnalyzer, MSCLCodeGenerator, MSCLCompiler,
-    QuantumState, QuantumMemoryCell, MemoryLayer, QuantumVirtualMemory,
-    CodeEvolutionEngine, EvolutionStrategy
-)
+try:
+    # Importar usando el nombre correcto del archivo
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("Taec_V_3_0", "Taec V 3.0.py")
+    taec_v3_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(taec_v3_module)
+    
+    # Extraer las clases necesarias
+    MSCLTokenType = taec_v3_module.MSCLTokenType
+    MSCLToken = taec_v3_module.MSCLToken
+    MSCLLexer = taec_v3_module.MSCLLexer
+    MSCLParser = taec_v3_module.MSCLParser
+    MSCLASTNode = taec_v3_module.MSCLASTNode
+    Program = taec_v3_module.Program
+    FunctionDef = taec_v3_module.FunctionDef
+    ClassDef = taec_v3_module.ClassDef
+    SemanticAnalyzer = taec_v3_module.SemanticAnalyzer
+    MSCLCodeGenerator = taec_v3_module.MSCLCodeGenerator
+    MSCLCompiler = taec_v3_module.MSCLCompiler
+    QuantumState = taec_v3_module.QuantumState
+    QuantumMemoryCell = taec_v3_module.QuantumMemoryCell
+    MemoryLayer = taec_v3_module.MemoryLayer
+    QuantumVirtualMemory = taec_v3_module.QuantumVirtualMemory
+    CodeEvolutionEngine = taec_v3_module.CodeEvolutionEngine
+    EvolutionStrategy = taec_v3_module.EvolutionStrategy
+except Exception as e:
+    logging.warning(f"No se pudo importar Taec V 3.0: {e}")
+    # Definir clases stub
+    class MSCLTokenType: pass
+    class MSCLToken: pass
+    class MSCLLexer: pass
+    class MSCLParser: pass
+    class MSCLASTNode: pass
+    class Program: pass
+    class FunctionDef: pass
+    class ClassDef: pass
+    class SemanticAnalyzer: pass
+    class MSCLCodeGenerator: pass
+    class MSCLCompiler: pass
+    class QuantumState: pass
+    class QuantumMemoryCell: pass
+    class MemoryLayer: pass
+    class QuantumVirtualMemory: pass
+    class CodeEvolutionEngine: pass
+    class EvolutionStrategy: pass
 
 logger = logging.getLogger(__name__)
 
@@ -525,8 +582,8 @@ def profile_behavior(func):
             for func_name in jit_candidates:
                 # Añadir decorador JIT
                 code = re.sub(
-                    f'def {func_name}\(',
-                    f'@numba.jit(nopython=False, cache=True)\ndef {func_name}(',
+                    f'def {func_name}\\(',
+                    f'@numba.jit(nopython=False, cache=True)\\ndef {func_name}(',
                     code
                 )
             
@@ -843,13 +900,32 @@ class QuantumCollectiveConsciousness(QuantumVirtualMemory):
         
         return np.mean(overlaps) if overlaps else 0.0
 
+# === CLASES DE RESULTADO DE EVOLUCIÓN ===
+@dataclass
+class BehaviorEvolutionResult:
+    success: bool
+    original_code: str
+    evolved_code: str
+    fitness: float
+    improvements: Dict[str, float] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    strategy_used: Optional[str] = None
+    goals_achieved: List[str] = field(default_factory=list)
+
+@dataclass
+class EvolutionGoal:
+    name: str
+    target_metric: str
+    target_value: float
+    priority: float
+
 # === EVOLUCIONADOR DE COMPORTAMIENTOS AVANZADO ===
-class AdvancedBehaviorEvolver(BehaviorEvolver):
+class AdvancedBehaviorEvolver:
     """Evolucionador mejorado con capacidades del TAEC v3.0"""
     
-    def __init__(self, claude_client: ClaudeAPIClient,
-                 compiler: BehaviorCompiler):
-        super().__init__(claude_client)
+    def __init__(self, claude_client: Optional[Any] = None,
+                 compiler: Optional[BehaviorCompiler] = None):
+        self.claude_client = claude_client
         self.compiler = compiler
         self.evolution_engine = CodeEvolutionEngine()
         
@@ -2035,24 +2111,6 @@ class TAECDigitalEntitiesV2:
 
 # === CLASES DE SOPORTE ADICIONALES ===
 
-@dataclass
-class BehaviorEvolutionResult:
-    success: bool
-    original_code: str
-    evolved_code: str
-    fitness: float
-    improvements: Dict[str, float] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    strategy_used: Optional[str] = None
-    goals_achieved: List[str] = field(default_factory=list)
-
-@dataclass
-class EvolutionGoal:
-    name: str
-    target_metric: str
-    target_value: float
-    priority: float
-
 class PatternDetector:
     """Detecta patrones en comportamientos y evolución"""
     
@@ -2174,7 +2232,8 @@ async def advanced_example():
     """Ejemplo de uso del TAEC Digital Entities v2.0"""
     
     # Importar y crear simulación
-    from MSC_Digital_Entities_Extension import ExtendedSimulationRunner
+    # ExtendedSimulationRunner ya debería estar en el namespace global
+    # from MSC_Digital_Entities_Extension import ExtendedSimulationRunner
     
     config = {
         'enable_digital_entities': True,

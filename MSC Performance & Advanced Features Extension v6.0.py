@@ -9,7 +9,22 @@ Extensión del MSC Framework v5.0 que añade:
 """
 
 # === IMPORTACIONES ADICIONALES ===
-from msc_digital_entities import *
+import logging
+
+# Importar del archivo correcto
+try:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("MSC_Digital_Entities_Extension", "MSC_Digital_Entities_Extension v5.0.py")
+    msc_digital_entities = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(msc_digital_entities)
+    
+    # Importar todo el namespace
+    globals().update({k: v for k, v in msc_digital_entities.__dict__.items() if not k.startswith('_')})
+except ImportError as e:
+    logging.warning(f"No se pudo importar MSC_Digital_Entities_Extension: {e}")
+    # Definir clases mínimas necesarias
+    class DigitalEntity: pass
+    class EntityType: pass
 import ray  # Para computación distribuida
 import dask.distributed as dd
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor

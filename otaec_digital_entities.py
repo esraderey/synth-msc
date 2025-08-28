@@ -39,15 +39,14 @@ import networkx as nx
 
 # Intentar importar componentes de TAEC Digital Entities
 try:
-    from TAEC_Digital_Entities_v2 import (
+    from TAEC_Msc_Digital_Enties import (
         EntityType, DigitalEntity, EntityPersonality,
-        BehaviorCompiler, QuantumCollectiveConsciousness,
-        TAECDigitalConfigV2
+        BehaviorCompiler, TAECDigitalConfigV2
     )
     TAEC_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     TAEC_AVAILABLE = False
-    print("[Warning] TAEC Digital Entities v2.0 not found. Running in standalone mode.")
+    print(f"[Warning] TAEC Digital Entities not found: {e}. Running in standalone mode.")
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)

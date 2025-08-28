@@ -702,8 +702,24 @@ class Transaction:
     
     def verify_signature(self, public_key: bytes) -> bool:
         """Verify transaction signature"""
-        # Implementation depends on crypto system
-        return True  # Placeholder
+        if not self.signature:
+            return False
+            
+        # Recreate sign data
+        sign_data = {
+            "tx_id": self.tx_id,
+            "tx_type": self.tx_type.name,
+            "sender": self.sender,
+            "data": self.data,
+            "epistemic_vector": self.epistemic_vector.to_dict() if self.epistemic_vector else {}
+        }
+        
+        # Create message to verify
+        message = json.dumps(sign_data, sort_keys=True).encode()
+        
+        # Use PostQuantumCrypto for verification
+        pqc = PostQuantumCrypto()
+        return pqc.verify(message, self.signature, public_key)
     
     def estimate_gas(self) -> int:
         """Estimate gas consumption"""
@@ -1470,13 +1486,23 @@ class SCEDBlock:
     
     def calculate_hash(self) -> str:
         """Calculate block hash"""
+        # Preparar metadata serializable
+        metadata_serializable = self.metadata.copy() if self.metadata else {}
+        if 'consensus_level' in metadata_serializable and hasattr(metadata_serializable['consensus_level'], 'name'):
+            metadata_serializable['consensus_level'] = metadata_serializable['consensus_level'].name
+        
+        # Preparar consensus_proof serializable
+        consensus_proof_serializable = self.consensus_proof.copy() if self.consensus_proof else {}
+        if 'level' in consensus_proof_serializable and hasattr(consensus_proof_serializable['level'], 'name'):
+            consensus_proof_serializable['level'] = consensus_proof_serializable['level'].name
+        
         block_data = {
             'index': self.index,
             'timestamp': self.timestamp,
             'merkle_root': self.merkle_root,
             'previous_hash': self.previous_hash,
-            'metadata': self.metadata,
-            'consensus_proof': self.consensus_proof
+            'metadata': metadata_serializable,
+            'consensus_proof': consensus_proof_serializable
         }
         
         return hashlib.sha3_256(
@@ -1940,17 +1966,36 @@ def example_usage():
         "collaborative_factor": 0.8
     })
     
+    # Prepare transaction data
+    tx_data = {
+        "content": "Revolutionary insight into quantum consciousness",
+        "domain": "quantum_physics",
+        "references": ["paper1", "paper2"]
+    }
+    tx_id = hashlib.sha256(f"tx1_{time.time()}".encode()).hexdigest()
+    
+    # Generate proper signature
+    sign_data = {
+        "tx_id": tx_id,
+        "tx_type": TransactionType.EPISTEMIC_CONTRIBUTION.name,
+        "sender": "validator1",
+        "data": tx_data,
+        "epistemic_vector": epistemic_vector.to_dict()
+    }
+    
+    # Use validator1's credentials to sign
+    # In production, this would use actual stored credentials
+    classical_sig, pq_sig = blockchain.crypto_engine.sign_hybrid(
+        sign_data, "validator1"
+    )
+    
     tx1 = Transaction(
-        tx_id=hashlib.sha256(f"tx1_{time.time()}".encode()).hexdigest(),
+        tx_id=tx_id,
         tx_type=TransactionType.EPISTEMIC_CONTRIBUTION,
         sender="validator1",
-        data={
-            "content": "Revolutionary insight into quantum consciousness",
-            "domain": "quantum_physics",
-            "references": ["paper1", "paper2"]
-        },
+        data=tx_data,
         epistemic_vector=epistemic_vector,
-        signature=b"signature_placeholder"  # Would be real signature
+        signature=classical_sig  # Using classical signature for simplicity
     )
     
     # Add transaction
@@ -1958,18 +2003,34 @@ def example_usage():
     print(f"Transaction added: {tx1.tx_id[:16]}...")
     
     # Deploy smart contract
+    contract_data = {
+        "type": "epistemic_validation",
+        "code": "contract_code_here",
+        "min_validators": 2,
+        "threshold": 0.7
+    }
+    contract_id = hashlib.sha256(f"contract_{time.time()}".encode()).hexdigest()
+    
+    # Generate proper signature for contract
+    contract_sign_data = {
+        "tx_id": contract_id,
+        "tx_type": TransactionType.SMART_CONTRACT_DEPLOY.name,
+        "sender": "validator1",
+        "data": contract_data,
+        "epistemic_vector": {"reputation": 0.9}
+    }
+    
+    classical_sig_contract, pq_sig_contract = blockchain.crypto_engine.sign_hybrid(
+        contract_sign_data, "validator1"
+    )
+    
     contract_tx = Transaction(
-        tx_id=hashlib.sha256(f"contract_{time.time()}".encode()).hexdigest(),
+        tx_id=contract_id,
         tx_type=TransactionType.SMART_CONTRACT_DEPLOY,
         sender="validator1",
-        data={
-            "type": "epistemic_validation",
-            "code": "contract_code_here",
-            "min_validators": 2,
-            "threshold": 0.7
-        },
+        data=contract_data,
         epistemic_vector=ExtendedEpistemicVector({"reputation": 0.9}),
-        signature=b"signature_placeholder"
+        signature=classical_sig_contract
     )
     
     blockchain.add_transaction(contract_tx)

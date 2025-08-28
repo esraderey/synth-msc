@@ -1,0 +1,206 @@
+2025-08-27 20:28:24,664 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:28:24,667 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:28:24,671 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:28:24,674 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:28:24,680 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:51 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:28:24,683 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:28:24,694 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:28:24,697 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:28:25,740 - [34;20msced_v3[0m - [33;20mWARNING[0m - _init_pqc:160 - Post-quantum crypto library not available, using enhanced classical crypto
+2025-08-27 20:28:25,912 - [34;20msced_v3[0m - [32;20mINFO[0m - _init_model:402 - Created new AI validation model
+2025-08-27 20:28:25,913 - [34;20msced_v3[0m - [32;20mINFO[0m - _create_genesis_block:1596 - Genesis block created: af6461e59262bf3553ab76205a278f4f6fd7be67f0120d40109671e7b9b2ba8c
+2025-08-27 20:28:25,916 - [34;20msced_v3[0m - [32;20mINFO[0m - _collect_metrics:1913 - Blockchain metrics: {'blocks_created': 0, 'transactions_processed': 0, 'smart_contracts_deployed': 0, 'total_gas_consumed': 0}
+2025-08-27 20:28:25,916 - [34;20msced_v3[0m - [32;20mINFO[0m - __init__:1577 - SCED Blockchain v3.0 initialized
+2025-08-27 20:28:32,683 - [34;20mtensorflow[0m - [33;20mWARNING[0m - _tfmw_add_deprecation_warning:149 - From C:\Users\Raul\AppData\Roaming\Python\Python313\site-packages\tf_keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+2025-08-27 20:28:32,852 - [34;20mroot[0m - [31;20mERROR[0m - init_embedding_model:109 - Failed to load embedding model: Failed to import transformers.integrations.integration_utils because of the following error (look up to see its traceback):
+Failed to import transformers.modeling_tf_utils because of the following error (look up to see its traceback):
+module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'
+2025-08-27 20:28:32,897 - [34;20mroot[0m - [32;20mINFO[0m - __init__:149 - MSCNetBlockchain initiated with genesis block.
+2025-08-27 20:29:46,938 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:29:46,942 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:29:46,946 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:29:46,949 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:29:46,971 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:51 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:29:46,974 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:29:46,983 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:29:46,986 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:30:45,778 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:30:45,781 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:30:45,786 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:30:45,789 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:30:45,813 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:51 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:30:45,816 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:30:45,827 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:30:45,829 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:31:38,551 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:31:38,554 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:31:38,558 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:31:38,561 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:31:38,583 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:51 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:31:38,586 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:31:38,595 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:31:38,597 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:31:39,623 - [34;20msced_v3[0m - [33;20mWARNING[0m - _init_pqc:160 - Post-quantum crypto library not available, using enhanced classical crypto
+2025-08-27 20:31:39,812 - [34;20msced_v3[0m - [32;20mINFO[0m - _init_model:402 - Created new AI validation model
+2025-08-27 20:31:39,812 - [34;20msced_v3[0m - [32;20mINFO[0m - _create_genesis_block:1596 - Genesis block created: 4571ea95e0e3100a212c790211defddd32fe955c1f87f203092dae6d19743fc7
+2025-08-27 20:31:39,817 - [34;20msced_v3[0m - [32;20mINFO[0m - _collect_metrics:1913 - Blockchain metrics: {'blocks_created': 0, 'transactions_processed': 0, 'smart_contracts_deployed': 0, 'total_gas_consumed': 0}
+2025-08-27 20:31:39,817 - [34;20msced_v3[0m - [32;20mINFO[0m - __init__:1577 - SCED Blockchain v3.0 initialized
+2025-08-27 20:31:45,785 - [34;20mtensorflow[0m - [33;20mWARNING[0m - _tfmw_add_deprecation_warning:149 - From C:\Users\Raul\AppData\Roaming\Python\Python313\site-packages\tf_keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+2025-08-27 20:31:45,951 - [34;20mroot[0m - [31;20mERROR[0m - init_embedding_model:109 - Failed to load embedding model: Failed to import transformers.integrations.integration_utils because of the following error (look up to see its traceback):
+Failed to import transformers.modeling_tf_utils because of the following error (look up to see its traceback):
+module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'
+2025-08-27 20:31:46,013 - [34;20mroot[0m - [32;20mINFO[0m - __init__:149 - MSCNetBlockchain initiated with genesis block.
+2025-08-27 20:32:51,864 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:32:51,867 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:32:51,871 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:32:51,874 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:32:51,896 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:51 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:32:51,899 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:32:51,908 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:32:51,910 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:34:56,067 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:34:56,071 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:34:56,075 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:34:56,078 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:34:56,102 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:51 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:34:56,106 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:34:56,115 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:34:56,118 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:34:57,178 - [34;20msced_v3[0m - [33;20mWARNING[0m - _init_pqc:160 - Post-quantum crypto library not available, using enhanced classical crypto
+2025-08-27 20:34:57,367 - [34;20msced_v3[0m - [32;20mINFO[0m - _init_model:402 - Created new AI validation model
+2025-08-27 20:34:57,368 - [34;20msced_v3[0m - [32;20mINFO[0m - _create_genesis_block:1596 - Genesis block created: 3de786a840cadf7f7c8857e588360013f70fa2a590720ba060978a88a432fbbf
+2025-08-27 20:34:57,371 - [34;20msced_v3[0m - [32;20mINFO[0m - _collect_metrics:1913 - Blockchain metrics: {'blocks_created': 0, 'transactions_processed': 0, 'smart_contracts_deployed': 0, 'total_gas_consumed': 0}
+2025-08-27 20:34:57,371 - [34;20msced_v3[0m - [32;20mINFO[0m - __init__:1577 - SCED Blockchain v3.0 initialized
+2025-08-27 20:35:02,168 - [34;20mtensorflow[0m - [33;20mWARNING[0m - _tfmw_add_deprecation_warning:149 - From C:\Users\Raul\AppData\Roaming\Python\Python313\site-packages\tf_keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+2025-08-27 20:35:02,336 - [34;20mroot[0m - [31;20mERROR[0m - init_embedding_model:109 - Failed to load embedding model: Failed to import transformers.integrations.integration_utils because of the following error (look up to see its traceback):
+Failed to import transformers.modeling_tf_utils because of the following error (look up to see its traceback):
+module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'
+2025-08-27 20:35:02,394 - [34;20mroot[0m - [32;20mINFO[0m - __init__:149 - MSCNetBlockchain initiated with genesis block.
+2025-08-27 20:36:32,708 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:36:32,711 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:36:32,715 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:36:32,718 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:36:32,741 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:61 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:36:32,744 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:36:32,752 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:36:32,754 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:36:32,778 - [34;20mtaec_chaos_module[0m - [32;20mINFO[0m - __init__:1007 - TAEC-Chaos Module initialized with chaos level: 0.3
+2025-08-27 20:37:11,970 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:37:11,972 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:37:11,977 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:37:11,980 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:37:11,985 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:61 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:37:11,988 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:37:11,997 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:37:11,999 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:37:13,051 - [34;20msced_v3[0m - [33;20mWARNING[0m - _init_pqc:160 - Post-quantum crypto library not available, using enhanced classical crypto
+2025-08-27 20:37:13,211 - [34;20msced_v3[0m - [32;20mINFO[0m - _init_model:402 - Created new AI validation model
+2025-08-27 20:37:13,211 - [34;20msced_v3[0m - [32;20mINFO[0m - _create_genesis_block:1596 - Genesis block created: 5455dd0a6908c019f28d6b6bd2449007ab63a67dc76a5107bdbb10eafddd391d
+2025-08-27 20:37:13,214 - [34;20msced_v3[0m - [32;20mINFO[0m - _collect_metrics:1913 - Blockchain metrics: {'blocks_created': 0, 'transactions_processed': 0, 'smart_contracts_deployed': 0, 'total_gas_consumed': 0}
+2025-08-27 20:37:13,214 - [34;20msced_v3[0m - [32;20mINFO[0m - __init__:1577 - SCED Blockchain v3.0 initialized
+2025-08-27 20:37:19,756 - [34;20mtensorflow[0m - [33;20mWARNING[0m - _tfmw_add_deprecation_warning:149 - From C:\Users\Raul\AppData\Roaming\Python\Python313\site-packages\tf_keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+2025-08-27 20:37:19,925 - [34;20mroot[0m - [31;20mERROR[0m - init_embedding_model:109 - Failed to load embedding model: Failed to import transformers.integrations.integration_utils because of the following error (look up to see its traceback):
+Failed to import transformers.modeling_tf_utils because of the following error (look up to see its traceback):
+module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'
+2025-08-27 20:37:19,927 - [34;20mtaec_chaos_module[0m - [32;20mINFO[0m - __init__:1007 - TAEC-Chaos Module initialized with chaos level: 0.3
+2025-08-27 20:37:19,945 - [34;20mroot[0m - [32;20mINFO[0m - __init__:149 - MSCNetBlockchain initiated with genesis block.
+2025-08-27 20:38:34,149 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:38:34,152 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:38:34,156 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:38:34,159 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:38:34,164 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:61 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:38:34,167 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:38:34,455 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:38:34,457 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:38:34,479 - [34;20mtaec_chaos_module[0m - [32;20mINFO[0m - __init__:1007 - TAEC-Chaos Module initialized with chaos level: 0.3
+2025-08-27 20:39:06,234 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:39:06,237 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:39:06,241 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:39:06,243 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:39:06,249 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:61 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:39:06,251 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:39:06,260 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:39:06,262 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:39:06,289 - [34;20msced_v3[0m - [33;20mWARNING[0m - _init_pqc:160 - Post-quantum crypto library not available, using enhanced classical crypto
+2025-08-27 20:39:06,442 - [34;20msced_v3[0m - [32;20mINFO[0m - _init_model:402 - Created new AI validation model
+2025-08-27 20:39:06,443 - [34;20msced_v3[0m - [32;20mINFO[0m - _create_genesis_block:1596 - Genesis block created: 46bd9a170bdcfa9adc41f85d3b081f6fc58b63af33e2d40f5d2496b68174dfbb
+2025-08-27 20:39:06,445 - [34;20msced_v3[0m - [32;20mINFO[0m - _collect_metrics:1913 - Blockchain metrics: {'blocks_created': 0, 'transactions_processed': 0, 'smart_contracts_deployed': 0, 'total_gas_consumed': 0}
+2025-08-27 20:39:06,446 - [34;20msced_v3[0m - [32;20mINFO[0m - __init__:1577 - SCED Blockchain v3.0 initialized
+2025-08-27 20:39:11,899 - [34;20mtensorflow[0m - [33;20mWARNING[0m - _tfmw_add_deprecation_warning:149 - From C:\Users\Raul\AppData\Roaming\Python\Python313\site-packages\tf_keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+2025-08-27 20:39:12,064 - [34;20mroot[0m - [31;20mERROR[0m - init_embedding_model:109 - Failed to load embedding model: Failed to import transformers.integrations.integration_utils because of the following error (look up to see its traceback):
+Failed to import transformers.modeling_tf_utils because of the following error (look up to see its traceback):
+module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'
+2025-08-27 20:39:12,067 - [34;20mtaec_chaos_module[0m - [32;20mINFO[0m - __init__:1007 - TAEC-Chaos Module initialized with chaos level: 0.3
+2025-08-27 20:39:12,073 - [34;20mroot[0m - [32;20mINFO[0m - __init__:149 - MSCNetBlockchain initiated with genesis block.
+2025-08-27 20:40:50,046 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: No module named 'Taec_V_3_0'
+2025-08-27 20:40:50,049 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:40:50,054 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:40:50,057 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:40:50,081 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:61 - No se pudo importar TAEC_Msc_Digital_Enties: No module named 'Taec_V_3_0'
+2025-08-27 20:40:50,086 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:110 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:40:50,095 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:119 - No se pudo importar osced_virtual_world
+2025-08-27 20:40:50,097 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:128 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:43:13,522 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:43:13,523 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: name 'BehaviorEvolver' is not defined
+2025-08-27 20:43:13,525 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:43:13,529 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:43:13,531 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:28 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:43:13,537 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:48:08,326 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:48:08,326 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: name 'BehaviorEvolutionResult' is not defined
+2025-08-27 20:48:08,339 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:48:08,347 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:48:08,352 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:48:08,360 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:49:33,222 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:49:33,223 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_Msc_Digital_Entities desde TAEC_Msc_Digital_Enties.py: name 'EvolutionGoal' is not defined
+2025-08-27 20:49:33,233 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:49:33,241 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:49:33,246 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:49:33,256 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:55:53,768 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:55:53,771 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:55:53,779 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:55:53,784 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:55:53,793 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:55:53,797 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:116 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:55:53,807 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:125 - No se pudo importar osced_virtual_world
+2025-08-27 20:55:53,809 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:134 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:56:22,024 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:56:22,027 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:56:22,036 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:56:22,041 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:56:22,050 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:56:22,054 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:116 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:56:22,064 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:125 - No se pudo importar osced_virtual_world
+2025-08-27 20:56:22,066 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:134 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:58:50,084 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:58:50,089 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:58:50,097 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:58:50,102 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:58:50,110 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:58:50,115 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:116 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:58:50,124 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:125 - No se pudo importar osced_virtual_world
+2025-08-27 20:58:50,127 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:134 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:59:29,321 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:59:29,324 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:59:29,334 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 20:59:29,338 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 20:59:29,348 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 20:59:29,352 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:116 - No se pudo importar otaec_optimization_twin
+2025-08-27 20:59:29,362 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:125 - No se pudo importar osced_virtual_world
+2025-08-27 20:59:29,364 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:134 - No se pudo importar chaos_evolution_framework
+2025-08-27 20:59:29,384 - [34;20m__main__[0m - [32;20mINFO[0m - check_components:42 - === Verificando componentes del MSC Framework ===
+2025-08-27 21:00:51,332 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 21:00:51,337 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAEC_v3 desde Taec V 3.0.py: 'NoneType' object has no attribute '__dict__'
+2025-08-27 21:00:51,345 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando MSC_Performance desde MSC Performance & Advanced Features Extension v6.0.py: No module named 'ray'
+2025-08-27 21:00:51,350 - [34;20mroot[0m - [31;20mERROR[0m - import_module_from_file:32 - Error importando TAECViz desde Taecviz v.2.0 .py: No module named 'tornado'
+2025-08-27 21:00:51,358 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:93 - No se pudo importar Taec V 3.0: 'NoneType' object has no attribute '__dict__'
+2025-08-27 21:00:51,363 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:116 - No se pudo importar otaec_optimization_twin
+2025-08-27 21:00:51,372 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:125 - No se pudo importar osced_virtual_world
+2025-08-27 21:00:51,374 - [34;20mroot[0m - [33;20mWARNING[0m - <module>:134 - No se pudo importar chaos_evolution_framework
